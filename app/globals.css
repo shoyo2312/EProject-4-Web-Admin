@@ -1,26 +1,113 @@
 @import "tailwindcss";
 
+/*
+ * Neo-brutalist / monospace SaaS dashboard.
+ * Flat by design: no shadows beyond a hairline, everything separated by 1px borders.
+ * Light-only on purpose — an ops console read side by side with terminals all day.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: #f1f1f1;
+  --surface: #ffffff;
+  --surface-muted: #fafafa;
+  --line: #e5e5e5;
+  --line-strong: #d4d4d4;
+
+  --ink: #0a0a0a;
+  --ink-soft: #525252;
+  --ink-faint: #8a8a8a;
+
+  --accent-success: #16a34a;
+  --accent-success-bg: #f0fdf4;
+  --accent-pending: #d97706;
+  --accent-pending-bg: #fffbeb;
+  --accent-neutral: #737373;
+  --accent-neutral-bg: #f5f5f5;
+  --accent-danger: #dc2626;
+  --accent-danger-bg: #fef2f2;
+
+  /* Mosaic chart cell ramp, dark -> empty */
+  --cell-strong: #0a0a0a;
+  --cell-mid: #b8b8b8;
+  --cell-empty: #ececec;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-success: var(--accent-success);
+  --color-success-bg: var(--accent-success-bg);
+  --color-pending: var(--accent-pending);
+  --color-pending-bg: var(--accent-pending-bg);
+  --color-neutral: var(--accent-neutral);
+  --color-neutral-bg: var(--accent-neutral-bg);
+  --color-danger: var(--accent-danger);
+  --color-danger-bg: var(--accent-danger-bg);
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--line);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Tailwind 4 dropped the preflight rule that gave buttons `cursor: pointer` (v3 had it,
+ * v4 defers to the browser default of `default`). Put it back for everything clickable
+ * rather than sprinkling cursor-pointer across every component — a control that misses
+ * the class then reads as dead UI.
+ *
+ * :disabled is excluded because a disabled control genuinely is not clickable, and
+ * [aria-disabled] covers the ones we style as disabled without the attribute.
+ */
+button:not(:disabled):not([aria-disabled="true"]),
+[role="button"]:not([aria-disabled="true"]),
+label[for],
+summary,
+select:not(:disabled),
+a[href],
+input[type="checkbox"]:not(:disabled),
+input[type="radio"]:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+button[aria-disabled="true"],
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Section labels: uppercase, letter-spaced, small — the spec's "technical" cue */
+.label-caps {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Big figures use tabular numerals so columns of digits stay aligned */
+.figure {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border: 3px solid var(--canvas);
+  border-radius: 9999px;
 }
