@@ -13,7 +13,12 @@ import type {
   ReportStatus,
   StatsSummaryResponse,
 } from "./types";
-import { toMosaicSeries, type MosaicSeries } from "./rollup";
+import {
+  toEngagementMix,
+  toMosaicSeries,
+  type EngagementMixRow,
+  type MosaicSeries,
+} from "./rollup";
 import {
   mockDailyEngagement,
   mockDailyRevenue,
@@ -87,6 +92,22 @@ export async function getEngagementSeries(): Promise<MosaicSeries> {
   const rows = await getDailyEngagement(365);
   // Mock data is generated against a fixed clock; bucketing against Date.now() would miss it.
   return toMosaicSeries(rows, USE_MOCK ? MOCK_NOW : Date.now());
+}
+
+/**
+ * The analytics page wants the same 365-day pull twice over — bucketed by day for the
+ * mosaic, and totalled by event type for the mix. Derived together so it stays one
+ * request rather than two identical ones.
+ */
+export async function getEngagementOverview(): Promise<{
+  series: MosaicSeries;
+  mix: EngagementMixRow[];
+}> {
+  const rows = await getDailyEngagement(365);
+  return {
+    series: toMosaicSeries(rows, USE_MOCK ? MOCK_NOW : Date.now()),
+    mix: toEngagementMix(rows),
+  };
 }
 
 export async function getDailyRevenue(days = 7): Promise<DailyRevenueResponse[]> {

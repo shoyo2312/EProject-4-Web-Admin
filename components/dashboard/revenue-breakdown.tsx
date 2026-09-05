@@ -72,10 +72,14 @@ export function RevenueBreakdown({ days }: { days: DailyRevenueResponse[] }) {
           ))}
         </div>
 
-        <div className="mt-2 flex items-center justify-between text-[10px] text-ink-faint">
-          <span>{formatDate(days[0].day)}</span>
-          <span>{formatDate(days[days.length - 1].day)}</span>
-        </div>
+        {/* A fresh install has no paid orders at all, so the series comes back
+            empty and there is no first or last day to label. */}
+        {days.length > 0 && (
+          <div className="mt-2 flex items-center justify-between text-[10px] text-ink-faint">
+            <span>{formatDate(days[0].day)}</span>
+            <span>{formatDate(days[days.length - 1].day)}</span>
+          </div>
+        )}
       </div>
     </Card>
   );

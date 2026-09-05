@@ -33,11 +33,25 @@ function emptyTotals(): Totals {
   return { primary: 0, secondary: 0 };
 }
 
+/**
+ * event_type values as analytics-service writes them into ClickHouse — see the
+ * consumers in com.tiktok.analyticsservice.event.consumer. They are past tense,
+ * not the bare verb, and UNLIKED is a real row rather than a decrement.
+ */
 function addRow(totals: Totals, row: DailyCountResponse) {
   // Likes dominate by an order of magnitude, so they get the dark segment and
-  // the two conversational signals share the lighter one.
-  if (row.eventType === "LIKE") totals.primary += row.count;
-  else totals.secondary += row.count;
+  // the two conversational signals share the lighter one. PUBLISHED is an upload,
+  // not engagement, so it is left out of the trend entirely.
+  if (row.eventType === "LIKED") totals.primary += row.count;
+  else if (row.eventType === "UNLIKED") totals.primary -= row.count;
+  else if (row.eventType === "COMMENTED" || row.eventType === "SHARED") {
+    totals.secondary += row.count;
+  }
+}
+
+/** A day with more unlikes than likes would otherwise render as a negative bar. */
+function clamp(totals: Totals): Totals {
+  return { primary: Math.max(totals.primary, 0), secondary: totals.secondary };
 }
 
 /**
@@ -62,7 +76,7 @@ export function toMosaicSeries(
   // Last 14 days, oldest first
   const daily: MosaicBucket[] = Array.from({ length: 14 }, (_, i) => {
     const key = dayKey(13 - i);
-    const totals = byDay.get(key) ?? emptyTotals();
+    const totals = clamp(byDay.get(key) ?? emptyTotals());
     return { label: key.slice(8), ...totals };
   });
 
@@ -77,7 +91,7 @@ export function toMosaicSeries(
         totals.secondary += bucket.secondary;
       }
     }
-    return { label: `W${i + 1}`, ...totals };
+    return { label: `W${i + 1}`, ...clamp(totals) };
   });
 
   // Last 12 calendar months, oldest first
@@ -98,9 +112,45 @@ export function toMosaicSeries(
     const key = date.toISOString().slice(0, 7);
     return {
       label: MONTH_LABELS[date.getUTCMonth()],
-      ...(monthTotals.get(key) ?? emptyTotals()),
+      ...clamp(monthTotals.get(key) ?? emptyTotals()),
     };
   });
 
   return { daily, weekly, monthly };
+}
+
+export interface EngagementMixRow {
+  eventType: string;
+  label: string;
+  total: number;
+  /** Bar width relative to the largest row, not a share of the whole. */
+  weight: number;
+}
+
+const MIX_LABELS: Record<string, string> = {
+  LIKED: "Likes",
+  UNLIKED: "Unlikes",
+  COMMENTED: "Comments",
+  SHARED: "Shares",
+  PUBLISHED: "Videos published",
+};
+
+/**
+ * Same rows as the mosaic, counted per event type instead of per day. This is the
+ * one view where UNLIKED and PUBLISHED are worth seeing on their own — a rising
+ * unlike count is invisible once it has been netted off against likes.
+ */
+export function toEngagementMix(rows: DailyCountResponse[]): EngagementMixRow[] {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    totals.set(row.eventType, (totals.get(row.eventType) ?? 0) + row.count);
+  }
+
+  const peak = Math.max(...totals.values(), 1);
+  return Array.from(totals, ([eventType, total]) => ({
+    eventType,
+    label: MIX_LABELS[eventType] ?? eventType,
+    total,
+    weight: total / peak,
+  })).sort((a, b) => b.total - a.total);
 }

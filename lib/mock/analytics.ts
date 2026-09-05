@@ -13,7 +13,7 @@ function dayString(daysAgo: number) {
 
 /**
  * GET /api/v1/analytics/engagement/daily returns one row per (day, eventType),
- * so a 7-day window is 21 rows. Shape it the same way here — the rollup in
+ * so a 7-day window is 35 rows. Shape it the same way here — the rollup in
  * lib/api/rollup.ts then runs over mock and live data identically.
  */
 export function mockDailyEngagement(days = 7): DailyCountResponse[] {
@@ -30,20 +30,30 @@ export function mockDailyEngagement(days = 7): DailyCountResponse[] {
     const growth = 0.45 + age * 0.95;
     const seasonal = 1 + 0.35 * Math.sin((age * 365 * Math.PI * 2) / 190);
     const swing = (weekend ? 1.35 : 1) * growth * seasonal;
+    // Event names are the ones analytics-service writes to ClickHouse, past tense.
+    // Getting these wrong is silent: the rollup just files everything under the
+    // wrong segment and the chart still renders.
+    const likes = Math.round(between(rand, 38_000, 96_000) * swing);
+    rows.push({ day, eventType: "LIKED", count: likes });
     rows.push({
       day,
-      eventType: "LIKE",
-      count: Math.round(between(rand, 38_000, 96_000) * swing),
+      eventType: "UNLIKED",
+      count: Math.round(likes * between(rand, 0.02, 0.07)),
     });
     rows.push({
       day,
-      eventType: "COMMENT",
+      eventType: "COMMENTED",
       count: Math.round(between(rand, 6_000, 19_000) * swing),
     });
     rows.push({
       day,
-      eventType: "SHARE",
+      eventType: "SHARED",
       count: Math.round(between(rand, 2_000, 9_000) * swing),
+    });
+    rows.push({
+      day,
+      eventType: "PUBLISHED",
+      count: Math.round(between(rand, 400, 1_600) * swing),
     });
   }
   return rows;
