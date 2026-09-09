@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { GATEWAY_URL } from "@/lib/api/config";
@@ -8,6 +9,21 @@ import { GATEWAY_URL } from "@/lib/api/config";
  * have to be running for a page to load.
  */
 export function ErrorState({ error }: { error: unknown }) {
+  // A 401 here means the token was accepted by the gate (cookie still within its
+  // maxAge) but rejected by the gateway — revoked server-side by a ban, a replay,
+  // or a password reset. There is nothing to retry: send the operator back to
+  // sign in. `?expired` tells middleware to clear the dead cookie rather than
+  // bounce straight back to /dashboard. redirect() throws, so it runs before any
+  // of the markup below and past the page's own try/catch (which already ran).
+  if (
+    error &&
+    typeof error === "object" &&
+    "status" in error &&
+    (error as { status: unknown }).status === 401
+  ) {
+    redirect("/login?expired=1");
+  }
+
   const message = error instanceof Error ? error.message : String(error);
   const code =
     error && typeof error === "object" && "code" in error

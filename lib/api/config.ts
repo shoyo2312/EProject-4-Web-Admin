@@ -16,6 +16,14 @@ export const SESSION_COOKIE = "admin_session";
 export const REFRESH_COOKIE = "admin_refresh";
 
 /**
+ * A "remember this device" token from a past OTP-verified login. Sent back on the next login so
+ * auth-service skips the email-OTP step; httpOnly, 30-day lifetime, survives logout (the password
+ * still gates re-entry). Issued and validated entirely by auth-service — see its
+ * `remembered_devices` table.
+ */
+export const DEVICE_COOKIE = "admin_device";
+
+/**
  * Sidebar collapsed state. A cookie rather than localStorage on purpose: the layout is a
  * server component, so it can read this and render the right width on the first paint.
  * localStorage is only readable after hydration, which means a visible snap from 260px

@@ -1,0 +1,90 @@
+"use client";
+
+/**
+ * Cloudflare Turnstile, loaded from its own CDN — no npm package, vendor's only supported
+ * distribution. The admin console gates its *login* on this (see auth-service
+ * `AuthServiceImpl.login`, which calls `TurnstileService.verify` for ADMIN accounts), so the
+ * widget is mounted on the sign-in form, not hidden behind a prior failure.
+ *
+ * Ported from tiktok-cloned `src/lib/auth/turnstile.ts` — same site key, same reasoning about
+ * Strict Mode double-mount below.
+ */
+
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+const SDK_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+
+export function isTurnstileConfigured(): boolean {
+  return SITE_KEY !== "";
+}
+
+interface TurnstileRenderOptions {
+  sitekey: string;
+  callback: (token: string) => void;
+  "error-callback"?: () => void;
+  "expired-callback"?: () => void;
+}
+
+interface TurnstileApi {
+  render: (container: HTMLElement, options: TurnstileRenderOptions) => string;
+  remove: (widgetId: string) => void;
+}
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileApi;
+  }
+}
+
+const loading = new Map<string, Promise<void>>();
+
+function loadScript(src: string): Promise<void> {
+  const pending = loading.get(src);
+  if (pending) return pending;
+
+  const promise = new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => {
+      loading.delete(src);
+      reject(new Error("Couldn’t reach challenges.cloudflare.com."));
+    };
+    document.head.appendChild(script);
+  });
+
+  loading.set(src, promise);
+  return promise;
+}
+
+/**
+ * Mounts a widget into `container`; returns the id to pass to {@link removeTurnstile}, or
+ * `undefined` if `isCancelled` went true while the script was loading.
+ *
+ * `isCancelled` is checked right before `render()`, not after — Strict Mode fires
+ * effect → cleanup → effect once per mount in dev, and both runs start before either's
+ * `await loadScript` resolves. Checking only in the `.then` let both hit `render()` on the same
+ * container, which Cloudflare rejects outright.
+ */
+export async function renderTurnstile(
+  container: HTMLElement,
+  handlers: { onToken: (token: string) => void; onError?: () => void },
+  isCancelled: () => boolean,
+): Promise<string | undefined> {
+  await loadScript(SDK_SRC);
+  if (isCancelled()) return undefined;
+  if (!window.turnstile) {
+    throw new Error("Turnstile failed to load.");
+  }
+  return window.turnstile.render(container, {
+    sitekey: SITE_KEY,
+    callback: handlers.onToken,
+    "error-callback": handlers.onError,
+    "expired-callback": handlers.onError,
+  });
+}
+
+export function removeTurnstile(widgetId: string): void {
+  window.turnstile?.remove(widgetId);
+}

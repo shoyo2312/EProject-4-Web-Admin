@@ -2,7 +2,13 @@ import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
 import type { DailySignupResponse } from "@/lib/api/types";
 import { formatDate, formatNumber } from "@/lib/format";
 
-export function AudienceGrowth({ days }: { days: DailySignupResponse[] }) {
+export function AudienceGrowth({
+  days,
+  unit = "d",
+}: {
+  days: DailySignupResponse[];
+  unit?: string;
+}) {
   const total = days.reduce((sum, d) => sum + d.signups, 0);
   const peak = Math.max(...days.map((d) => d.signups), 1);
   // A per-day figure is noisy enough that the average is the number worth reading.
@@ -20,14 +26,15 @@ export function AudienceGrowth({ days }: { days: DailySignupResponse[] }) {
         <div className="flex items-start justify-between gap-6">
           <div>
             <p className="text-[12px] text-ink-soft">
-              New accounts, last {days.length}d
+              New accounts, last {days.length}
+              {unit}
             </p>
             <p className="figure mt-1 text-[22px] font-bold">
               {formatNumber(total)}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[12px] text-ink-soft">Per day</p>
+            <p className="text-[12px] text-ink-soft">Per bucket</p>
             <p className="figure mt-1 text-[22px] font-bold">
               {formatNumber(average)}
             </p>

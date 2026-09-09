@@ -17,7 +17,7 @@ export function NotBuiltYet({
 }) {
   return (
     <>
-      <PageHeader title={title} subtitle={purpose} showFilters={false} />
+      <PageHeader title={title} subtitle={purpose} />
 
       <Card className="max-w-3xl px-6 py-6">
         <div className="flex items-center gap-2.5">

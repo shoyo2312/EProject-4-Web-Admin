@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ChevronsUpDown,
   PanelLeftClose,
@@ -23,11 +23,25 @@ export function Sidebar({
   defaultCollapsed?: boolean;
 }) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [expandedPref, setExpandedPref] = useState(!defaultCollapsed);
+  // Below lg the 260px sidebar eats a third of a tablet viewport, so the rail is
+  // forced regardless of the stored preference — which is left untouched, so a
+  // desktop window gets the sidebar back the way the user left it.
+  const [narrow, setNarrow] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setNarrow(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+
+  const collapsed = narrow || !expandedPref;
 
   function toggle() {
     const next = !collapsed;
-    setCollapsed(next);
+    setExpandedPref(!next);
     // One year, path=/ so every route agrees. Read back by app/(admin)/layout.tsx.
     document.cookie = `${SIDEBAR_COOKIE}=${next ? "collapsed" : "expanded"}; path=/; max-age=31536000; samesite=lax`;
   }
@@ -42,7 +56,18 @@ export function Sidebar({
       {/* Workspace switcher + collapse toggle. Collapsed, the logo *is* the toggle —
           two stacked buttons in 68px reads as clutter. */}
       <div className="flex items-center gap-1.5 p-3">
-        {collapsed ? (
+        {collapsed && narrow ? (
+          // Forced rail: expanding is not on offer, so the logo is a plain mark,
+          // not a control that looks clickable and does nothing.
+          <span
+            title="TikTok Admin"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-line"
+          >
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-ink text-surface">
+              <ShieldCheck className="h-4 w-4" />
+            </span>
+          </span>
+        ) : collapsed ? (
           <button
             type="button"
             onClick={toggle}

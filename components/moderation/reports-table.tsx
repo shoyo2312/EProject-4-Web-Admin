@@ -93,7 +93,7 @@ export function ReportsTable({
         hint="GET /api/v1/admin/reports — resolve writes a moderation action and emits a Kafka event"
         actions={
           <>
-            <label className="flex w-[240px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5">
+            <label className="flex w-[180px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 lg:w-[240px]">
               <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
               <input
                 value={query}

@@ -1,9 +1,15 @@
-import { CalendarDays, ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+import { CalendarDays, ChevronRight, Sparkles } from "lucide-react";
 import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
 import type { DailyRevenueResponse } from "@/lib/api/types";
 import { formatCurrency, formatDate } from "@/lib/format";
 
-export function RevenueBreakdown({ days }: { days: DailyRevenueResponse[] }) {
+export function RevenueBreakdown({
+  days,
+  unit = "d",
+}: {
+  days: DailyRevenueResponse[];
+  unit?: string;
+}) {
   const total = days.reduce((sum, d) => sum + Number(d.revenue), 0);
   const peakRevenue = Math.max(...days.map((d) => Number(d.revenue)), 1);
   const peakOrders = Math.max(...days.map((d) => d.ordersCreated), 1);
@@ -24,14 +30,11 @@ export function RevenueBreakdown({ days }: { days: DailyRevenueResponse[] }) {
               {formatCurrency(total)}
             </p>
           </div>
-          <button
-            type="button"
-            className="flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-soft transition-colors hover:bg-surface-muted"
-          >
+          <span className="flex shrink-0 items-center gap-1.5 rounded-lg border border-line px-2.5 py-1.5 text-[11px] text-ink-soft">
             <CalendarDays className="h-3.5 w-3.5" />
-            Last {days.length}d
-            <ChevronDown className="h-3 w-3" />
-          </button>
+            Last {days.length}
+            {unit}
+          </span>
         </div>
 
         <button

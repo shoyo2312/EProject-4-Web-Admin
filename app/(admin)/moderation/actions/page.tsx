@@ -3,7 +3,8 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
-import { listModerationActions } from "@/lib/api/admin";
+import { listModerationActions, referenceNow } from "@/lib/api/admin";
+import { isoDay, parseAsOf } from "@/lib/api/window";
 import type { ModerationActionType } from "@/lib/api/types";
 import { relativeTime, shortId } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -23,14 +24,24 @@ const DESTRUCTIVE: ModerationActionType[] = [
   "WARN_USER",
 ];
 
-export default async function AuditLogPage() {
+export default async function AuditLogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ asOf?: string }>;
+}) {
+  const latest = isoDay(referenceNow());
+  const asOf = parseAsOf((await searchParams).asOf, latest);
+
   let actions;
   try {
-    actions = await listModerationActions(100);
+    // Append-only, so cutting at the picked date really is the log as it stood then.
+    actions = (await listModerationActions(100)).filter(
+      (a) => a.createdAt.slice(0, 10) <= asOf,
+    );
   } catch (error) {
     return (
       <>
-        <PageHeader title="Moderation Audit Log" showFilters={false} />
+        <PageHeader title="Moderation Audit Log" />
         <ErrorState error={error} />
       </>
     );
@@ -45,6 +56,8 @@ export default async function AuditLogPage() {
       <PageHeader
         title="Moderation Audit Log"
         subtitle="Every action taken by an admin, in order. Append-only."
+        filters={{ asOf, latest }}
+        csv={{ name: "moderation-actions", rows: actions }}
       />
 
       {unenforced > 0 ? (

@@ -1,20 +1,25 @@
-"use client";
-
-import { useState } from "react";
 import { MosaicChart } from "@/components/charts/mosaic-chart";
 import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
-import { Segmented } from "@/components/ui/segmented";
 import type { MosaicRange, MosaicSeries } from "@/lib/api/rollup";
 import { formatNumber } from "@/lib/format";
 
-const RANGES = [
-  { value: "daily" as const, label: "Daily" },
-  { value: "weekly" as const, label: "Weekly" },
-  { value: "monthly" as const, label: "Monthly" },
-];
+const BUCKET_LABEL: Record<MosaicRange, string> = {
+  daily: "day",
+  weekly: "week",
+  monthly: "month",
+};
 
-export function EngagementTrend({ series }: { series: MosaicSeries }) {
-  const [range, setRange] = useState<MosaicRange>("monthly");
+/**
+ * The range comes from the page header rather than a control of its own: two
+ * granularity pickers on one screen can disagree, and then neither is trustworthy.
+ */
+export function EngagementTrend({
+  series,
+  range,
+}: {
+  series: MosaicSeries;
+  range: MosaicRange;
+}) {
   const buckets = series[range];
   const total = buckets.reduce((sum, b) => sum + b.primary + b.secondary, 0);
 
@@ -33,7 +38,10 @@ export function EngagementTrend({ series }: { series: MosaicSeries }) {
               {formatNumber(total)}
             </span>
           </p>
-          <Segmented options={RANGES} value={range} onChange={setRange} />
+          <p className="text-[11px] text-ink-faint">
+            {buckets.length} {BUCKET_LABEL[range]}
+            {buckets.length === 1 ? "" : "s"}
+          </p>
         </div>
 
         <MosaicChart

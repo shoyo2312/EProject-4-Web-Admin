@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { AutoRefresh } from "@/components/layout/auto-refresh";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { SIDEBAR_COOKIE, USE_MOCK } from "@/lib/api/config";
@@ -13,7 +14,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
       <Sidebar session={session} defaultCollapsed={collapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar session={session} usingMockData={USE_MOCK} />
-        <main className="min-w-0 flex-1 px-6 py-6">{children}</main>
+        {/* Live data only: mock pages have nothing to re-fetch. */}
+        {USE_MOCK ? null : <AutoRefresh />}
+        <main className="min-w-0 flex-1 px-4 py-5 md:px-6 md:py-6">{children}</main>
       </div>
     </div>
   );

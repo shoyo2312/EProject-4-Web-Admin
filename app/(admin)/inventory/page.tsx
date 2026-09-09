@@ -1,20 +1,34 @@
 import { PackagePlus } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
+import { referenceNow } from "@/lib/api/admin";
+import { isoDay, parseAsOf } from "@/lib/api/window";
 import { mockInventory } from "@/lib/mock/inventory";
 import { formatNumber, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const LOW_STOCK = 40;
 
-export default function InventoryPage() {
-  const lowStock = mockInventory.filter((row) => row.available < LOW_STOCK);
+export default async function InventoryPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ asOf?: string }>;
+}) {
+  const latest = isoDay(referenceNow());
+  const asOf = parseAsOf((await searchParams).asOf, latest);
+
+  // Stock levels carry only their last-updated stamp, so the picker filters to SKUs
+  // touched on or before that date rather than replaying history.
+  const rows = mockInventory.filter((row) => row.updatedAt.slice(0, 10) <= asOf);
+  const lowStock = rows.filter((row) => row.available < LOW_STOCK);
 
   return (
     <>
       <PageHeader
         title="Inventory"
-        subtitle={`${lowStock.length} of ${mockInventory.length} SKUs are below the ${LOW_STOCK}-unit threshold.`}
+        subtitle={`${lowStock.length} of ${rows.length} SKUs are below the ${LOW_STOCK}-unit threshold.`}
+        filters={{ asOf, latest }}
+        csv={{ name: "inventory", rows }}
       />
 
       <Card>
@@ -42,7 +56,7 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody>
-              {mockInventory.map((row) => {
+              {rows.map((row) => {
                 const low = row.available < LOW_STOCK;
                 return (
                   <tr

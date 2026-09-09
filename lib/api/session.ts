@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { REFRESH_COOKIE, SESSION_COOKIE, USE_MOCK } from "./config";
+import { DEVICE_COOKIE, REFRESH_COOKIE, SESSION_COOKIE, USE_MOCK } from "./config";
 import { CURRENT_ADMIN } from "@/lib/mock/session";
 
 export interface AdminSession {
@@ -16,6 +16,8 @@ export interface TokenResponse {
   accessToken: string;
   refreshToken: string;
   expiresInMillis: number;
+  /** Present only on the /login/otp response when "remember this device" was ticked. */
+  deviceToken?: string | null;
 }
 
 /** auth-service UserResponse */
@@ -79,6 +81,26 @@ export async function clearSessionCookies() {
 
 export async function getRefreshToken() {
   return (await cookies()).get(REFRESH_COOKIE)?.value ?? null;
+}
+
+export async function getDeviceToken() {
+  return (await cookies()).get(DEVICE_COOKIE)?.value ?? null;
+}
+
+/**
+ * Kept 30 days and NOT httpOnly-exempt: like the session cookies it must never be readable by a
+ * client component. Deliberately not cleared on logout — its whole purpose is to let the next
+ * sign-in from this browser skip the email OTP, and the password still gates that sign-in.
+ */
+export async function setDeviceToken(deviceToken: string) {
+  const jar = await cookies();
+  jar.set(DEVICE_COOKIE, deviceToken, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 30 * 24 * 60 * 60,
+  });
 }
 
 const SESSION_PROFILE_COOKIE = "admin_profile";

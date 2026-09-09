@@ -49,9 +49,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Management",
     items: [
-      { label: "Users", href: "/users", icon: Users },
-      { label: "Videos", href: "/videos", icon: Video },
-      { label: "Comments", href: "/comments", icon: MessageSquare },
+      { label: "Users", href: "/users", icon: Users, ready: true },
+      { label: "Videos", href: "/videos", icon: Video, ready: true },
+      { label: "Comments", href: "/comments", icon: MessageSquare, ready: true },
     ],
   },
   {

@@ -35,7 +35,7 @@ export function CardHeader({
   return (
     <header
       className={cn(
-        "flex items-center justify-between gap-4 border-b border-line px-5 py-4",
+        "flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4",
         className,
       )}
     >
@@ -50,7 +50,7 @@ export function CardHeader({
           </span>
         ) : null}
       </div>
-      <div className="flex items-center gap-2">{actions}</div>
+      <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div>
     </header>
   );
 }
