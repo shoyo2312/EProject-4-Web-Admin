@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronsUpDown, MoreHorizontal, Search } from "lucide-react";
 import { StatusBadge, TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
+import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import type { ReportResponse, ReportStatus } from "@/lib/api/types";
 import { MOCK_REPORTER_HANDLES } from "@/lib/mock/moderation";
-import { relativeTime, shortId } from "@/lib/format";
+import { formatDate, relativeTime, shortId } from "@/lib/format";
+import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = ReportStatus | "ALL";
@@ -38,6 +40,8 @@ export function ReportsTable({
     asc: false,
   });
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const belowXl = useBelowXl();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -135,7 +139,7 @@ export function ReportsTable({
       ) : null}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] border-collapse text-[12px]">
+        <table className="w-full border-collapse text-[12px] xl:min-w-[880px]">
           <thead>
             <tr className="border-b border-line text-left">
               <th className="w-10 px-5 py-3">
@@ -147,15 +151,15 @@ export function ReportsTable({
                   className="h-3.5 w-3.5 accent-[var(--ink)]"
                 />
               </th>
-              <SortableHeader label="ID" sortKey="id" sort={sort} onSort={setSort} />
-              <th className="label-caps px-3 py-3 text-ink-soft">Reporter</th>
+              <SortableHeader label="ID" sortKey="id" sort={sort} onSort={setSort} className="hidden xl:table-cell" />
+              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reporter</th>
               <SortableHeader
                 label="Target"
                 sortKey="target"
                 sort={sort}
                 onSort={setSort}
               />
-              <th className="label-caps px-3 py-3 text-ink-soft">Reason</th>
+              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reason</th>
               <SortableHeader
                 label="Status"
                 sortKey="status"
@@ -176,56 +180,87 @@ export function ReportsTable({
           <tbody>
             {rows.map((report) => {
               const isChecked = selected.has(report.id);
+              const expanded = expandedId === report.id;
+              const reporter = MOCK_REPORTER_HANDLES[report.reporterId]
+                ? `@${MOCK_REPORTER_HANDLES[report.reporterId]}`
+                : `#${report.reporterId.slice(-6)}`;
               return (
-                <tr
-                  key={report.id}
-                  className={cn(
-                    "border-b border-line last:border-b-0 transition-colors hover:bg-surface-muted",
-                    // Closed reports recede — the queue is about what still needs work
-                    report.status !== "PENDING" && "text-ink-faint",
-                  )}
-                >
-                  <td className="px-5 py-3">
-                    <input
-                      type="checkbox"
-                      aria-label={`Select report ${report.id}`}
-                      checked={isChecked}
-                      onChange={() => toggleOne(report.id)}
-                      className="h-3.5 w-3.5 accent-[var(--ink)]"
-                    />
-                  </td>
-                  <td className="figure px-3 py-3 whitespace-nowrap">
-                    #{shortId(report.id.slice(-8), 8)}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    {/* Live data carries only a reporterId — user-service has no batch
-                        handle lookup yet, so fall back to the id tail. */}
-                    {MOCK_REPORTER_HANDLES[report.reporterId]
-                      ? `@${MOCK_REPORTER_HANDLES[report.reporterId]}`
-                      : `#${report.reporterId.slice(-6)}`}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <TargetBadge type={report.targetType} id={report.targetId} />
-                  </td>
-                  <td className="max-w-[260px] truncate px-3 py-3" title={report.reason}>
-                    {report.reason}
-                  </td>
-                  <td className="px-3 py-3">
-                    <StatusBadge status={report.status} />
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-ink-faint">
-                    {relativeTime(report.createdAt)}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <button
-                      type="button"
-                      aria-label={`Actions for report ${report.id}`}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line text-ink-soft transition-colors hover:bg-surface"
-                    >
-                      <MoreHorizontal className="h-3.5 w-3.5" />
-                    </button>
-                  </td>
-                </tr>
+                <Fragment key={report.id}>
+                  <tr
+                    {...(belowXl
+                      ? expandableRowProps(
+                          () => setExpandedId(expanded ? null : report.id),
+                          expanded,
+                        )
+                      : {})}
+                    className={cn(
+                      "border-b border-line last:border-b-0 transition-colors hover:bg-surface-muted",
+                      // Closed reports recede — the queue is about what still needs work
+                      report.status !== "PENDING" && "text-ink-faint",
+                      belowXl && "cursor-pointer",
+                    )}
+                  >
+                    <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select report ${report.id}`}
+                        checked={isChecked}
+                        onChange={() => toggleOne(report.id)}
+                        className="h-3.5 w-3.5 accent-[var(--ink)]"
+                      />
+                    </td>
+                    <td className="figure hidden px-3 py-3 whitespace-nowrap xl:table-cell">
+                      #{shortId(report.id.slice(-8), 8)}
+                    </td>
+                    <td className="hidden px-3 py-3 whitespace-nowrap xl:table-cell">
+                      {/* Live data carries only a reporterId — user-service has no batch
+                          handle lookup yet, so fall back to the id tail. */}
+                      {reporter}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <TargetBadge type={report.targetType} id={report.targetId} />
+                    </td>
+                    <td className="hidden max-w-[260px] truncate px-3 py-3 xl:table-cell" title={report.reason}>
+                      {report.reason}
+                    </td>
+                    <td className="px-3 py-3">
+                      <StatusBadge status={report.status} />
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-ink-faint">
+                      {relativeTime(report.createdAt)}
+                    </td>
+                    <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        aria-label={`Actions for report ${report.id}`}
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line text-ink-soft transition-colors hover:bg-surface"
+                      >
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+
+                  {belowXl && expanded ? (
+                    <RowDetail colSpan={8}>
+                      <Field label="Report ID">#{report.id.slice(-12)}</Field>
+                      <Field label="Reporter">{reporter}</Field>
+                      <Field label="Target">
+                        {report.targetType} · {report.targetId.slice(-8)}
+                      </Field>
+                      <Field label="Status">{report.status}</Field>
+                      <Field label="Reason" wide>
+                        {report.reason}
+                      </Field>
+                      <Field label="Created">{formatDate(report.createdAt)}</Field>
+                      {report.resolvedBy ? (
+                        <Field label="Resolved by">#{report.resolvedBy.slice(-8)}</Field>
+                      ) : null}
+                      {report.resolvedAt ? (
+                        <Field label="Resolved at">{formatDate(report.resolvedAt)}</Field>
+                      ) : null}
+                    </RowDetail>
+                  ) : null}
+                </Fragment>
               );
             })}
 
@@ -259,15 +294,17 @@ function SortableHeader({
   sortKey,
   sort,
   onSort,
+  className,
 }: {
   label: string;
   sortKey: SortKey;
   sort: { key: SortKey; asc: boolean };
   onSort: (sort: { key: SortKey; asc: boolean }) => void;
+  className?: string;
 }) {
   const active = sort.key === sortKey;
   return (
-    <th className="px-3 py-3">
+    <th className={cn("px-3 py-3", className)}>
       <button
         type="button"
         onClick={() => onSort({ key: sortKey, asc: active ? !sort.asc : false })}

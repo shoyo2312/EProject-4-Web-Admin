@@ -1,6 +1,5 @@
 import type {
   DailyCountResponse,
-  DailyRevenueResponse,
   DailySignupResponse,
 } from "@/lib/api/types";
 import { MOCK_NOW, between, seededRandom } from "./random";
@@ -57,21 +56,6 @@ export function mockDailyEngagement(days = 7): DailyCountResponse[] {
     });
   }
   return rows;
-}
-
-export function mockDailyRevenue(days = 30): DailyRevenueResponse[] {
-  const rand = seededRandom(9001 + days);
-  return Array.from({ length: days }, (_, i) => {
-    const d = days - 1 - i;
-    const ordersCreated = between(rand, 180, 640);
-    const paymentsCompleted = Math.round(ordersCreated * (0.6 + rand() * 0.3));
-    return {
-      day: dayString(d),
-      ordersCreated,
-      paymentsCompleted,
-      revenue: (paymentsCompleted * between(rand, 18, 74)).toFixed(2),
-    };
-  });
 }
 
 export function mockDailySignups(days = 7): DailySignupResponse[] {

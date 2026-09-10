@@ -109,6 +109,11 @@ export const mockVideos: AdminVideoResponse[] = (() => {
       commentsDisabled,
       tags: [pick(rand, TAGS), pick(rand, TAGS)].filter((t, j, all) => all.indexOf(t) === j),
       createdAt,
+      updatedAt: new Date(MOCK_NOW - between(rand, 0, 20) * DAY_MS).toISOString(),
+      publishedAt: ready
+        ? new Date(MOCK_NOW - between(rand, 0, 230) * DAY_MS).toISOString()
+        : null,
+      rawFileUrl: `s3://tiktok-raw/${i}/source.mp4`,
       failureReason:
         status === "FAILED" ? "ffmpeg: moov atom not found — upload truncated" : null,
       takedownReason: status === "TAKEN_DOWN" ? pick(rand, TAKEDOWN_REASONS) : null,

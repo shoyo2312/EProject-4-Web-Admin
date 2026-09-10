@@ -55,6 +55,14 @@
   border-color: var(--line);
 }
 
+/* Keep the vertical scrollbar track present always, so expanding a table row
+ * (which toggles the document scrollbar) no longer shifts the layout sideways.
+ * `scrollbar-gutter: stable` would be the modern way, but Chromium ignores it
+ * once a page styles `::-webkit-scrollbar` (which we do below). */
+html {
+  overflow-y: scroll;
+}
+
 body {
   background: var(--canvas);
   color: var(--ink);

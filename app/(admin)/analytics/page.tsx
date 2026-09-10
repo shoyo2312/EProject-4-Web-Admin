@@ -2,11 +2,9 @@ import { AudienceGrowth } from "@/components/analytics/audience-growth";
 import { EngagementMix } from "@/components/analytics/engagement-mix";
 import { EngagementTrend } from "@/components/dashboard/engagement-trend";
 import { KpiCards, type KpiCard } from "@/components/dashboard/kpi-cards";
-import { RevenueBreakdown } from "@/components/dashboard/revenue-breakdown";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import {
-  getDailyRevenue,
   getDailySignups,
   getEngagementOverview,
   referenceNow,
@@ -18,7 +16,7 @@ import {
   resolveWindow,
   sliceToWindow,
 } from "@/lib/api/window";
-import { formatCompact, formatCurrency, formatDate, formatNumber } from "@/lib/format";
+import { formatCompact, formatDate, formatNumber } from "@/lib/format";
 
 /**
  * Percentage change of the last `size` entries against the `size` before them.
@@ -60,12 +58,11 @@ export default async function AnalyticsPage({
   let data;
   try {
     // Twice the display window, so every KPI can be compared against the period before it.
-    const [signups, revenue, engagement] = await Promise.all([
+    const [signups, engagement] = await Promise.all([
       getDailySignups(window.fetchDays + window.spanDays),
-      getDailyRevenue(window.fetchDays + window.spanDays),
       getEngagementOverview(asOfMs),
     ]);
-    data = { signups, revenue, engagement };
+    data = { signups, engagement };
   } catch (error) {
     return (
       <>
@@ -75,25 +72,17 @@ export default async function AnalyticsPage({
     );
   }
 
-  const { signups, revenue, engagement } = data;
+  const { signups, engagement } = data;
   const span = window.spanDays;
   const unit = BUCKET_UNIT[window.granularity];
 
   // Everything up to the picked date. The KPI helpers below read the last two spans of
   // this, so the comparison period moves with the picker instead of always being today.
   const signupHistory = signups.filter((d) => d.day <= window.asOf);
-  const revenueHistory = revenue.filter((d) => d.day <= window.asOf);
 
   const signupCounts = signupHistory.map((d) => d.signups);
-  const revenueAmounts = revenueHistory.map((d) => Number(d.revenue));
-  const orderCounts = revenueHistory.map((d) => d.ordersCreated);
-  const paymentCounts = revenueHistory.map((d) => d.paymentsCompleted);
 
   const engagementTotal = engagement.mix.reduce((sum, row) => sum + row.total, 0);
-
-  const ordersLast = sumLast(orderCounts, span);
-  const paymentsLast = sumLast(paymentCounts, span);
-  const conversion = ordersLast === 0 ? 0 : (paymentsLast / ordersLast) * 100;
 
   const cards: KpiCard[] = [
     {
@@ -103,21 +92,6 @@ export default async function AnalyticsPage({
       delta: deltaPercent(signupCounts, span),
       deltaLabel: `vs previous ${span}d`,
       spark: spark(signupCounts, span),
-    },
-    {
-      label: "Revenue",
-      value: formatCurrency(sumLast(revenueAmounts, span)),
-      delta: deltaPercent(revenueAmounts, span),
-      deltaLabel: `vs previous ${span}d`,
-      spark: spark(revenueAmounts, span),
-    },
-    {
-      label: "Paid Conversion",
-      value: `${conversion.toFixed(1)}%`,
-      unit: `of ${formatCompact(ordersLast)} orders`,
-      delta: deltaPercent(paymentCounts, span) - deltaPercent(orderCounts, span),
-      deltaLabel: "payments vs orders",
-      spark: spark(paymentCounts, span),
     },
     {
       label: "Engagement Events",
@@ -134,41 +108,22 @@ export default async function AnalyticsPage({
     },
   ];
 
-  // Money is a string on the wire so it never becomes a float. Bucketing has to add it
-  // anyway, so it goes through integer cents and comes back as a string.
-  const addMoney = (a: string, b: string) =>
-    ((Math.round(Number(a) * 100) + Math.round(Number(b) * 100)) / 100).toFixed(2);
-
   const signupBuckets = bucketByGranularity(
     sliceToWindow(signupHistory, window),
     window.granularity,
     (a, b) => ({ day: a.day, signups: a.signups + b.signups }),
   );
 
-  const revenueBuckets = bucketByGranularity(
-    sliceToWindow(revenueHistory, window),
-    window.granularity,
-    (a, b) => ({
-      day: a.day,
-      ordersCreated: a.ordersCreated + b.ordersCreated,
-      paymentsCompleted: a.paymentsCompleted + b.paymentsCompleted,
-      revenue: addMoney(a.revenue, b.revenue),
-    }),
-  );
-
-  // The charts read two series keyed by day; the export is the same numbers as one table.
-  const revenueByBucket = new Map(revenueBuckets.map((d) => [d.day, d.revenue]));
   const dailyRows = signupBuckets.map((d) => ({
     day: d.day,
     signups: d.signups,
-    revenue: revenueByBucket.get(d.day) ?? "0.00",
   }));
 
   return (
     <>
       <PageHeader
         title="Analytics"
-        subtitle={`Platform-wide engagement, growth and revenue over the ${span} days ending ${formatDate(window.asOf)}.`}
+        subtitle={`Platform-wide engagement and growth over the ${span} days ending ${formatDate(window.asOf)}.`}
         filters={filters}
         csv={{ name: `analytics-${window.granularity}`, rows: dailyRows }}
       />
@@ -181,10 +136,7 @@ export default async function AnalyticsPage({
           <EngagementMix rows={engagement.mix} />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <AudienceGrowth days={signupBuckets} unit={unit} />
-          <RevenueBreakdown days={revenueBuckets} unit={unit} />
-        </div>
+        <AudienceGrowth days={signupBuckets} unit={unit} />
       </div>
     </>
   );

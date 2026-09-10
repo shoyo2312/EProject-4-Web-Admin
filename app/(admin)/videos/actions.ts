@@ -1,11 +1,36 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { moderateVideo } from "@/lib/api/admin";
+import {
+  getReportCount,
+  listTargetActions,
+  moderateVideo,
+} from "@/lib/api/admin";
+import type { ModerationActionResponse } from "@/lib/api/types";
 
 export interface ModerationResult {
   ok: boolean;
   message: string;
+}
+
+export interface ModerationDetail {
+  reportCount: number;
+  actions: ModerationActionResponse[];
+}
+
+/**
+ * The report count and the moderation-action log for one video, fetched together. Called from the
+ * table's expandable row so nothing loads until an admin opens it — a page of 100 rows would
+ * otherwise be 200 extra calls on first paint.
+ */
+export async function videoModerationDetailAction(
+  videoId: string,
+): Promise<ModerationDetail> {
+  const [reportCount, actions] = await Promise.all([
+    getReportCount("VIDEO", videoId),
+    listTargetActions("VIDEO", videoId),
+  ]);
+  return { reportCount, actions };
 }
 
 /**

@@ -30,7 +30,20 @@ export const mockUsers: AdminUserResponse[] = (() => {
       role: i === 0 ? ("ADMIN" as const) : ("USER" as const),
       status: i === 0 ? ("ACTIVE" as const) : pick(rand, STATUSES),
       emailVerified: !social && i % 7 !== 3,
+      emailVerifiedAt:
+        !social && i % 7 !== 3
+          ? new Date(MOCK_NOW - between(rand, 1, 380) * DAY_MS).toISOString()
+          : null,
       createdAt: new Date(MOCK_NOW - between(rand, 1, 400) * DAY_MS).toISOString(),
+      updatedAt: new Date(MOCK_NOW - between(rand, 0, 30) * DAY_MS).toISOString(),
+      lastLoginAt:
+        i % 5 === 0
+          ? null
+          : new Date(MOCK_NOW - between(rand, 0, 60) * DAY_MS).toISOString(),
+      bannedAt: null,
+      banReason: null,
+      provider: social ? ("GOOGLE" as const) : null,
+      linkedProviders: social ? ["GOOGLE" as const] : [],
     };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 })();

@@ -1,28 +1,9 @@
 import { AlertTriangle } from "lucide-react";
+import { ActionsTable, ENFORCED } from "@/components/moderation/actions-table";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
-import { TargetBadge } from "@/components/ui/badge";
-import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
 import { listModerationActions, referenceNow } from "@/lib/api/admin";
 import { isoDay, parseAsOf } from "@/lib/api/window";
-import type { ModerationActionType } from "@/lib/api/types";
-import { relativeTime, shortId } from "@/lib/format";
-import { cn } from "@/lib/utils";
-
-/**
- * Only TAKEDOWN_VIDEO / RESTORE_VIDEO currently have a downstream consumer
- * (video-service AdminModerationEventConsumer). The rest are recorded in
- * moderation_actions and published to admin.moderation-events, but nothing
- * subscribes yet — the console says so rather than implying the action landed.
- */
-const ENFORCED: ModerationActionType[] = ["TAKEDOWN_VIDEO", "RESTORE_VIDEO"];
-
-const DESTRUCTIVE: ModerationActionType[] = [
-  "BAN_USER",
-  "TAKEDOWN_VIDEO",
-  "SUSPEND_PRODUCT",
-  "WARN_USER",
-];
 
 export default async function AuditLogPage({
   searchParams,
@@ -68,8 +49,8 @@ export default async function AuditLogPage({
               {unenforced} of {actions.length} actions are recorded but
               not enforced.
             </span>{" "}
-            Only video takedown/restore has a consumer today. Ban, warn and product
-            suspension publish to{" "}
+            Video takedown/restore, user ban/unban and comment removal have
+            consumers today. Warn and product suspension publish to{" "}
             <code className="rounded bg-surface px-1 py-0.5">
               admin.moderation-events
             </code>{" "}
@@ -78,76 +59,7 @@ export default async function AuditLogPage({
         </div>
       ) : null}
 
-      <Card>
-        <CardHeader
-          title="Recent Actions"
-          hint="GET /api/v1/admin/actions"
-          actions={<CardMenuButton />}
-        />
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-[12px]">
-            <thead>
-              <tr className="border-b border-line text-left">
-                <th className="label-caps px-5 py-3 text-ink-soft">Admin</th>
-                <th className="label-caps px-3 py-3 text-ink-soft">Action</th>
-                <th className="label-caps px-3 py-3 text-ink-soft">Target</th>
-                <th className="label-caps px-3 py-3 text-ink-soft">Reason</th>
-                <th className="label-caps px-3 py-3 text-ink-soft">Report</th>
-                <th className="label-caps px-3 py-3 text-ink-soft">Enforced</th>
-                <th className="label-caps px-5 py-3 text-right text-ink-soft">
-                  When
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {actions.map((action) => (
-                <tr
-                  key={action.id}
-                  className="border-b border-line last:border-b-0 transition-colors hover:bg-surface-muted"
-                >
-                  <td className="figure px-5 py-3 whitespace-nowrap">
-                    #{shortId(action.adminId.slice(-8), 8)}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <span
-                      className={cn(
-                        "rounded border px-1.5 py-0.5 text-[10px] tracking-wider",
-                        DESTRUCTIVE.includes(action.actionType)
-                          ? "border-danger/25 bg-danger-bg text-danger"
-                          : "border-line bg-surface-muted text-ink-soft",
-                      )}
-                    >
-                      {action.actionType}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <TargetBadge type={action.targetType} id={action.targetId} />
-                  </td>
-                  <td
-                    className="max-w-[240px] truncate px-3 py-3"
-                    title={action.reason}
-                  >
-                    {action.reason}
-                  </td>
-                  <td className="figure px-3 py-3 whitespace-nowrap text-ink-faint">
-                    {action.reportId ? `#${action.reportId.slice(-8)}` : "—"}
-                  </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    {ENFORCED.includes(action.actionType) ? (
-                      <span className="text-success">yes</span>
-                    ) : (
-                      <span className="text-pending">no consumer</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-right whitespace-nowrap text-ink-faint">
-                    {relativeTime(action.createdAt)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <ActionsTable actions={actions} />
     </>
   );
 }

@@ -1,11 +1,9 @@
 import { EngagementTrend } from "@/components/dashboard/engagement-trend";
 import { KpiCards, type KpiCard } from "@/components/dashboard/kpi-cards";
-import { RevenueBreakdown } from "@/components/dashboard/revenue-breakdown";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportsTable } from "@/components/moderation/reports-table";
 import {
-  getDailyRevenue,
   getDailySignups,
   getEngagementSeries,
   getStatsSummary,
@@ -13,14 +11,13 @@ import {
   referenceNow,
 } from "@/lib/api/admin";
 import {
-  BUCKET_UNIT,
   bucketByGranularity,
   isoDay,
   resolveWindow,
   sliceToWindow,
 } from "@/lib/api/window";
 import { getSessionProfile } from "@/lib/api/session";
-import { formatCurrency, formatNumber } from "@/lib/format";
+import { formatNumber } from "@/lib/format";
 
 export default async function DashboardPage({
   searchParams,
@@ -35,16 +32,15 @@ export default async function DashboardPage({
 
   let data;
   try {
-    const [stats, signups, revenue, series, reports] = await Promise.all([
+    const [stats, signups, series, reports] = await Promise.all([
       getStatsSummary(),
       getDailySignups(window.fetchDays),
-      getDailyRevenue(window.fetchDays),
       getEngagementSeries(asOfMs),
       // Over-fetched, then cut to the picked date: the eight newest reports as of
       // three weeks ago are not the eight newest today.
       listReports({ size: 100 }),
     ]);
-    data = { stats, signups, revenue, series, reports };
+    data = { stats, signups, series, reports };
   } catch (error) {
     return (
       <>
@@ -56,8 +52,7 @@ export default async function DashboardPage({
     );
   }
 
-  const { stats, signups, revenue, series } = data;
-  const unit = BUCKET_UNIT[window.granularity];
+  const { stats, signups, series } = data;
 
   const reports = data.reports
     .filter((r) => r.createdAt.slice(0, 10) <= window.asOf)
@@ -69,22 +64,7 @@ export default async function DashboardPage({
     (a, b) => ({ day: a.day, signups: a.signups + b.signups }),
   );
 
-  const addMoney = (a: string, b: string) =>
-    ((Math.round(Number(a) * 100) + Math.round(Number(b) * 100)) / 100).toFixed(2);
-
-  const revenueBuckets = bucketByGranularity(
-    sliceToWindow(revenue, window),
-    window.granularity,
-    (a, b) => ({
-      day: a.day,
-      ordersCreated: a.ordersCreated + b.ordersCreated,
-      paymentsCompleted: a.paymentsCompleted + b.paymentsCompleted,
-      revenue: addMoney(a.revenue, b.revenue),
-    }),
-  );
-
   const signupTotal = signupBuckets.reduce((sum, d) => sum + d.signups, 0);
-  const revenueTotal = revenueBuckets.reduce((sum, d) => sum + Number(d.revenue), 0);
 
   const cards: KpiCard[] = [
     {
@@ -113,13 +93,6 @@ export default async function DashboardPage({
       deltaLabel: `last ${window.granularity === "daily" ? "period" : "bucket"}`,
       spark: signupBuckets.map((d) => d.signups),
     },
-    {
-      label: `Revenue (${revenueBuckets.length}${unit})`,
-      value: formatCurrency(revenueTotal),
-      delta: -3,
-      deltaLabel: "last week",
-      spark: revenueBuckets.map((d) => Number(d.revenue)),
-    },
   ];
 
   return (
@@ -134,10 +107,7 @@ export default async function DashboardPage({
       <div className="space-y-4">
         <KpiCards cards={cards} />
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
-          <EngagementTrend series={series} range={window.granularity} />
-          <RevenueBreakdown days={revenueBuckets} unit={unit} />
-        </div>
+        <EngagementTrend series={series} range={window.granularity} />
 
         <ReportsTable reports={reports} footerHref="/moderation/reports" />
       </div>

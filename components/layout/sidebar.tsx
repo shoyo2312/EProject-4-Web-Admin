@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { NAV_GROUPS } from "./nav-config";
 import { UserBlock } from "./user-block";
+import { Tooltip } from "@/components/ui/tooltip";
 import { SIDEBAR_COOKIE } from "@/lib/api/config";
 import type { AdminSession } from "@/lib/api/session";
 import { cn } from "@/lib/utils";
@@ -135,19 +136,16 @@ export function Sidebar({
               {group.items.map((item) => {
                 const active =
                   pathname === item.href || pathname.startsWith(`${item.href}/`);
-                return (
-                  <li key={item.href}>
+                // Collapsed, the label is gone from the DOM — the flyout carries it, and
+                // aria-label keeps the link named for screen readers. Portal-rendered so
+                // the scrolling nav does not clip it.
+                const collapsedLabel = item.ready
+                  ? item.label
+                  : `${item.label} — backend endpoint not built yet`;
+                const link = (
                     <Link
                       href={item.href}
-                      // The nav scrolls, which clips a CSS flyout horizontally too —
-                      // so collapsed labels use the native tooltip instead.
-                      title={
-                        collapsed
-                          ? item.ready
-                            ? item.label
-                            : `${item.label} — backend endpoint not built yet`
-                          : undefined
-                      }
+                      aria-label={collapsed ? collapsedLabel : undefined}
                       className={cn(
                         "relative flex items-center rounded-lg py-2 text-[13px] transition-colors",
                         collapsed
@@ -187,6 +185,16 @@ export function Sidebar({
                         </>
                       )}
                     </Link>
+                );
+                return (
+                  <li key={item.href}>
+                    {collapsed ? (
+                      <Tooltip label={collapsedLabel} placement="right">
+                        {link}
+                      </Tooltip>
+                    ) : (
+                      link
+                    )}
                   </li>
                 );
               })}

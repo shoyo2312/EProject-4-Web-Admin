@@ -2,7 +2,7 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { VideosTable } from "@/components/videos/videos-table";
 import { Card } from "@/components/ui/card";
-import { listVideos, referenceNow } from "@/lib/api/admin";
+import { getUserProfiles, listVideos, referenceNow } from "@/lib/api/admin";
 import { isoDay, parseAsOf } from "@/lib/api/window";
 import { formatCompact, formatNumber } from "@/lib/format";
 import type { VideoStatus } from "@/lib/api/types";
@@ -56,6 +56,10 @@ export default async function VideosPage({
   ).length;
   const views = videos.reduce((sum, v) => sum + v.viewCount, 0);
 
+  // Owner handles for the rows on screen. user-service owns them; video-service only has the id.
+  // Non-fatal — a row just falls back to showing the raw id if this lookup is unavailable.
+  const owners = await getUserProfiles(videos.map((v) => v.userId)).catch(() => ({}));
+
   return (
     <>
       <PageHeader
@@ -103,7 +107,12 @@ export default async function VideosPage({
           </Card>
         </div>
 
-        <VideosTable videos={videos} query={q ?? ""} status={filter ?? "ALL"} />
+        <VideosTable
+          videos={videos}
+          owners={owners}
+          query={q ?? ""}
+          status={filter ?? "ALL"}
+        />
       </div>
     </>
   );

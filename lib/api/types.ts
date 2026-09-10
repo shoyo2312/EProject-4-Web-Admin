@@ -53,6 +53,9 @@ export type ModerationActionType =
 /** auth-service — entity/UserRole.java */
 export type UserRole = "USER" | "ADMIN";
 
+/** auth-service — entity/AuthProvider.java */
+export type AuthProvider = "GOOGLE" | "FACEBOOK";
+
 /** auth-service — entity/UserStatus.java */
 export type UserStatus = "ACTIVE" | "LOCKED" | "BANNED";
 
@@ -71,7 +74,27 @@ export interface AdminUserResponse {
   role: UserRole;
   status: UserStatus;
   emailVerified: boolean;
+  emailVerifiedAt: string | null;
   createdAt: string;
+  updatedAt: string;
+  /** Last time a token pair was issued — a sign-in or a refresh. Null if it never has. */
+  lastLoginAt: string | null;
+  /** Set while status is BANNED; carries the reason from the ban event. Null otherwise. */
+  bannedAt: string | null;
+  banReason: string | null;
+  /** First linked social provider, or null for an email/password account. */
+  provider: AuthProvider | null;
+  linkedProviders: AuthProvider[];
+}
+
+/** GET /api/v1/users?ids= — user-service UserProfileResponse. Used to name a video's owner. */
+export interface UserProfileResponse {
+  userId: string;
+  username: string | null;
+  displayName: string | null;
+  avatarUrl: string | null;
+  followerCount: number;
+  followingCount: number;
 }
 
 /**
@@ -115,6 +138,11 @@ export interface AdminVideoResponse {
   commentsDisabled: boolean;
   tags: string[];
   createdAt: string;
+  updatedAt: string;
+  /** First time the video went live; null if it never has. */
+  publishedAt: string | null;
+  /** Raw upload's object path in MinIO. Admin reads only — null on public responses. */
+  rawFileUrl: string | null;
   /** Why the transcode gave up; null unless status is FAILED. */
   failureReason: string | null;
   /** Why moderation removed it; null unless status is TAKEN_DOWN. */
@@ -175,15 +203,6 @@ export interface DailyCountResponse {
   day: string;
   eventType: string;
   count: number;
-}
-
-/** GET /api/v1/analytics/revenue/daily?days= — DailyRevenueResponse */
-export interface DailyRevenueResponse {
-  day: string;
-  ordersCreated: number;
-  paymentsCompleted: number;
-  /** BigDecimal on the wire — kept as string so money never touches a float */
-  revenue: string;
 }
 
 /** GET /api/v1/analytics/signups/daily?days= — DailySignupResponse */

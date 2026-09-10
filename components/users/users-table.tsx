@@ -3,11 +3,17 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Ban, Search, ShieldCheck } from "lucide-react";
-import { moderateUserAction } from "@/app/(admin)/users/actions";
+import {
+  moderateUserAction,
+  userModerationDetailAction,
+  type ModerationDetail,
+} from "@/app/(admin)/users/actions";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
+import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
+import { ModerationHistory } from "@/components/moderation/moderation-history";
 import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
-import { relativeTime } from "@/lib/format";
+import { formatDate, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = UserStatus | "ALL";
@@ -120,14 +126,14 @@ export function UsersTable({
       />
 
       <div className={cn("overflow-x-auto transition-opacity", navigating && "opacity-50")}>
-        <table className="w-full min-w-[860px] border-collapse text-[12px]">
+        <table className="w-full border-collapse text-[12px] xl:min-w-[840px]">
           <thead>
             <tr className="border-b border-line text-left">
               <th className="label-caps px-5 py-3 text-ink-soft">Username</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Email</th>
+              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Email</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Role</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Status</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Joined</th>
+              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Joined</th>
               <th className="label-caps px-5 py-3 text-right text-ink-soft">Actions</th>
             </tr>
           </thead>
@@ -150,12 +156,31 @@ export function UsersTable({
   );
 }
 
-function UserRow({ user }: { user: AdminUserResponse }) {
+function UserRow({
+  user,
+}: {
+  user: AdminUserResponse;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [detail, setDetail] = useState(false);
+  const [modHistory, setModHistory] = useState<ModerationDetail | null>(null);
+  const [modLoading, setModLoading] = useState(false);
   const [submitting, startSubmit] = useTransition();
+
+  // Opening the row is what triggers the fetch — once, lazily.
+  function toggleDetail() {
+    const opening = !detail;
+    setDetail(opening);
+    if (opening && !modHistory && !modLoading) {
+      setModLoading(true);
+      userModerationDetailAction(user.id)
+        .then(setModHistory)
+        .finally(() => setModLoading(false));
+    }
+  }
   /**
    * The status this row had when its action was submitted, or null when nothing is in flight.
    *
@@ -217,11 +242,17 @@ function UserRow({ user }: { user: AdminUserResponse }) {
 
   return (
     <>
-      <tr className="border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted">
+      <tr
+        {...expandableRowProps(toggleDetail, detail)}
+        className={cn(
+          "border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted",
+          "cursor-pointer",
+        )}
+      >
         <td className="px-5 py-3 whitespace-nowrap">
           <span className="font-medium">@{user.username}</span>
         </td>
-        <td className="px-3 py-3 whitespace-nowrap">
+        <td className="hidden px-3 py-3 whitespace-nowrap xl:table-cell">
           {user.email ? (
             <span className={cn(!user.emailVerified && "text-pending")}>
               {user.email}
@@ -253,10 +284,10 @@ function UserRow({ user }: { user: AdminUserResponse }) {
             <span className="ml-2 text-[10px] text-ink-faint">applying…</span>
           ) : null}
         </td>
-        <td className="px-3 py-3 whitespace-nowrap text-ink-faint">
+        <td className="hidden px-3 py-3 whitespace-nowrap text-ink-faint xl:table-cell">
           {relativeTime(user.createdAt)}
         </td>
-        <td className="px-5 py-3 text-right">
+        <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             // Disabled until the change lands, so a second click cannot queue the same
@@ -285,6 +316,44 @@ function UserRow({ user }: { user: AdminUserResponse }) {
           </button>
         </td>
       </tr>
+
+      {detail ? (
+        <RowDetail colSpan={6}>
+          <Field label="Email" wide>
+            {user.email ?? "— social login"}
+            {user.email && !user.emailVerified ? " (unverified)" : ""}
+            {user.emailVerifiedAt
+              ? ` · verified ${formatDate(user.emailVerifiedAt)}`
+              : ""}
+          </Field>
+          <Field label="Role">{user.role}</Field>
+          <Field label="Status">{user.status}</Field>
+          <Field label="Sign-in">
+            {user.provider
+              ? user.linkedProviders.join(", ")
+              : "email / password"}
+          </Field>
+          <Field label="Joined">{formatDate(user.createdAt)}</Field>
+          <Field label="Last login">
+            {user.lastLoginAt ? formatDate(user.lastLoginAt) : "never"}
+          </Field>
+          <Field label="Updated">{formatDate(user.updatedAt)}</Field>
+          <Field label="User ID">#{user.id.slice(-12)}</Field>
+          {user.bannedAt ? (
+            <Field label="Banned" wide>
+              {formatDate(user.bannedAt)}
+              {user.banReason ? ` — ${user.banReason}` : ""}
+            </Field>
+          ) : null}
+          <Field label="Moderation history" wide>
+            <ModerationHistory
+              reportCount={modHistory?.reportCount ?? null}
+              actions={modHistory?.actions ?? null}
+              loading={modLoading}
+            />
+          </Field>
+        </RowDetail>
+      ) : null}
 
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">

@@ -1,13 +1,25 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { EyeOff, RotateCcw, Search } from "lucide-react";
-import { moderateVideoAction } from "@/app/(admin)/videos/actions";
+import { EyeOff, Play, RotateCcw, Search, X } from "lucide-react";
+import {
+  moderateVideoAction,
+  videoModerationDetailAction,
+  type ModerationDetail,
+} from "@/app/(admin)/videos/actions";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
-import type { AdminVideoResponse, VideoStatus } from "@/lib/api/types";
-import { formatCompact, relativeTime, shortId } from "@/lib/format";
+import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
+import { Tooltip } from "@/components/ui/tooltip";
+import { ModerationHistory } from "@/components/moderation/moderation-history";
+import type {
+  AdminVideoResponse,
+  UserProfileResponse,
+  VideoStatus,
+} from "@/lib/api/types";
+import { formatCompact, formatDate, relativeTime, shortId } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = VideoStatus | "ALL";
@@ -120,10 +132,13 @@ function describeModeration(
 
 export function VideosTable({
   videos,
+  owners,
   query,
   status,
 }: {
   videos: AdminVideoResponse[];
+  /** userId → profile, for showing the owner as @handle. May be missing an id. */
+  owners: Record<string, UserProfileResponse>;
   query: string;
   status: StatusFilter;
 }) {
@@ -169,23 +184,23 @@ export function VideosTable({
       />
 
       <div className={cn("overflow-x-auto transition-opacity", navigating && "opacity-50")}>
-        <table className="w-full min-w-[1100px] border-collapse text-[12px]">
+        <table className="w-full border-collapse text-[12px] xl:min-w-[960px]">
           <thead>
             <tr className="border-b border-line text-left">
               <th className="label-caps px-5 py-3 text-ink-soft">Title</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Owner</th>
+              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Owner</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Status</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Visibility</th>
+              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Visibility</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Reason</th>
-              <th className="label-caps px-3 py-3 text-right text-ink-soft">Views</th>
-              <th className="label-caps px-3 py-3 text-right text-ink-soft">Likes</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Uploaded</th>
+              <th className="label-caps hidden px-3 py-3 text-right text-ink-soft xl:table-cell">Views</th>
+              <th className="label-caps hidden px-3 py-3 text-right text-ink-soft xl:table-cell">Likes</th>
+              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Uploaded</th>
               <th className="label-caps px-5 py-3 text-right text-ink-soft">Actions</th>
             </tr>
           </thead>
           <tbody>
             {videos.map((video) => (
-              <VideoRow key={video.id} video={video} />
+              <VideoRow key={video.id} video={video} owner={owners[video.userId]} />
             ))}
 
             {videos.length === 0 ? (
@@ -214,11 +229,33 @@ export function VideosTable({
 const REFRESH_AT = [900, 2500, 6000];
 const GIVE_UP_AT = 9000;
 
-function VideoRow({ video }: { video: AdminVideoResponse }) {
+function VideoRow({
+  video,
+  owner,
+}: {
+  video: AdminVideoResponse;
+  owner?: UserProfileResponse;
+}) {
   const router = useRouter();
   const [reason, setReason] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [detail, setDetail] = useState(false);
+  const [modHistory, setModHistory] = useState<ModerationDetail | null>(null);
+  const [modLoading, setModLoading] = useState(false);
+  const [watching, setWatching] = useState(false);
   const [submitting, startSubmit] = useTransition();
+
+  // Opening the row is what triggers the fetch — once, lazily. See videoModerationDetailAction.
+  function toggleDetail() {
+    const opening = !detail;
+    setDetail(opening);
+    if (opening && !modHistory && !modLoading) {
+      setModLoading(true);
+      videoModerationDetailAction(video.id)
+        .then(setModHistory)
+        .finally(() => setModLoading(false));
+    }
+  }
   /**
    * The status this row had when its action was submitted, or null when nothing is in flight.
    *
@@ -289,7 +326,13 @@ function VideoRow({ video }: { video: AdminVideoResponse }) {
 
   return (
     <>
-      <tr className="border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted">
+      <tr
+        {...expandableRowProps(toggleDetail, detail)}
+        className={cn(
+          "border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted",
+          "cursor-pointer",
+        )}
+      >
         <td className="max-w-[280px] px-5 py-3">
           <span className="block truncate font-medium" title={video.title}>
             {video.title}
@@ -300,8 +343,12 @@ function VideoRow({ video }: { video: AdminVideoResponse }) {
             </span>
           ) : null}
         </td>
-        <td className="figure px-3 py-3 whitespace-nowrap text-ink-faint">
-          #{shortId(video.userId.slice(-8), 8)}
+        <td className="hidden px-3 py-3 whitespace-nowrap xl:table-cell">
+          {owner?.username ? (
+            <span className="text-ink-soft">@{owner.username}</span>
+          ) : (
+            <span className="figure text-ink-faint">#{shortId(video.userId.slice(-8), 8)}</span>
+          )}
         </td>
         <td className="px-3 py-3">
           <span
@@ -320,7 +367,7 @@ function VideoRow({ video }: { video: AdminVideoResponse }) {
             <span className="ml-2 text-[10px] text-ink-faint">applying…</span>
           ) : null}
         </td>
-        <td className="px-3 py-3">
+        <td className="hidden px-3 py-3 xl:table-cell">
           <span className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[10px] tracking-wider text-ink-soft">
             {video.visibility}
           </span>
@@ -351,37 +398,117 @@ function VideoRow({ video }: { video: AdminVideoResponse }) {
         </td>
         {/* An em dash rather than 0: a video still transcoding has no view count, and
             printing zero would read as one nobody watched. */}
-        <td className="figure px-3 py-3 text-right">
+        <td className="figure hidden px-3 py-3 text-right xl:table-cell">
           {watchable ? formatCompact(video.viewCount) : <span className="text-ink-faint">—</span>}
         </td>
-        <td className="figure px-3 py-3 text-right text-ink-soft">
+        <td className="figure hidden px-3 py-3 text-right text-ink-soft xl:table-cell">
           {watchable ? formatCompact(video.likeCount) : <span className="text-ink-faint">—</span>}
         </td>
-        <td className="px-3 py-3 whitespace-nowrap text-ink-faint">
+        <td className="hidden px-3 py-3 whitespace-nowrap text-ink-faint xl:table-cell">
           {relativeTime(video.createdAt)}
         </td>
-        <td className="px-5 py-3 text-right">
-          <button
-            type="button"
-            // Disabled until the change lands, so a second click cannot queue the same
-            // action twice against a status that has not moved yet.
-            disabled={pending}
-            onClick={() => setReason(reason === null ? "" : null)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
-              pending ? "cursor-not-allowed text-ink-faint" : "hover:bg-surface",
-              action === "takedown" && !pending && "text-danger",
-            )}
-          >
-            {action === "takedown" ? (
-              <EyeOff className="h-3.5 w-3.5" />
-            ) : (
-              <RotateCcw className="h-3.5 w-3.5" />
-            )}
-            {action === "takedown" ? "Take down" : "Restore"}
-          </button>
+        <td className="px-3 py-3 pr-5 text-right" onClick={(e) => e.stopPropagation()}>
+          <div className="inline-flex items-center gap-1.5">
+            {/* The file at hlsUrl is a faststart mp4, not an HLS playlist — a bare
+                <video> plays it in every browser, no player library. Shown only when
+                the video is transcoded and holdable: the states playable() covers. */}
+            {watchable && video.hlsUrl ? (
+              <Tooltip label="Watch">
+                <button
+                  type="button"
+                  onClick={() => setWatching(true)}
+                  aria-label="Watch"
+                  className="inline-flex items-center rounded-md border border-line p-1.5 transition-colors hover:bg-surface"
+                >
+                  <Play className="h-3.5 w-3.5" />
+                </button>
+              </Tooltip>
+            ) : null}
+            <button
+              type="button"
+              // Disabled until the change lands, so a second click cannot queue the same
+              // action twice against a status that has not moved yet.
+              disabled={pending}
+              onClick={() => setReason(reason === null ? "" : null)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
+                pending ? "cursor-not-allowed text-ink-faint" : "hover:bg-surface",
+                action === "takedown" && !pending && "text-danger",
+              )}
+            >
+              {action === "takedown" ? (
+                <EyeOff className="h-3.5 w-3.5" />
+              ) : (
+                <RotateCcw className="h-3.5 w-3.5" />
+              )}
+              {action === "takedown" ? "Take down" : "Restore"}
+            </button>
+          </div>
         </td>
       </tr>
+
+      {detail ? (
+        <RowDetail colSpan={9}>
+          <Field label="Owner">
+            {owner?.username ? `@${owner.username}` : `#${shortId(video.userId.slice(-8), 8)}`}
+            {owner ? (
+              <span className="text-ink-faint">
+                {" "}
+                · {formatCompact(owner.followerCount)} followers
+              </span>
+            ) : null}
+          </Field>
+          <Field label="Visibility">{video.visibility}</Field>
+          <Field label="Views">{watchable ? formatCompact(video.viewCount) : "—"}</Field>
+          <Field label="Likes">{watchable ? formatCompact(video.likeCount) : "—"}</Field>
+          <Field label="Comments">
+            {video.commentsDisabled
+              ? "disabled"
+              : video.commentCount != null
+                ? formatCompact(video.commentCount)
+                : "—"}
+          </Field>
+          <Field label="Duration">
+            {video.durationSeconds != null ? `${video.durationSeconds}s` : "—"}
+          </Field>
+          <Field label="Uploaded">{formatDate(video.createdAt)}</Field>
+          <Field label="Published">
+            {video.publishedAt ? formatDate(video.publishedAt) : "—"}
+          </Field>
+          <Field label="Updated">{formatDate(video.updatedAt)}</Field>
+          {video.rawFileUrl ? (
+            <Field label="Raw file" wide>
+              <span className="break-all">{video.rawFileUrl}</span>
+            </Field>
+          ) : null}
+          {video.tags.length > 0 ? (
+            <Field label="Tags" wide>
+              {video.tags.join(", ")}
+            </Field>
+          ) : null}
+          {video.description ? (
+            <Field label="Description" wide>
+              {video.description}
+            </Field>
+          ) : null}
+          {video.takedownReason ? (
+            <Field label="Takedown reason" wide>
+              {video.takedownReason}
+            </Field>
+          ) : machineReason ? (
+            <Field label="Moderation" wide>
+              {machineReason.label}
+            </Field>
+          ) : null}
+          <Field label="Moderation history" wide>
+            <ModerationHistory
+              reportCount={modHistory?.reportCount ?? null}
+              actions={modHistory?.actions ?? null}
+              loading={modLoading}
+            />
+          </Field>
+        </RowDetail>
+      ) : null}
 
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">
@@ -448,7 +575,71 @@ function VideoRow({ video }: { video: AdminVideoResponse }) {
           </td>
         </tr>
       ) : null}
+
+      {watching && video.hlsUrl ? (
+        <WatchOverlay video={video} onClose={() => setWatching(false)} />
+      ) : null}
     </>
+  );
+}
+
+/**
+ * Fills the viewport with the video. Rendered through a portal because a table row is
+ * not a place to put a fixed overlay, and closed on Escape or a backdrop click so a
+ * reviewer never has to reach for the mouse to get back to the worklist.
+ */
+function WatchOverlay({
+  video,
+  onClose,
+}: {
+  video: AdminVideoResponse;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Preview of ${video.title}`}
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-3xl"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute -top-9 right-0 inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-black/40 px-2 py-1 text-[11px] text-white transition-colors hover:bg-black/60"
+        >
+          <X className="h-3.5 w-3.5" />
+          Close
+        </button>
+        <video
+          key={video.id}
+          src={video.hlsUrl ?? undefined}
+          poster={video.thumbnailUrl ?? undefined}
+          controls
+          autoPlay
+          className="max-h-[80vh] w-full rounded-lg bg-black"
+        />
+        <p className="mt-2 truncate text-[11px] text-white/70" title={video.title}>
+          {video.title}
+        </p>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

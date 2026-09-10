@@ -1,11 +1,35 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { moderateUser } from "@/lib/api/admin";
+import {
+  getReportCount,
+  listTargetActions,
+  moderateUser,
+} from "@/lib/api/admin";
+import type { ModerationActionResponse } from "@/lib/api/types";
 
 export interface ModerationResult {
   ok: boolean;
   message: string;
+}
+
+export interface ModerationDetail {
+  reportCount: number;
+  actions: ModerationActionResponse[];
+}
+
+/**
+ * The report count and the moderation-action log for one account, fetched together. Called from
+ * the table's expandable row so nothing loads until an admin opens it.
+ */
+export async function userModerationDetailAction(
+  userId: string,
+): Promise<ModerationDetail> {
+  const [reportCount, actions] = await Promise.all([
+    getReportCount("USER", userId),
+    listTargetActions("USER", userId),
+  ]);
+  return { reportCount, actions };
 }
 
 /**

@@ -7,7 +7,6 @@ import type {
   AdminUserResponse,
   AdminVideoResponse,
   DailyCountResponse,
-  DailyRevenueResponse,
   DailySignupResponse,
   ModerationActionResponse,
   ModerationActionType,
@@ -15,6 +14,7 @@ import type {
   ReportResponse,
   ReportStatus,
   StatsSummaryResponse,
+  UserProfileResponse,
   UserStatus,
   VideoStatus,
 } from "./types";
@@ -26,7 +26,6 @@ import {
 } from "./rollup";
 import {
   mockDailyEngagement,
-  mockDailyRevenue,
   mockDailySignups,
 } from "@/lib/mock/analytics";
 import { mockModerationActions, mockReports, mockStatsSummary } from "@/lib/mock/moderation";
@@ -82,6 +81,77 @@ export async function listModerationActions(size = 50): Promise<ModerationAction
   return page.content;
 }
 
+/**
+ * One target's moderation history — every takedown/restore/ban/unban recorded against it, newest
+ * first. Same endpoint as {@link listModerationActions}, narrowed by target. The console loads it
+ * lazily when a row is expanded, so the default page is small.
+ */
+export async function listTargetActions(
+  targetType: "USER" | "VIDEO",
+  targetId: string,
+  size = 20,
+): Promise<ModerationActionResponse[]> {
+  if (USE_MOCK) {
+    return mockModerationActions
+      .filter((a) => a.targetType === targetType && a.targetId === targetId)
+      .slice(0, size);
+  }
+  const params = new URLSearchParams({
+    targetType,
+    targetId,
+    size: String(size),
+    sort: "createdAt,desc",
+  });
+  const page = await apiGet<Page<ModerationActionResponse>>(`/api/v1/admin/actions?${params}`);
+  return page.content;
+}
+
+/** How many reports have been filed against one user or video. */
+export async function getReportCount(
+  targetType: "USER" | "VIDEO",
+  targetId: string,
+): Promise<number> {
+  if (USE_MOCK) {
+    return mockReports.filter(
+      (r) => r.targetType === targetType && r.targetId === targetId,
+    ).length;
+  }
+  const params = new URLSearchParams({ targetType, targetId });
+  return apiGet<number>(`/api/v1/admin/reports/count?${params}`);
+}
+
+/**
+ * Handles (and avatar, follower count) for a batch of user ids, from user-service. Used to show a
+ * video's owner as @handle rather than a bare id. Missing or blocked ids are simply absent from
+ * the map — callers must tolerate a gap.
+ */
+export async function getUserProfiles(
+  ids: string[],
+): Promise<Record<string, UserProfileResponse>> {
+  const unique = [...new Set(ids)].filter(Boolean);
+  if (unique.length === 0) return {};
+  if (USE_MOCK) {
+    return Object.fromEntries(
+      mockUsers
+        .filter((u) => unique.includes(u.id))
+        .map((u) => [
+          u.id,
+          {
+            userId: u.id,
+            username: u.username,
+            displayName: null,
+            avatarUrl: null,
+            followerCount: 0,
+            followingCount: 0,
+          } satisfies UserProfileResponse,
+        ]),
+    );
+  }
+  const params = new URLSearchParams({ ids: unique.join(",") });
+  const profiles = await apiGet<UserProfileResponse[]>(`/api/v1/users?${params}`);
+  return Object.fromEntries(profiles.map((p) => [p.userId, p]));
+}
+
 export async function resolveReport(
   reportId: string,
   actionType: ModerationActionType,
@@ -124,11 +194,6 @@ export async function getEngagementOverview(asOfMs = referenceNow()): Promise<{
     series: toMosaicSeries(rows, asOfMs),
     mix: toEngagementMix(rows),
   };
-}
-
-export async function getDailyRevenue(days = 7): Promise<DailyRevenueResponse[]> {
-  if (USE_MOCK) return mockDailyRevenue(days);
-  return apiGet<DailyRevenueResponse[]>(`/api/v1/analytics/revenue/daily?days=${days}`);
 }
 
 export async function getDailySignups(days = 7): Promise<DailySignupResponse[]> {
