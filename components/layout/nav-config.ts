@@ -1,12 +1,9 @@
 import {
-  Boxes,
   FileClock,
   Flag,
   LayoutDashboard,
   MessageSquare,
-  Package,
   Radio,
-  ReceiptText,
   Settings,
   TrendingUp,
   Users,
@@ -20,8 +17,8 @@ export interface NavItem {
   href: Route;
   icon: LucideIcon;
   /**
-   * Phase 1 wires the screens that admin-service / analytics-service / inventory-service
-   * already expose. The rest are shells until their backend endpoints exist.
+   * Phase 1 wires the screens that admin-service / analytics-service already expose.
+   * The rest are shells until their backend endpoints exist.
    */
   ready?: boolean;
 }
@@ -55,14 +52,6 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Commerce",
-    items: [
-      { label: "Products", href: "/products", icon: Package },
-      { label: "Orders", href: "/orders", icon: ReceiptText },
-      { label: "Inventory", href: "/inventory", icon: Boxes, ready: true },
-    ],
-  },
-  {
     label: "System",
     items: [
       { label: "Queues & DLQ", href: "/system/queues", icon: Radio },
@@ -80,9 +69,6 @@ export const ROUTE_TITLES: Record<string, { section: string; page: string }> = {
   "/users": { section: "Management", page: "Users" },
   "/videos": { section: "Management", page: "Videos" },
   "/comments": { section: "Management", page: "Comments" },
-  "/products": { section: "Commerce", page: "Products" },
-  "/orders": { section: "Commerce", page: "Orders" },
-  "/inventory": { section: "Commerce", page: "Inventory" },
   "/system/queues": { section: "System", page: "Queues & DLQ" },
   "/settings": { section: "System", page: "Settings" },
 };
