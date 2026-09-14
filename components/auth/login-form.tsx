@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { AlertTriangle, ArrowRight, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { isTurnstileConfigured } from "@/lib/auth/turnstile";
@@ -19,6 +19,7 @@ export function LoginForm() {
   const [step, setStep] = useState<Step>("credentials");
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [rememberDevice, setRememberDevice] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,15 +108,29 @@ export function LoginForm() {
 
           <label className="block">
             <span className="label-caps text-ink-soft">Password</span>
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-line bg-surface-muted px-3 py-2.5 text-[13px] outline-none focus:border-ink-faint"
-            />
+            <div className="relative mt-1.5">
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-line bg-surface-muted px-3 py-2.5 pr-10 text-[13px] outline-none focus:border-ink-faint"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-faint hover:text-ink-soft"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </label>
 
           <Link

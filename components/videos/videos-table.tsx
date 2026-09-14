@@ -19,7 +19,7 @@ import type {
   UserProfileResponse,
   VideoStatus,
 } from "@/lib/api/types";
-import { formatCompact, formatDate, relativeTime, shortId } from "@/lib/format";
+import { formatCompact, formatCount, formatDate, relativeTime, shortId } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = VideoStatus | "ALL";
@@ -399,10 +399,10 @@ function VideoRow({
         {/* An em dash rather than 0: a video still transcoding has no view count, and
             printing zero would read as one nobody watched. */}
         <td className="figure hidden px-3 py-3 text-right xl:table-cell">
-          {watchable ? formatCompact(video.viewCount) : <span className="text-ink-faint">—</span>}
+          {watchable ? formatCount(video.viewCount) : <span className="text-ink-faint">—</span>}
         </td>
         <td className="figure hidden px-3 py-3 text-right text-ink-soft xl:table-cell">
-          {watchable ? formatCompact(video.likeCount) : <span className="text-ink-faint">—</span>}
+          {watchable ? formatCount(video.likeCount) : <span className="text-ink-faint">—</span>}
         </td>
         <td className="hidden px-3 py-3 whitespace-nowrap text-ink-faint xl:table-cell">
           {relativeTime(video.createdAt)}
@@ -459,13 +459,13 @@ function VideoRow({
             ) : null}
           </Field>
           <Field label="Visibility">{video.visibility}</Field>
-          <Field label="Views">{watchable ? formatCompact(video.viewCount) : "—"}</Field>
-          <Field label="Likes">{watchable ? formatCompact(video.likeCount) : "—"}</Field>
+          <Field label="Views">{watchable ? formatCount(video.viewCount) : "—"}</Field>
+          <Field label="Likes">{watchable ? formatCount(video.likeCount) : "—"}</Field>
           <Field label="Comments">
             {video.commentsDisabled
               ? "disabled"
               : video.commentCount != null
-                ? formatCompact(video.commentCount)
+                ? formatCount(video.commentCount)
                 : "—"}
           </Field>
           <Field label="Duration">

@@ -15,6 +15,23 @@ export function formatCompact(value: number) {
   return String(value);
 }
 
+/** TikTok's own abbreviation style: 1.2B, 355.8K, 20.1K, 6834 (no suffix under 10k). */
+export function formatCount(n: number): string {
+  if (n >= 1_000_000_000) {
+    const b = n / 1_000_000_000;
+    return `${b >= 100 ? Math.round(b) : b.toFixed(1).replace(/\.0$/, "")}B`;
+  }
+  if (n >= 1_000_000) {
+    const m = n / 1_000_000;
+    return `${m >= 100 ? Math.round(m) : m.toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (n >= 10_000) {
+    const k = n / 1000;
+    return `${k >= 100 ? Math.round(k) : k.toFixed(1).replace(/\.0$/, "")}K`;
+  }
+  return String(n);
+}
+
 /** Snowflake ids are long; the table only needs enough to eyeball-match a row. */
 export function shortId(id: string, keep = 6) {
   return id.length <= keep ? id : `${id.slice(0, keep)}…`;
