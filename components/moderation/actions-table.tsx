@@ -29,7 +29,7 @@ export const ENFORCED: ModerationActionType[] = [
 const DESTRUCTIVE: ModerationActionType[] = [
   "BAN_USER",
   "TAKEDOWN_VIDEO",
-  "SUSPEND_PRODUCT",
+  "REMOVE_COMMENT",
   "WARN_USER",
 ];
 

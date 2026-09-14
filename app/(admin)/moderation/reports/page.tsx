@@ -50,7 +50,7 @@ export default async function ReportsQueuePage({
     <>
       <PageHeader
         title="Reports Queue"
-        subtitle="User-submitted reports across videos, accounts, comments and product listings."
+        subtitle="User-submitted reports across videos, accounts and comments. Open a row to see what was reported before deciding."
         filters={{ asOf, latest }}
         csv={{ name: "reports", rows: reports }}
       />

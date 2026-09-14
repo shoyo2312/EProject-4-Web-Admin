@@ -117,6 +117,8 @@ export const mockVideos: AdminVideoResponse[] = (() => {
       failureReason:
         status === "FAILED" ? "ffmpeg: moov atom not found — upload truncated" : null,
       takedownReason: status === "TAKEN_DOWN" ? pick(rand, TAKEDOWN_REASONS) : null,
+      // The fixtures stand in for the admin listing, which never returns a deleted video.
+      deletedAt: null,
       moderation: moderationFor(status, i, createdAt),
     };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));

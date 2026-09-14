@@ -1,6 +1,6 @@
 import "server-only";
 
-import { apiGet, apiPost } from "./client";
+import { ApiError, apiGet, apiPost } from "./client";
 import { USE_MOCK } from "./config";
 import type {
   AdminCommentResponse,
@@ -13,6 +13,7 @@ import type {
   Page,
   ReportResponse,
   ReportStatus,
+  ReportTargetType,
   StatsSummaryResponse,
   UserProfileResponse,
   UserStatus,
@@ -87,7 +88,7 @@ export async function listModerationActions(size = 50): Promise<ModerationAction
  * lazily when a row is expanded, so the default page is small.
  */
 export async function listTargetActions(
-  targetType: "USER" | "VIDEO",
+  targetType: ReportTargetType,
   targetId: string,
   size = 20,
 ): Promise<ModerationActionResponse[]> {
@@ -106,9 +107,9 @@ export async function listTargetActions(
   return page.content;
 }
 
-/** How many reports have been filed against one user or video. */
+/** How many reports have been filed against one user, video or comment. */
 export async function getReportCount(
-  targetType: "USER" | "VIDEO",
+  targetType: ReportTargetType,
   targetId: string,
 ): Promise<number> {
   if (USE_MOCK) {
@@ -150,6 +151,25 @@ export async function getUserProfiles(
   const params = new URLSearchParams({ ids: unique.join(",") });
   const profiles = await apiGet<UserProfileResponse[]>(`/api/v1/users?${params}`);
   return Object.fromEntries(profiles.map((p) => [p.userId, p]));
+}
+
+/**
+ * One video by id, for the reports queue: a report carries a bare video id and the admin listing
+ * can only be searched by title, so there is no other way back to what was reported.
+ *
+ * The admin route rather than the public one, which applies the viewer visibility rule and so
+ * hides exactly the videos moderation cares about — taken down, private, still processing, or
+ * deleted by their owner after the report came in. A 404 here means the id resolves to nothing at
+ * all; the caller shows the report without a preview rather than failing the row.
+ */
+export async function getVideo(videoId: string): Promise<AdminVideoResponse | null> {
+  if (USE_MOCK) return mockVideos.find((video) => video.id === videoId) ?? null;
+  try {
+    return await apiGet<AdminVideoResponse>(`/api/v1/videos/admin/${videoId}`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
 }
 
 export async function resolveReport(

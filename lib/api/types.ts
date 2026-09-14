@@ -36,7 +36,7 @@ export interface AdminCommentResponse {
 }
 
 /** admin-service — entity/ReportTargetType.java */
-export type ReportTargetType = "USER" | "VIDEO" | "PRODUCT" | "COMMENT";
+export type ReportTargetType = "USER" | "VIDEO" | "COMMENT";
 
 /** admin-service — entity/ModerationActionType.java */
 export type ModerationActionType =
@@ -45,8 +45,6 @@ export type ModerationActionType =
   | "TAKEDOWN_VIDEO"
   | "RESTORE_VIDEO"
   | "REMOVE_COMMENT"
-  | "SUSPEND_PRODUCT"
-  | "REACTIVATE_PRODUCT"
   | "WARN_USER"
   | "DISMISS_REPORT";
 
@@ -147,6 +145,11 @@ export interface AdminVideoResponse {
   failureReason: string | null;
   /** Why moderation removed it; null unless status is TAKEN_DOWN. */
   takedownReason: string | null;
+  /**
+   * When the owner deleted the video. Only the by-id admin route ever returns a deleted video —
+   * the listing drops them — so this is null on every row that came from a listing.
+   */
+  deletedAt: string | null;
   /** What the classifier scored. Admin reads only — the public API withholds it. */
   moderation: ModerationSummary | null;
 }
@@ -209,14 +212,6 @@ export interface DailyCountResponse {
 export interface DailySignupResponse {
   day: string;
   signups: number;
-}
-
-/** GET /api/v1/inventory/{productId} — inventory-service */
-export interface InventoryResponse {
-  productId: string;
-  available: number;
-  reserved: number;
-  updatedAt: string;
 }
 
 /** common-lib ApiResponse<T> — every service wraps its payload in this */

@@ -6,6 +6,9 @@ import type {
   ReportTargetType,
   StatsSummaryResponse,
 } from "@/lib/api/types";
+import { mockComments } from "./comments";
+import { mockUsers } from "./users";
+import { mockVideos } from "./videos";
 import { MOCK_NOW, between, pick, seededRandom } from "./random";
 
 const REASONS = [
@@ -14,14 +17,29 @@ const REASONS = [
   "Hate speech",
   "Nudity or sexual content",
   "Dangerous acts / challenges",
-  "Counterfeit product listing",
+  "Sharing someone's private information",
   "Intellectual property violation",
   "Impersonation of another account",
   "Scam or fraudulent promotion",
   "Violent or graphic content",
 ] as const;
 
-const TARGET_TYPES: ReportTargetType[] = ["VIDEO", "USER", "COMMENT", "PRODUCT"];
+const TARGET_TYPES: ReportTargetType[] = ["VIDEO", "USER", "COMMENT"];
+
+/**
+ * A report points at something that exists in the other fixtures rather than at a loose id: the
+ * queue's expanded row fetches the target back to show what is being judged, and an id matching
+ * nothing would render every preview as a gap.
+ *
+ * A COMMENT target is "videoId:commentId" — the shape admin-service's CommentTarget parses, and
+ * what the client sends, because Cassandra partitions comments by video.
+ */
+function mockTargetId(rand: () => number, type: ReportTargetType): string {
+  if (type === "USER") return pick(rand, mockUsers).id;
+  const video = pick(rand, mockVideos);
+  if (type === "VIDEO") return video.id;
+  return `${video.id}:${pick(rand, mockComments(video.id, 25)).commentId}`;
+}
 
 /** Reporter handles are display-only; the API returns a numeric reporterId. */
 const HANDLES = [
@@ -60,11 +78,13 @@ export const mockReports: ReportResponse[] = (() => {
     const createdAt = new Date(MOCK_NOW - between(rand, 5, 60 * 24 * 9) * 60_000);
     const resolved = status !== "PENDING";
 
+    const targetType = pick(rand, TARGET_TYPES);
+
     return {
       id,
       reporterId,
-      targetType: pick(rand, TARGET_TYPES),
-      targetId: snowflake(rand, i + 900),
+      targetType,
+      targetId: mockTargetId(rand, targetType),
       reason: pick(rand, REASONS),
       status,
       resolvedBy: resolved ? snowflake(rand, 7) : null,
@@ -82,8 +102,7 @@ const ACTION_TYPES: ModerationActionType[] = [
   "BAN_USER",
   "UNBAN_USER",
   "WARN_USER",
-  "SUSPEND_PRODUCT",
-  "REACTIVATE_PRODUCT",
+  "REMOVE_COMMENT",
   "DISMISS_REPORT",
 ];
 
@@ -95,8 +114,8 @@ export const mockModerationActions: ModerationActionResponse[] = (() => {
       ? "VIDEO"
       : actionType.includes("USER")
         ? "USER"
-        : actionType.includes("PRODUCT")
-          ? "PRODUCT"
+        : actionType.includes("COMMENT")
+          ? "COMMENT"
           : pick(rand, TARGET_TYPES);
 
     return {
@@ -104,7 +123,7 @@ export const mockModerationActions: ModerationActionResponse[] = (() => {
       adminId: snowflake(rand, 7),
       actionType,
       targetType,
-      targetId: snowflake(rand, i + 3300),
+      targetId: mockTargetId(rand, targetType),
       reason: pick(rand, REASONS),
       reportId: rand() < 0.75 ? snowflake(rand, i) : null,
       createdAt: new Date(MOCK_NOW - between(rand, 10, 60 * 24 * 6) * 60_000).toISOString(),
