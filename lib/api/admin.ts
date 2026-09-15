@@ -3,6 +3,8 @@ import "server-only";
 import { ApiError, apiGet, apiPost } from "./client";
 import { USE_MOCK } from "./config";
 import type {
+  AdminCommentFilter,
+  AdminCommentPage,
   AdminCommentResponse,
   AdminUserResponse,
   AdminVideoResponse,
@@ -31,7 +33,7 @@ import {
 } from "@/lib/mock/analytics";
 import { mockModerationActions, mockReports, mockStatsSummary } from "@/lib/mock/moderation";
 import { mockUsers } from "@/lib/mock/users";
-import { mockComments } from "@/lib/mock/comments";
+import { mockCommentPage, mockCommentsByIds, mockReplyPage } from "@/lib/mock/comments";
 import { mockVideos } from "@/lib/mock/videos";
 import { MOCK_NOW } from "@/lib/mock/random";
 
@@ -39,6 +41,14 @@ import { MOCK_NOW } from "@/lib/mock/random";
  * Single switch between mock and live for the whole console (see config.ts).
  * Signatures are identical either way, so pages never branch on it.
  */
+
+/**
+ * How many comments one page holds, and how many replies one "View replies" click pulls down.
+ * The reply page is small on purpose — the same three-at-a-time reveal the viewer-facing panel
+ * uses, so opening a thread of two hundred does not land two hundred rows in the console.
+ */
+export const COMMENT_PAGE_SIZE = 20;
+export const REPLY_PAGE_SIZE = 3;
 
 /**
  * The clock every dated page measures against. Mock fixtures are generated from a
@@ -337,17 +347,64 @@ export async function moderateVideo(
 }
 
 /**
- * One video's thread, removed comments included. Per video because that is the only shape
- * Cassandra can answer: comments_by_video is partitioned by video id, and a platform-wide "newest
- * comments" listing would need a second table written on every comment.
+ * One page of a video's comments, removed ones included. Per video because that is the only shape
+ * Cassandra can answer: both tables behind it are partitioned by video id, and a platform-wide
+ * "newest comments" listing would need another table written on every comment.
+ *
+ * Cursor-paged rather than one slab: before this, a thread longer than the page was silently
+ * truncated, and an admin had no way to tell. The cursor is opaque — pass back what the last page
+ * returned.
  */
 export async function listComments(
   videoId: string,
-  size = 50,
+  options: { filter?: AdminCommentFilter; cursor?: string | null; size?: number } = {},
+): Promise<AdminCommentPage> {
+  const { filter = "THREAD", cursor, size = COMMENT_PAGE_SIZE } = options;
+  if (USE_MOCK) return mockCommentPage(videoId, filter, cursor ?? null, size);
+
+  const params = new URLSearchParams({ filter, size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  return apiGet<AdminCommentPage>(
+    `/api/v1/interactions/admin/videos/${videoId}/comments?${params}`,
+  );
+}
+
+/**
+ * One comment's replies, oldest first. Split from the listing above, which returns top-level
+ * comments only: a thread of two hundred replies is not something every page of comments should
+ * carry, and an admin opens one thread at a time.
+ */
+export async function listCommentReplies(
+  videoId: string,
+  commentId: string,
+  cursor: string | null = null,
+  size = REPLY_PAGE_SIZE,
+): Promise<AdminCommentPage> {
+  if (USE_MOCK) return mockReplyPage(videoId, commentId, cursor, size);
+
+  const params = new URLSearchParams({ size: String(size) });
+  if (cursor) params.set("cursor", cursor);
+  return apiGet<AdminCommentPage>(
+    `/api/v1/interactions/admin/videos/${videoId}/comments/${commentId}/replies?${params}`,
+  );
+}
+
+/**
+ * Specific comments by id. Used for the comment a reply answers: the Replies and Removed views are
+ * flat, so the parent is usually not on the page beside its reply. Ids that resolve to nothing are
+ * simply absent from the result — the caller renders the reply without a preview.
+ */
+export async function getComments(
+  videoId: string,
+  ids: string[],
 ): Promise<AdminCommentResponse[]> {
-  if (USE_MOCK) return mockComments(videoId, size);
+  const unique = [...new Set(ids)].filter(Boolean);
+  if (unique.length === 0) return [];
+  if (USE_MOCK) return mockCommentsByIds(videoId, unique);
+
+  const params = new URLSearchParams({ ids: unique.join(",") });
   return apiGet<AdminCommentResponse[]>(
-    `/api/v1/interactions/admin/videos/${videoId}/comments?size=${size}`,
+    `/api/v1/interactions/admin/videos/${videoId}/comments/by-ids?${params}`,
   );
 }
 

@@ -8,23 +8,9 @@ import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import type { ModerationActionResponse, ModerationActionType } from "@/lib/api/types";
 import { formatDate, relativeTime, shortId } from "@/lib/format";
+import { ENFORCED } from "@/lib/moderation";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
-
-/**
- * Action types with a live downstream consumer today:
- * video-service (takedown/restore), auth-service (ban/unban),
- * interaction-service (comment removal). The rest are recorded in
- * moderation_actions and published to admin.moderation-events with no
- * subscriber, so the log says so rather than implying the action landed.
- */
-export const ENFORCED: ModerationActionType[] = [
-  "TAKEDOWN_VIDEO",
-  "RESTORE_VIDEO",
-  "BAN_USER",
-  "UNBAN_USER",
-  "REMOVE_COMMENT",
-];
 
 const DESTRUCTIVE: ModerationActionType[] = [
   "BAN_USER",

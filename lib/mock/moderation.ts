@@ -6,7 +6,7 @@ import type {
   ReportTargetType,
   StatsSummaryResponse,
 } from "@/lib/api/types";
-import { mockComments } from "./comments";
+import { mockCommentPage } from "./comments";
 import { mockUsers } from "./users";
 import { mockVideos } from "./videos";
 import { MOCK_NOW, between, pick, seededRandom } from "./random";
@@ -38,7 +38,7 @@ function mockTargetId(rand: () => number, type: ReportTargetType): string {
   if (type === "USER") return pick(rand, mockUsers).id;
   const video = pick(rand, mockVideos);
   if (type === "VIDEO") return video.id;
-  return `${video.id}:${pick(rand, mockComments(video.id, 25)).commentId}`;
+  return `${video.id}:${pick(rand, mockCommentPage(video.id, "THREAD", null, 25).items).commentId}`;
 }
 
 /** Reporter handles are display-only; the API returns a numeric reporterId. */

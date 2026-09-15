@@ -14,6 +14,15 @@
 export type ReportStatus = "PENDING" | "RESOLVED" | "DISMISSED";
 
 /**
+ * Which slice of a video's comments to read — interaction-service's AdminCommentFilter.
+ *
+ * Server-side rather than a filter over what the page holds: the listing is cursor-paged, so
+ * "removed" applied to the rows on screen would mean "removed among the twenty loaded", which
+ * reads as "removed in this thread" and is not.
+ */
+export type AdminCommentFilter = "THREAD" | "REPLIES" | "REMOVED";
+
+/**
  * GET /api/v1/interactions/admin/videos/{videoId}/comments — served by interaction-service.
  *
  * Ids are Snowflake longs, so strings. Unlike the public CommentResponse this carries deletedAt:
@@ -30,9 +39,27 @@ export interface AdminCommentResponse {
   /** Set only when this reply targets another reply, so the list can show "A > B". */
   replyToUserId: string | null;
   likeCount: number;
+  /**
+   * Replies still standing under this comment; 0 on a reply, which cannot have any. Live only —
+   * comment_counters is decremented when a reply is removed, so read hasReplies, not this, to
+   * decide whether there is anything to open.
+   */
+  replyCount: number;
+  /** Whether anything hangs under this comment at all, removed replies included. */
+  hasReplies: boolean;
   createdAt: string;
   /** Non-null once removed — by its author, the video owner, or an admin. */
   deletedAt: string | null;
+}
+
+/**
+ * One cursor-paged page of comments. The cursor is Cassandra's own paging state, base64'd — it is
+ * passed back untouched and never parsed here.
+ */
+export interface AdminCommentPage {
+  items: AdminCommentResponse[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 /** admin-service — entity/ReportTargetType.java */

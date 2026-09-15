@@ -5,7 +5,7 @@ import {
   getReportCount,
   getUserProfiles,
   getVideo,
-  listComments,
+  getComments,
   listTargetActions,
   resolveReport,
 } from "@/lib/api/admin";
@@ -85,8 +85,7 @@ async function loadPreview(
 
   const target = parseCommentTarget(targetId);
   if (!target) return null;
-  const thread = await listComments(target.videoId, 200);
-  const comment = thread.find((c) => c.commentId === target.commentId);
+  const [comment] = await getComments(target.videoId, [target.commentId]);
   return {
     title: comment?.content ?? "(comment not found in the thread)",
     detail: comment?.deletedAt ? "already removed" : null,

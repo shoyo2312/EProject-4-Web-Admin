@@ -1,9 +1,10 @@
 import { AlertTriangle } from "lucide-react";
-import { ActionsTable, ENFORCED } from "@/components/moderation/actions-table";
+import { ActionsTable } from "@/components/moderation/actions-table";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { listModerationActions, referenceNow } from "@/lib/api/admin";
 import { isoDay, parseAsOf } from "@/lib/api/window";
+import { ENFORCED } from "@/lib/moderation";
 
 export default async function AuditLogPage({
   searchParams,
