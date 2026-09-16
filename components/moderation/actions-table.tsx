@@ -1,7 +1,9 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import Link from "next/link";
 import { ChevronsUpDown, Search } from "lucide-react";
+import { actionRowDetailAction, type ActionRowDetail } from "@/app/(admin)/moderation/actions/actions";
 import { TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
@@ -44,7 +46,6 @@ export function ActionsTable({ actions }: { actions: ModerationActionResponse[] 
   );
 
   const belowXl = useBelowXl();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -140,80 +141,9 @@ export function ActionsTable({ actions }: { actions: ModerationActionResponse[] 
             </tr>
           </thead>
           <tbody>
-            {rows.map((action) => {
-              const expanded = expandedId === action.id;
-              return (
-                <Fragment key={action.id}>
-                  <tr
-                    {...(belowXl
-                      ? expandableRowProps(
-                          () => setExpandedId(expanded ? null : action.id),
-                          expanded,
-                        )
-                      : {})}
-                    className={cn(
-                      "border-b border-line last:border-b-0 transition-colors hover:bg-surface-muted",
-                      belowXl && "cursor-pointer",
-                    )}
-                  >
-                    <td className="figure hidden px-5 py-3 whitespace-nowrap xl:table-cell">
-                      #{shortId(action.adminId.slice(-8), 8)}
-                    </td>
-                    <td className="px-5 py-3 whitespace-nowrap xl:px-3">
-                      <span
-                        className={cn(
-                          "rounded border px-1.5 py-0.5 text-[10px] tracking-wider",
-                          DESTRUCTIVE.includes(action.actionType)
-                            ? "border-danger/25 bg-danger-bg text-danger"
-                            : "border-line bg-surface-muted text-ink-soft",
-                        )}
-                      >
-                        {action.actionType}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <TargetBadge type={action.targetType} id={action.targetId} />
-                    </td>
-                    <td className="hidden max-w-[240px] truncate px-3 py-3 xl:table-cell" title={action.reason}>
-                      {action.reason}
-                    </td>
-                    <td className="figure hidden px-3 py-3 whitespace-nowrap text-ink-faint xl:table-cell">
-                      {action.reportId ? `#${action.reportId.slice(-8)}` : "—"}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      {ENFORCED.includes(action.actionType) ? (
-                        <span className="text-success">yes</span>
-                      ) : (
-                        <span className="text-pending">no consumer</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 text-right whitespace-nowrap text-ink-faint">
-                      {relativeTime(action.createdAt)}
-                    </td>
-                  </tr>
-
-                  {belowXl && expanded ? (
-                    <RowDetail colSpan={7}>
-                      <Field label="Admin">#{shortId(action.adminId.slice(-8), 8)}</Field>
-                      <Field label="Action">{action.actionType}</Field>
-                      <Field label="Target">
-                        {action.targetType} · {action.targetId.slice(-8)}
-                      </Field>
-                      <Field label="Report">
-                        {action.reportId ? `#${action.reportId.slice(-8)}` : "—"}
-                      </Field>
-                      <Field label="Reason" wide>
-                        {action.reason}
-                      </Field>
-                      <Field label="Enforced">
-                        {ENFORCED.includes(action.actionType) ? "yes" : "no consumer"}
-                      </Field>
-                      <Field label="When">{formatDate(action.createdAt)}</Field>
-                    </RowDetail>
-                  ) : null}
-                </Fragment>
-              );
-            })}
+            {rows.map((action) => (
+              <ActionRow key={action.id} action={action} belowXl={belowXl} />
+            ))}
 
             {rows.length === 0 ? (
               <tr>
@@ -226,6 +156,131 @@ export function ActionsTable({ actions }: { actions: ModerationActionResponse[] 
         </table>
       </div>
     </Card>
+  );
+}
+
+function ActionRow({
+  action,
+  belowXl,
+}: {
+  action: ModerationActionResponse;
+  /** Below xl the secondary columns are dropped, so the expand row carries them instead. */
+  belowXl: boolean;
+}) {
+  const [detail, setDetail] = useState(false);
+  const [target, setTarget] = useState<ActionRowDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  function toggleDetail() {
+    const opening = !detail;
+    setDetail(opening);
+    // Fetched once per row and kept: what an action points at does not change while the admin
+    // scans the log, and re-fetching on every toggle would be two calls per click.
+    if (opening && !target && !loading) {
+      setLoading(true);
+      actionRowDetailAction(action.adminId, action.targetType, action.targetId)
+        .then(setTarget)
+        .finally(() => setLoading(false));
+    }
+  }
+
+  return (
+    <Fragment>
+      <tr
+        {...expandableRowProps(toggleDetail, detail)}
+        className="cursor-pointer border-b border-line last:border-b-0 transition-colors hover:bg-surface-muted"
+      >
+        <td className="figure hidden px-5 py-3 whitespace-nowrap xl:table-cell">
+          #{shortId(action.adminId.slice(-8), 8)}
+        </td>
+        <td className="px-5 py-3 whitespace-nowrap xl:px-3">
+          <span
+            className={cn(
+              "rounded border px-1.5 py-0.5 text-[10px] tracking-wider",
+              DESTRUCTIVE.includes(action.actionType)
+                ? "border-danger/25 bg-danger-bg text-danger"
+                : "border-line bg-surface-muted text-ink-soft",
+            )}
+          >
+            {action.actionType}
+          </span>
+        </td>
+        <td className="px-3 py-3 whitespace-nowrap">
+          <TargetBadge type={action.targetType} id={action.targetId} />
+        </td>
+        <td className="hidden max-w-[240px] truncate px-3 py-3 xl:table-cell" title={action.reason}>
+          {action.reason}
+        </td>
+        <td className="figure hidden px-3 py-3 whitespace-nowrap text-ink-faint xl:table-cell">
+          {action.reportId ? `#${action.reportId.slice(-8)}` : "—"}
+        </td>
+        <td className="px-3 py-3 whitespace-nowrap">
+          {ENFORCED.includes(action.actionType) ? (
+            <span className="text-success">yes</span>
+          ) : (
+            <span className="text-pending">no consumer</span>
+          )}
+        </td>
+        <td className="px-5 py-3 text-right whitespace-nowrap text-ink-faint">
+          {relativeTime(action.createdAt)}
+        </td>
+      </tr>
+
+      {detail ? (
+        <RowDetail colSpan={7}>
+          {belowXl ? (
+            <>
+              <Field label="Action">{action.actionType}</Field>
+              <Field label="Report">
+                {action.reportId ? `#${action.reportId.slice(-8)}` : "—"}
+              </Field>
+              <Field label="Reason" wide>
+                {action.reason}
+              </Field>
+              <Field label="Enforced">
+                {ENFORCED.includes(action.actionType) ? "yes" : "no consumer"}
+              </Field>
+            </>
+          ) : null}
+
+          <Field label="Admin">
+            {loading && !target
+              ? `#${shortId(action.adminId.slice(-8), 8)}`
+              : (target?.adminHandle ?? `#${shortId(action.adminId.slice(-8), 8)}`)}
+          </Field>
+          <Field label="When">{formatDate(action.createdAt)}</Field>
+
+          {/* What the action was actually done to. A target with no preview is still worth
+              showing as such: a taken-down video or a deleted account resolves to nothing, and
+              that absence is itself information the admin reading the log needs. */}
+          <Field label="Target" wide>
+            {loading && !target ? (
+              <span className="text-ink-faint">Loading target…</span>
+            ) : target?.preview ? (
+              <span className="flex flex-wrap items-baseline gap-x-2">
+                <span>{target.preview.title}</span>
+                {target.preview.detail ? (
+                  <span className="text-[11px] text-ink-faint">· {target.preview.detail}</span>
+                ) : null}
+                {target.preview.href ? (
+                  <Link
+                    href={target.preview.href as never}
+                    className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    open →
+                  </Link>
+                ) : null}
+              </span>
+            ) : (
+              <span className="text-ink-faint">
+                {action.targetType} · {action.targetId.slice(-8)} — not found (deleted or unavailable)
+              </span>
+            )}
+          </Field>
+        </RowDetail>
+      ) : null}
+    </Fragment>
   );
 }
 

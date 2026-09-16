@@ -52,7 +52,7 @@ function parseCommentTarget(targetId: string): { videoId: string; commentId: str
   return { videoId, commentId };
 }
 
-async function loadPreview(
+export async function loadPreview(
   targetType: ReportTargetType,
   targetId: string,
 ): Promise<TargetPreview | null> {
