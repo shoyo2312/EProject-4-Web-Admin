@@ -23,7 +23,9 @@ export default async function CommentsPage({
   let videos;
   let comments: CommentPageView | null = null;
   try {
-    videos = await listVideos({ q, size: 100 });
+    // The picker is a search box, not a directory: the matches that fit the rail, and the
+    // admin narrows with q rather than paging to find a video.
+    videos = (await listVideos({ q, size: 50 })).content;
     // Only a video that is actually in the list may be opened: a videoId left in the URL from a
     // previous search would otherwise render a thread with nothing selected beside it.
     const selected = videoId && videos.some((v) => v.id === videoId) ? videoId : null;

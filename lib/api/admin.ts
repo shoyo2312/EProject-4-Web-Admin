@@ -51,6 +51,26 @@ export const COMMENT_PAGE_SIZE = 20;
 export const REPLY_PAGE_SIZE = 3;
 
 /**
+ * Rows per page in the directories and the moderation lists. Matches the `@PageableDefault`
+ * the four endpoints declare, so an unparameterised request and a page-0 request agree.
+ */
+export const LIST_PAGE_SIZE = 25;
+
+/**
+ * A mock slice shaped like the Spring page the live path returns, so a page reads the same
+ * fields either way and never branches on USE_MOCK.
+ */
+function mockPage<T>(rows: T[], page: number, size: number): Page<T> {
+  return {
+    content: rows.slice(page * size, page * size + size),
+    totalElements: rows.length,
+    totalPages: Math.max(1, Math.ceil(rows.length / size)),
+    number: page,
+    size,
+  };
+}
+
+/**
  * The clock every dated page measures against. Mock fixtures are generated from a
  * frozen instant, so bucketing them against the real now would land every row outside
  * the window and draw an empty chart.
@@ -66,30 +86,41 @@ export async function getStatsSummary(): Promise<StatsSummaryResponse> {
 
 export async function listReports(options: {
   status?: ReportStatus;
+  page?: number;
   size?: number;
-} = {}): Promise<ReportResponse[]> {
-  const { status, size = 50 } = options;
+} = {}): Promise<Page<ReportResponse>> {
+  const { status, page = 0, size = LIST_PAGE_SIZE } = options;
 
   if (USE_MOCK) {
     const filtered = status
       ? mockReports.filter((report) => report.status === status)
       : mockReports;
-    return filtered.slice(0, size);
+    return mockPage(filtered, page, size);
   }
 
-  const params = new URLSearchParams({ size: String(size), sort: "createdAt,desc" });
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc",
+  });
   if (status) params.set("status", status);
 
-  const page = await apiGet<Page<ReportResponse>>(`/api/v1/admin/reports?${params}`);
-  return page.content;
+  return apiGet<Page<ReportResponse>>(`/api/v1/admin/reports?${params}`);
 }
 
-export async function listModerationActions(size = 50): Promise<ModerationActionResponse[]> {
-  if (USE_MOCK) return mockModerationActions.slice(0, size);
+export async function listModerationActions(options: {
+  page?: number;
+  size?: number;
+} = {}): Promise<Page<ModerationActionResponse>> {
+  const { page = 0, size = LIST_PAGE_SIZE } = options;
+  if (USE_MOCK) return mockPage(mockModerationActions, page, size);
 
-  const params = new URLSearchParams({ size: String(size), sort: "createdAt,desc" });
-  const page = await apiGet<Page<ModerationActionResponse>>(`/api/v1/admin/actions?${params}`);
-  return page.content;
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: "createdAt,desc",
+  });
+  return apiGet<Page<ModerationActionResponse>>(`/api/v1/admin/actions?${params}`);
 }
 
 /**
@@ -240,32 +271,29 @@ export async function getDailySignups(days = 7): Promise<DailySignupResponse[]> 
 export async function listUsers(options: {
   q?: string;
   status?: UserStatus;
+  page?: number;
   size?: number;
-} = {}): Promise<AdminUserResponse[]> {
-  const { q, status, size = 100 } = options;
+} = {}): Promise<Page<AdminUserResponse>> {
+  const { q, status, page = 0, size = LIST_PAGE_SIZE } = options;
 
   if (USE_MOCK) {
     const needle = q?.trim().toLowerCase();
-    return mockUsers
-      .filter((user) => {
-        if (status && user.status !== status) return false;
-        if (!needle) return true;
-        return (
-          user.username.toLowerCase().includes(needle) ||
-          (user.email?.toLowerCase().includes(needle) ?? false)
-        );
-      })
-      .slice(0, size);
+    const filtered = mockUsers.filter((user) => {
+      if (status && user.status !== status) return false;
+      if (!needle) return true;
+      return (
+        user.username.toLowerCase().includes(needle) ||
+        (user.email?.toLowerCase().includes(needle) ?? false)
+      );
+    });
+    return mockPage(filtered, page, size);
   }
 
-  const params = new URLSearchParams({ size: String(size) });
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (q) params.set("q", q);
   if (status) params.set("status", status);
 
-  const page = await apiGet<Page<AdminUserResponse>>(
-    `/api/v1/auth/admin/users?${params}`,
-  );
-  return page.content;
+  return apiGet<Page<AdminUserResponse>>(`/api/v1/auth/admin/users?${params}`);
 }
 
 /**
@@ -302,26 +330,25 @@ export async function moderateUser(
 export async function listVideos(options: {
   q?: string;
   status?: VideoStatus;
+  page?: number;
   size?: number;
-} = {}): Promise<AdminVideoResponse[]> {
-  const { q, status, size = 100 } = options;
+} = {}): Promise<Page<AdminVideoResponse>> {
+  const { q, status, page = 0, size = LIST_PAGE_SIZE } = options;
 
   if (USE_MOCK) {
     const needle = q?.trim().toLowerCase();
-    return mockVideos
-      .filter((video) => {
-        if (status && video.status !== status) return false;
-        return !needle || video.title.toLowerCase().includes(needle);
-      })
-      .slice(0, size);
+    const filtered = mockVideos.filter((video) => {
+      if (status && video.status !== status) return false;
+      return !needle || video.title.toLowerCase().includes(needle);
+    });
+    return mockPage(filtered, page, size);
   }
 
-  const params = new URLSearchParams({ size: String(size) });
+  const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (q) params.set("q", q);
   if (status) params.set("status", status);
 
-  const page = await apiGet<Page<AdminVideoResponse>>(`/api/v1/videos/admin?${params}`);
-  return page.content;
+  return apiGet<Page<AdminVideoResponse>>(`/api/v1/videos/admin?${params}`);
 }
 
 /**

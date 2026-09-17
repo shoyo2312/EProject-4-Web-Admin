@@ -2,8 +2,9 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportsTable } from "@/components/moderation/reports-table";
 import { Card } from "@/components/ui/card";
-import { getStatsSummary, listReports, referenceNow } from "@/lib/api/admin";
-import { isoDay, parseAsOf } from "@/lib/api/window";
+import { Pager } from "@/components/ui/pager";
+import { LIST_PAGE_SIZE, getStatsSummary, listReports, referenceNow } from "@/lib/api/admin";
+import { isoDay, parseAsOf, parsePage } from "@/lib/api/window";
 import { formatNumber } from "@/lib/format";
 import type { StatsSummaryResponse } from "@/lib/api/types";
 
@@ -21,17 +22,19 @@ const SUMMARY: {
 export default async function ReportsQueuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ asOf?: string }>;
+  searchParams: Promise<{ asOf?: string; page?: string }>;
 }) {
+  const { asOf: asOfParam, page: pageParam } = await searchParams;
   const latest = isoDay(referenceNow());
-  const asOf = parseAsOf((await searchParams).asOf, latest);
+  const asOf = parseAsOf(asOfParam, latest);
+  const pageIndex = parsePage(pageParam);
 
   let stats;
-  let fetched;
+  let page;
   try {
-    [stats, fetched] = await Promise.all([
+    [stats, page] = await Promise.all([
       getStatsSummary(),
-      listReports({ size: 100 }),
+      listReports({ page: pageIndex }),
     ]);
   } catch (error) {
     return (
@@ -44,7 +47,10 @@ export default async function ReportsQueuePage({
 
   // The queue as it stood on the picked date, not the queue minus the newest rows:
   // resolution status is current either way, so this is "submitted by", not a snapshot.
-  const reports = fetched.filter((r) => r.createdAt.slice(0, 10) <= asOf);
+  // ponytail: the cut runs over the page rather than the query — admin-service takes no date
+  // parameter, so a page of newer reports comes back short instead of being skipped. The
+  // summary cards above are platform-wide counts from /stats/summary and ignore both.
+  const reports = page.content.filter((r) => r.createdAt.slice(0, 10) <= asOf);
 
   return (
     <>
@@ -67,7 +73,17 @@ export default async function ReportsQueuePage({
           ))}
         </div>
 
+        {/* The table's own search, status tabs and sort work over the rows on this page —
+            they are client-side, and the page is what the server sent. */}
         <ReportsTable reports={reports} />
+
+        <Pager
+          page={page.number}
+          totalPages={page.totalPages}
+          total={page.totalElements}
+          size={LIST_PAGE_SIZE}
+          label="reports"
+        />
       </div>
     </>
   );

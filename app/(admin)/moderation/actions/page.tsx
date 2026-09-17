@@ -2,24 +2,24 @@ import { AlertTriangle } from "lucide-react";
 import { ActionsTable } from "@/components/moderation/actions-table";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
-import { listModerationActions, referenceNow } from "@/lib/api/admin";
-import { isoDay, parseAsOf } from "@/lib/api/window";
+import { Pager } from "@/components/ui/pager";
+import { LIST_PAGE_SIZE, listModerationActions, referenceNow } from "@/lib/api/admin";
+import { isoDay, parseAsOf, parsePage } from "@/lib/api/window";
 import { ENFORCED } from "@/lib/moderation";
 
 export default async function AuditLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ asOf?: string }>;
+  searchParams: Promise<{ asOf?: string; page?: string }>;
 }) {
+  const { asOf: asOfParam, page: pageParam } = await searchParams;
   const latest = isoDay(referenceNow());
-  const asOf = parseAsOf((await searchParams).asOf, latest);
+  const asOf = parseAsOf(asOfParam, latest);
+  const pageIndex = parsePage(pageParam);
 
-  let actions;
+  let page;
   try {
-    // Append-only, so cutting at the picked date really is the log as it stood then.
-    actions = (await listModerationActions(100)).filter(
-      (a) => a.createdAt.slice(0, 10) <= asOf,
-    );
+    page = await listModerationActions({ page: pageIndex });
   } catch (error) {
     return (
       <>
@@ -29,6 +29,10 @@ export default async function AuditLogPage({
     );
   }
 
+  // Append-only, so cutting at the picked date really is the log as it stood then.
+  // ponytail: the cut runs over the page rather than the query — admin-service takes no date
+  // parameter, so a page of newer entries comes back short instead of being skipped.
+  const actions = page.content.filter((a) => a.createdAt.slice(0, 10) <= asOf);
   const unenforced = actions.filter(
     (a) => !ENFORCED.includes(a.actionType),
   ).length;
@@ -47,8 +51,8 @@ export default async function AuditLogPage({
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-pending" />
           <p className="text-[12px] text-ink-soft">
             <span className="font-semibold text-ink">
-              {unenforced} of {actions.length} actions are recorded but
-              not enforced.
+              {unenforced} of the {actions.length} actions on this page are
+              recorded but not enforced.
             </span>{" "}
             Video takedown/restore, user ban/unban and comment removal have
             consumers today. Warn and product suspension publish to{" "}
@@ -60,7 +64,17 @@ export default async function AuditLogPage({
         </div>
       ) : null}
 
+      {/* The table's own search, type tabs and sort work over the rows on this page —
+          they are client-side, and the page is what the server sent. */}
       <ActionsTable actions={actions} />
+
+      <Pager
+        page={page.number}
+        totalPages={page.totalPages}
+        total={page.totalElements}
+        size={LIST_PAGE_SIZE}
+        label="actions"
+      />
     </>
   );
 }

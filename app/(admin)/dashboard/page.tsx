@@ -38,7 +38,8 @@ export default async function DashboardPage({
       getEngagementSeries(asOfMs),
       // Over-fetched, then cut to the picked date: the eight newest reports as of
       // three weeks ago are not the eight newest today.
-      listReports({ size: 100 }),
+      // Only the newest slice — the dashboard card shows a handful and links to the queue.
+      listReports({ size: 8 }).then((page) => page.content),
     ]);
     data = { stats, signups, series, reports };
   } catch (error) {

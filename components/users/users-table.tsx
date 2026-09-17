@@ -435,6 +435,9 @@ function buildHref(
   status: StatusFilter,
 ) {
   const next = new URLSearchParams(params);
+  // Back to page one: page 3 of the previous result set is not page 3 of this one, and is
+  // usually past its end.
+  next.delete("page");
   if (term.trim()) next.set("q", term.trim());
   else next.delete("q");
   if (status !== "ALL") next.set("status", status);

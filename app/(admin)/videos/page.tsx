@@ -2,8 +2,9 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { VideosTable } from "@/components/videos/videos-table";
 import { Card } from "@/components/ui/card";
-import { getUserProfiles, listVideos, referenceNow } from "@/lib/api/admin";
-import { isoDay, parseAsOf } from "@/lib/api/window";
+import { Pager } from "@/components/ui/pager";
+import { LIST_PAGE_SIZE, getUserProfiles, listVideos, referenceNow } from "@/lib/api/admin";
+import { isoDay, parseAsOf, parsePage } from "@/lib/api/window";
 import { formatCompact, formatNumber } from "@/lib/format";
 import type { VideoStatus } from "@/lib/api/types";
 
@@ -24,20 +25,42 @@ function parseStatus(value: string | undefined): VideoStatus | undefined {
 export default async function VideosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; asOf?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; asOf?: string; page?: string }>;
 }) {
-  const { q, status, asOf: asOfParam } = await searchParams;
+  const { q, status, asOf: asOfParam, page: pageParam } = await searchParams;
   const filter = parseStatus(status);
   const latest = isoDay(referenceNow());
   const asOf = parseAsOf(asOfParam, latest);
+  const pageIndex = parsePage(pageParam);
 
-  let videos;
+  /**
+   * A status total across the whole library, not the page: a one-row request exists only for
+   * its `totalElements`. Counting the rows on screen would report "2 to review" when the
+   * queue holds four hundred.
+   */
+  const countByStatus = (s: VideoStatus) =>
+    listVideos({ q, status: s, size: 1 }).then((p) => p.totalElements);
+
+  let page;
+  let counts;
   try {
-    // Filtering server-side rather than over the fetched page: "show me everything taken down"
-    // must not depend on how many rows happened to come back.
-    videos = (await listVideos({ q, status: filter, size: 100 })).filter(
-      (v) => v.createdAt.slice(0, 10) <= asOf,
-    );
+    // Filtering and paging server-side rather than over the fetched rows: "show me everything
+    // taken down" must not depend on how many rows happened to come back.
+    const [listed, ...totals] = await Promise.all([
+      listVideos({ q, status: filter, page: pageIndex }),
+      countByStatus("PENDING_REVIEW"),
+      countByStatus("TAKEN_DOWN"),
+      countByStatus("REJECTED"),
+      countByStatus("PROCESSING"),
+      countByStatus("FAILED"),
+    ]);
+    page = listed;
+    const [review, down, rejected, processing, failed] = totals;
+    counts = {
+      awaitingReview: review,
+      takenDown: down + rejected,
+      stuck: processing + failed,
+    };
   } catch (error) {
     return (
       <>
@@ -47,13 +70,11 @@ export default async function VideosPage({
     );
   }
 
-  const takenDown = videos.filter(
-    (v) => v.status === "TAKEN_DOWN" || v.status === "REJECTED",
-  ).length;
-  const awaitingReview = videos.filter((v) => v.status === "PENDING_REVIEW").length;
-  const stuck = videos.filter(
-    (v) => v.status === "PROCESSING" || v.status === "FAILED",
-  ).length;
+  // ponytail: the date cut runs over the page rather than the query, because video-service
+  // takes no date parameter — a page of uploads newer than the picked date comes back short
+  // instead of being skipped. Push a `createdBefore` param into AdminVideoController if that
+  // starts to bite. The status totals above ignore it for the same reason.
+  const videos = page.content.filter((v) => v.createdAt.slice(0, 10) <= asOf);
   const views = videos.reduce((sum, v) => sum + v.viewCount, 0);
 
   // Owner handles for the rows on screen. user-service owns them; video-service only has the id.
@@ -72,9 +93,9 @@ export default async function VideosPage({
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <Card className="px-5 py-4">
-            <p className="label-caps text-ink-soft">Listed</p>
+            <p className="label-caps text-ink-soft">Matching</p>
             <p className="figure mt-2 text-[24px] font-bold">
-              {formatNumber(videos.length)}
+              {formatNumber(page.totalElements)}
             </p>
           </Card>
           <Card className="px-5 py-4">
@@ -83,7 +104,7 @@ export default async function VideosPage({
                 one nobody can watch until an admin looks. */}
             <p className="label-caps text-ink-soft">To Review</p>
             <p className="figure mt-2 text-[24px] font-bold text-pending">
-              {formatNumber(awaitingReview)}
+              {formatNumber(counts.awaitingReview)}
             </p>
           </Card>
           <Card className="px-5 py-4">
@@ -91,7 +112,7 @@ export default async function VideosPage({
                 for this count what matters is that the video is off the platform. */}
             <p className="label-caps text-ink-soft">Taken Down</p>
             <p className="figure mt-2 text-[24px] font-bold text-danger">
-              {formatNumber(takenDown)}
+              {formatNumber(counts.takenDown)}
             </p>
           </Card>
           <Card className="px-5 py-4">
@@ -99,9 +120,9 @@ export default async function VideosPage({
                 queue that stops draining shows up here before anywhere else. */}
             <p className="label-caps text-ink-soft">Not Playable</p>
             <p className="figure mt-2 text-[24px] font-bold text-pending">
-              {formatNumber(stuck)}
+              {formatNumber(counts.stuck)}
               <span className="ml-2 text-[11px] font-normal text-ink-faint">
-                {formatCompact(views)} views listed
+                {formatCompact(views)} views on this page
               </span>
             </p>
           </Card>
@@ -112,6 +133,14 @@ export default async function VideosPage({
           owners={owners}
           query={q ?? ""}
           status={filter ?? "ALL"}
+        />
+
+        <Pager
+          page={page.number}
+          totalPages={page.totalPages}
+          total={page.totalElements}
+          size={LIST_PAGE_SIZE}
+          label="videos"
         />
       </div>
     </>

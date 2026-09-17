@@ -123,3 +123,14 @@ export function bucketByGranularity<T extends { day: string }>(
   }
   return [...byMonth.values()];
 }
+
+/**
+ * The `?page=` a Pager writes, as a zero-based index. Anything that is not a whole number at
+ * or above 1 is page one: a hand-edited or stale value must not reach the backend as a
+ * negative offset, and there is nothing useful to show for "page banana".
+ */
+export function parsePage(value: string | undefined): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) return 0;
+  return parsed - 1;
+}
