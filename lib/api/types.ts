@@ -106,6 +106,8 @@ export interface AdminUserResponse {
   lastLoginAt: string | null;
   /** Set while status is BANNED; carries the reason from the ban event. Null otherwise. */
   bannedAt: string | null;
+  /** When the ban lapses. Null on a permanent one — and on every account that is not banned. */
+  bannedUntil: string | null;
   banReason: string | null;
   /** First linked social provider, or null for an email/password account. */
   provider: AuthProvider | null;
@@ -208,6 +210,27 @@ export interface ReportResponse {
   createdAt: string;
 }
 
+/**
+ * GET /api/v1/admin/reports/queue — ReportGroupResponse
+ *
+ * One row of the moderation worklist: every standing report against one target collapsed into
+ * the single decision to be made about it. Distinct from {@link ReportResponse}, which is one
+ * report — fifty people flagging one video is fifty of those and one of these.
+ */
+export interface ReportGroupResponse {
+  targetType: ReportTargetType;
+  targetId: string;
+  reportCount: number;
+  firstReportedAt: string;
+  lastReportedAt: string;
+  /** The newest report's scenario label, as the reporter picked it. */
+  latestReason: string;
+  /** The heaviest scenario reported against this target, 1–10. */
+  severity: number;
+  /** `reportCount × severity` — what the queue is ordered by, server-side. */
+  priority: number;
+}
+
 /** GET /api/v1/admin/actions — ModerationActionResponse */
 export interface ModerationActionResponse {
   id: string;
@@ -239,6 +262,32 @@ export interface DailyCountResponse {
 export interface DailySignupResponse {
   day: string;
   signups: number;
+}
+
+/** GET /api/v1/analytics/active-users/daily?days= — DailyActiveUsersResponse */
+export interface DailyActiveUsersResponse {
+  day: string;
+  activeUsers: number;
+}
+
+/** GET /api/v1/analytics/videos/top?days=&limit= — TopVideoResponse */
+export interface TopVideoResponse {
+  videoId: string;
+  views: number;
+  watchedMs: number;
+  completions: number;
+  viewers: number;
+}
+
+/**
+ * GET /api/v1/admin/settings/moderation — admin-service proxying moderation-service's /config.
+ *
+ * `values` is passed through untyped on purpose: admin-service does not read it either, so a
+ * field added on the moderation side shows up here without a release on this side.
+ */
+export interface ModerationSettingsResponse {
+  values: Record<string, string | number | boolean | string[]>;
+  reachable: boolean;
 }
 
 /** common-lib ApiResponse<T> — every service wraps its payload in this */

@@ -3,7 +3,13 @@ import { PageHeader } from "@/components/layout/page-header";
 import { VideosTable } from "@/components/videos/videos-table";
 import { Card } from "@/components/ui/card";
 import { Pager } from "@/components/ui/pager";
-import { LIST_PAGE_SIZE, getUserProfiles, listVideos, referenceNow } from "@/lib/api/admin";
+import {
+  LIST_PAGE_SIZE,
+  getUserProfiles,
+  listVideos,
+  referenceNow,
+  resolveOwners,
+} from "@/lib/api/admin";
 import { isoDay, parseAsOf, parsePage } from "@/lib/api/window";
 import { formatCompact, formatNumber } from "@/lib/format";
 import type { VideoStatus } from "@/lib/api/types";
@@ -33,21 +39,26 @@ export default async function VideosPage({
   const asOf = parseAsOf(asOfParam, latest);
   const pageIndex = parsePage(pageParam);
 
-  /**
-   * A status total across the whole library, not the page: a one-row request exists only for
-   * its `totalElements`. Counting the rows on screen would report "2 to review" when the
-   * queue holds four hundred.
-   */
-  const countByStatus = (s: VideoStatus) =>
-    listVideos({ q, status: s, size: 1 }).then((p) => p.totalElements);
-
   let page;
   let counts;
   try {
+    // A handle is a search term like any other to whoever typed it, but video-service has never
+    // heard of handles — it stores owner ids. Resolving here rather than inside listVideos keeps
+    // it to one directory call for the six listing calls below, which all share the term.
+    const ownerIds = q ? await resolveOwners(q) : [];
+
+    /**
+     * A status total across the whole library, not the page: a one-row request exists only for
+     * its `totalElements`. Counting the rows on screen would report "2 to review" when the
+     * queue holds four hundred.
+     */
+    const countByStatus = (s: VideoStatus) =>
+      listVideos({ q, ownerIds, status: s, size: 1 }).then((p) => p.totalElements);
+
     // Filtering and paging server-side rather than over the fetched rows: "show me everything
     // taken down" must not depend on how many rows happened to come back.
     const [listed, ...totals] = await Promise.all([
-      listVideos({ q, status: filter, page: pageIndex }),
+      listVideos({ q, ownerIds, status: filter, page: pageIndex }),
       countByStatus("PENDING_REVIEW"),
       countByStatus("TAKEN_DOWN"),
       countByStatus("REJECTED"),

@@ -1,6 +1,7 @@
 import type {
   ModerationActionResponse,
   ModerationActionType,
+  ReportGroupResponse,
   ReportResponse,
   ReportStatus,
   ReportTargetType,
@@ -11,18 +12,45 @@ import { mockUsers } from "./users";
 import { mockVideos } from "./videos";
 import { MOCK_NOW, between, pick, seededRandom } from "./random";
 
+/**
+ * The scenario labels the viewer-facing client actually sends (tiktok-cloned
+ * `lib/api/reports.ts`), stored verbatim as the report's reason. Fixtures use the real strings
+ * because admin-service ranks the queue by joining them against `report_reason_weights` — a
+ * made-up label would rank at the unknown-scenario default and the mock queue would come back
+ * in an order the live one never produces.
+ */
 const REASONS = [
-  "Spam or misleading content",
-  "Harassment or bullying",
-  "Hate speech",
-  "Nudity or sexual content",
-  "Dangerous acts / challenges",
-  "Sharing someone's private information",
+  "Suicide and self-harm",
+  "Violence, abuse, and criminal exploitation",
+  "Nudity and sexual content",
+  "Sharing personal information",
+  "Hate and harassment",
+  "Shocking and graphic content",
+  "Dangerous activities and challenges",
+  "Illegal activities and regulated goods",
+  "Frauds and scams",
+  "Deceptive behavior and spam",
+  "Misinformation",
   "Intellectual property violation",
-  "Impersonation of another account",
-  "Scam or fraudulent promotion",
-  "Violent or graphic content",
 ] as const;
+
+/** Mirrors the `report_reason_weights` seed in admin-service `V5__report_queue.sql`. */
+const REASON_WEIGHTS: Record<string, number> = {
+  "Suicide and self-harm": 10,
+  "Violence, abuse, and criminal exploitation": 9,
+  "Nudity and sexual content": 8,
+  "Sharing personal information": 7,
+  "Hate and harassment": 6,
+  "Shocking and graphic content": 5,
+  "Dangerous activities and challenges": 4,
+  "Illegal activities and regulated goods": 4,
+  "Regulated goods and activities": 4,
+  "Frauds and scams": 3,
+  "Deceptive behavior and spam": 2,
+  Misinformation: 2,
+  "Intellectual property violation": 1,
+  "Counterfeits and intellectual property": 1,
+};
 
 const TARGET_TYPES: ReportTargetType[] = ["VIDEO", "USER", "COMMENT"];
 
@@ -129,6 +157,43 @@ export const mockModerationActions: ModerationActionResponse[] = (() => {
       createdAt: new Date(MOCK_NOW - between(rand, 10, 60 * 24 * 6) * 60_000).toISOString(),
     };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+})();
+
+/**
+ * The worklist the way admin-service builds it: standing reports grouped by target, ordered by
+ * `reportCount × severity` with the longest wait breaking ties. Derived from mockReports rather
+ * than generated separately, so the grouped queue and the report ledger cannot disagree about
+ * how many reports stand against one target.
+ */
+export const mockReportQueue: ReportGroupResponse[] = (() => {
+  const groups = new Map<string, ReportResponse[]>();
+  for (const report of mockReports) {
+    if (report.status !== "PENDING") continue;
+    const key = `${report.targetType}\u0000${report.targetId}`;
+    groups.set(key, [...(groups.get(key) ?? []), report]);
+  }
+
+  return [...groups.values()]
+    .map((reports) => {
+      // Newest first, as the ledger fixture is sorted.
+      const dates = reports.map((r) => r.createdAt).sort();
+      // 2 for an unrecognised scenario — the same default the queue query applies.
+      const severity = Math.max(...reports.map((r) => REASON_WEIGHTS[r.reason] ?? 2));
+      return {
+        targetType: reports[0].targetType,
+        targetId: reports[0].targetId,
+        reportCount: reports.length,
+        firstReportedAt: dates[0],
+        lastReportedAt: dates[dates.length - 1],
+        latestReason: reports[0].reason,
+        severity,
+        priority: reports.length * severity,
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.priority - a.priority || a.firstReportedAt.localeCompare(b.firstReportedAt),
+    );
 })();
 
 export const mockStatsSummary: StatsSummaryResponse = {

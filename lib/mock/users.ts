@@ -41,6 +41,7 @@ export const mockUsers: AdminUserResponse[] = (() => {
           ? null
           : new Date(MOCK_NOW - between(rand, 0, 60) * DAY_MS).toISOString(),
       bannedAt: null,
+      bannedUntil: null,
       banReason: null,
       provider: social ? ("GOOGLE" as const) : null,
       linkedProviders: social ? ["GOOGLE" as const] : [],

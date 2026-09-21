@@ -55,7 +55,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "System",
     items: [
       { label: "Queues & DLQ", href: "/system/queues", icon: Radio },
-      { label: "Settings", href: "/settings", icon: Settings },
+      { label: "Settings", href: "/settings", icon: Settings, ready: true },
     ],
   },
 ];
@@ -72,3 +72,17 @@ export const ROUTE_TITLES: Record<string, { section: string; page: string }> = {
   "/system/queues": { section: "System", page: "Queues & DLQ" },
   "/settings": { section: "System", page: "Settings" },
 };
+
+/**
+ * The breadcrumb for a path, falling back to its parent's.
+ *
+ * A detail route — /users/123, /videos/abc — has no entry of its own and never will: the id is
+ * a row, not a page worth naming here. Without the fallback it hits the default and the
+ * breadcrumb reads "Dashboard / Overview" while the screen is showing an account.
+ */
+export function resolveCrumb(pathname: string): { section: string; page: string } {
+  const exact = ROUTE_TITLES[pathname];
+  if (exact) return exact;
+  const parent = pathname.slice(0, pathname.lastIndexOf("/"));
+  return ROUTE_TITLES[parent] ?? { section: "Dashboard", page: "Overview" };
+}

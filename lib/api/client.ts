@@ -53,7 +53,26 @@ async function request<T>(
     );
   }
 
-  return (body?.data ?? null) as T;
+  return flattenPage(body?.data ?? null) as T;
+}
+
+/**
+ * video-service and user-service run @EnableSpringDataWebSupport(VIA_DTO), so their Spring
+ * pages come back as `{ content, page: { size, number, totalElements, totalPages } }` while
+ * auth-service and admin-service still send the flat legacy shape. Levelling both to the flat
+ * `Page<T>` here keeps every caller from having to know which service answered — otherwise
+ * `page.totalElements` is undefined and every derived figure renders as NaN.
+ */
+function flattenPage(data: unknown): unknown {
+  if (
+    data && typeof data === "object"
+    && Array.isArray((data as { content?: unknown }).content)
+    && typeof (data as { page?: unknown }).page === "object"
+  ) {
+    const { page, ...rest } = data as { page: Record<string, unknown> };
+    return { ...rest, ...page };
+  }
+  return data;
 }
 
 export function apiGet<T>(path: string) {

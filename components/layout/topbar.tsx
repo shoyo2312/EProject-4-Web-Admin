@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Bell, ChevronRight, Inbox, Search } from "lucide-react";
-import { ROUTE_TITLES } from "./nav-config";
+import { resolveCrumb } from "./nav-config";
 import type { AdminSession } from "@/lib/api/session";
 
 export function Topbar({
@@ -13,7 +13,7 @@ export function Topbar({
   usingMockData: boolean;
 }) {
   const pathname = usePathname();
-  const crumb = ROUTE_TITLES[pathname] ?? { section: "Dashboard", page: "Overview" };
+  const crumb = resolveCrumb(pathname);
 
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3 md:gap-6 md:px-6">

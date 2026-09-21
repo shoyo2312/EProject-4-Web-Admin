@@ -17,6 +17,7 @@ import {
   sliceToWindow,
 } from "@/lib/api/window";
 import { getSessionProfile } from "@/lib/api/session";
+import { deltaPercent } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
 
 export default async function DashboardPage({
@@ -34,7 +35,9 @@ export default async function DashboardPage({
   try {
     const [stats, signups, series, reports] = await Promise.all([
       getStatsSummary(),
-      getDailySignups(window.fetchDays),
+      // Twice the display window, so the signup KPI can be compared against the period before
+      // it. The same pull the analytics page makes, for the same reason.
+      getDailySignups(window.compareDays),
       getEngagementSeries(asOfMs),
       // Over-fetched, then cut to the picked date: the eight newest reports as of
       // three weeks ago are not the eight newest today.
@@ -67,31 +70,43 @@ export default async function DashboardPage({
 
   const signupTotal = signupBuckets.reduce((sum, d) => sum + d.signups, 0);
 
+  // Daily and uncut, so the delta below compares the window against the window before it —
+  // signupBuckets is only the window itself, and has nothing behind it to compare to.
+  const signupCounts = signups
+    .filter((d) => d.day <= window.asOf)
+    .map((d) => d.signups);
+
+  /**
+   * No delta and no sparkline on the two moderation figures, because nothing on this page
+   * measures either of them over time: `/stats/summary` answers with a snapshot, and the only
+   * series to hand is engagement. Drawing engagement bars under "Pending Reports" and a
+   * percentage next to them invents a trend for a number that has none — and a dashboard is
+   * exactly where an invented trend gets believed and acted on.
+   *
+   * ponytail: an `actions_last_24h`-style daily series out of admin-service (or a
+   * `GET /admin/stats/daily`) is what would fill them in honestly. Until then, the figure alone.
+   */
   const cards: KpiCard[] = [
     {
       label: "Pending Reports",
       value: formatNumber(stats.pendingReports),
       unit: "Reports",
-      delta: 12,
-      deltaLabel: "vs yesterday",
-      // More reports waiting is worse, so an upward move reads red here
+      // More reports waiting is worse, so an upward move would read red here
       invertDelta: true,
-      spark: series[window.granularity].slice(-8).map((b) => b.secondary),
     },
     {
       label: "Actions (24h)",
       value: formatNumber(stats.actionsLast24h),
       unit: "Actions",
-      delta: 8,
-      deltaLabel: "vs yesterday",
-      spark: series[window.granularity].slice(-8).map((b) => b.primary),
     },
     {
       label: "New Signups",
       value: formatNumber(signupTotal),
       unit: "New Users",
-      delta: 4,
-      deltaLabel: `last ${window.granularity === "daily" ? "period" : "bucket"}`,
+      // Real, and the only one here that can be: signups come back as a daily series, pulled
+      // long enough above to hold the period before this one.
+      delta: deltaPercent(signupCounts, window.spanDays),
+      deltaLabel: `vs previous ${window.spanDays}d`,
       spark: signupBuckets.map((d) => d.signups),
     },
   ];

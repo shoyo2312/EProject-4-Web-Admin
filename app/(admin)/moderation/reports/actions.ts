@@ -7,6 +7,7 @@ import {
   getVideo,
   getComments,
   listTargetActions,
+  resolveQueueRow,
   resolveReport,
 } from "@/lib/api/admin";
 import type {
@@ -59,13 +60,13 @@ export async function loadPreview(
   if (targetType === "USER") {
     const profile = (await getUserProfiles([targetId]))[targetId];
     if (!profile) return null;
-    // A handle is how the user directory is searched, so an account without one (user-service
-    // has not filled it in yet) gets the id back and no link rather than a link that finds
-    // nothing.
     return {
       title: profile.username ? `@${profile.username}` : `#${targetId.slice(-8)}`,
       detail: `${profile.followerCount} followers`,
-      href: profile.username ? `/users?q=${encodeURIComponent(profile.username)}` : null,
+      // The account's own page, by id. A search link lands on a result set instead — several
+      // rows for a handle that is a common substring, and none at all for an account that has
+      // no handle yet.
+      href: `/users/${targetId}`,
     };
   }
 
@@ -73,13 +74,13 @@ export async function loadPreview(
     const video = await getVideo(targetId);
     if (!video) return null;
     // Deleted first: a deleted video keeps whatever status it had, so showing PUBLISHED alone
-    // would read as a video still up. The listing drops it, so there is nothing to link to.
+    // would read as a video still up.
     return {
       title: video.title,
       detail: video.deletedAt ? "deleted by its owner" : video.status,
-      // Searched by title rather than id: the admin listing matches titles only, so this is the
-      // only link that actually lands on the row.
-      href: video.deletedAt ? null : `/videos?q=${encodeURIComponent(video.title)}`,
+      // By id, and always present: the video's own page reads back what the listing cannot —
+      // a taken-down video, and one its owner deleted after the report came in.
+      href: `/videos/${targetId}`,
     };
   }
 
@@ -110,6 +111,41 @@ export async function reportTargetDetailAction(
     loadPreview(targetType, targetId).catch(() => null),
   ]);
   return { reportCount, actions, preview };
+}
+
+/**
+ * Close one queue row: the decision about the target, and with it every report standing against
+ * it. The per-report path below is the report ledger's; this is the queue's, because a queue row
+ * is a target and an admin looking at it is making one decision about that target.
+ *
+ * Same caveat as {@link resolveReportAction}: the enforcement lands when the owning service
+ * consumes the event, not by the time this returns.
+ */
+export async function resolveQueueAction(
+  targetType: ReportTargetType,
+  targetId: string,
+  actionType: ModerationActionType,
+  reason: string,
+): Promise<ModerationResult> {
+  if (!reason.trim()) {
+    return { ok: false, message: "A reason is required — it goes into the audit log." };
+  }
+
+  try {
+    await resolveQueueRow(targetType, targetId, actionType, reason.trim());
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+  }
+
+  revalidatePath("/moderation/reports");
+  revalidatePath("/moderation/actions");
+  return {
+    ok: true,
+    message:
+      actionType === "DISMISS_REPORT"
+        ? "Dismissed. Nothing happens to the target; every report against it is closed and the decision is in the audit log."
+        : "Resolved. Every report against this target is closed now, and the action is applied once the owning service consumes the event.",
+  };
 }
 
 /**

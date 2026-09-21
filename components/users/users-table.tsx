@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Ban, Search, ShieldCheck } from "lucide-react";
 import {
@@ -12,6 +13,8 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
+import { ReasonForm } from "@/components/moderation/reason-form";
+import { PRESET_REASONS } from "@/lib/moderation";
 import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
 import { formatDate, relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -29,34 +32,6 @@ const STATUS_STYLES: Record<UserStatus, string> = {
   ACTIVE: "border-success/25 bg-success-bg text-success",
   BANNED: "border-danger/25 bg-danger-bg text-danger",
   LOCKED: "border-line bg-neutral-bg text-neutral",
-};
-
-/**
- * Preset reasons, per action. They are written to read on their own months later, because what
- * ends up in the audit row is this exact string and nothing else — "spam" alone tells a reviewer
- * nothing about what the account actually did.
- *
- * Shortcuts, not a closed list: a preset fills the box and the box stays editable, so an admin can
- * pick the closest one and add the specifics. That is also the "other" case — there is no separate
- * mode to switch into, just an empty box.
- */
-const PRESET_REASONS: Record<"ban" | "unban", readonly string[]> = {
-  ban: [
-    "Repeated policy violations",
-    "Spam or bot activity",
-    "Harassment or hate speech",
-    "Sexual content involving a minor",
-    "Scam or fraudulent selling",
-    "Impersonating another person",
-    "Ban evasion — duplicate account",
-    "Compromised account",
-  ],
-  unban: [
-    "Appeal upheld — no violation",
-    "Banned in error",
-    "Reviewed again, within policy",
-    "Account recovered by its owner",
-  ],
 };
 
 /**
@@ -162,7 +137,6 @@ function UserRow({
   user: AdminUserResponse;
 }) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [detail, setDetail] = useState(false);
@@ -219,12 +193,6 @@ function UserRow({
   const action = user.status === "BANNED" ? "unban" : "ban";
   const presets = PRESET_REASONS[action];
 
-  function choosePreset(preset: string) {
-    // Toggling off leaves an empty box rather than the previous text: clicking the highlighted
-    // chip is how an admin says "not that one", and re-showing what they just rejected is wrong.
-    setReason((current) => (current === preset ? "" : preset));
-    inputRef.current?.focus();
-  }
   // An admin who bans themselves loses the console with no way back in — the bootstrap
   // account is provisioned at startup and there is no second admin to undo it.
   const selfDestructive = user.role === "ADMIN" && action === "ban";
@@ -342,6 +310,9 @@ function UserRow({
           {user.bannedAt ? (
             <Field label="Banned" wide>
               {formatDate(user.bannedAt)}
+              {/* A temporary ban reads as a permanent one without this, and the account
+                  coming back by itself a week later reads as a bug. */}
+              {user.bannedUntil ? ` until ${formatDate(user.bannedUntil)}` : " — permanent"}
               {user.banReason ? ` — ${user.banReason}` : ""}
             </Field>
           ) : null}
@@ -352,63 +323,30 @@ function UserRow({
               loading={modLoading}
             />
           </Field>
+          <Field label="" wide>
+            <Link
+              href={`/users/${user.id}` as never}
+              className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+            >
+              Open this account&apos;s page →
+            </Link>
+          </Field>
         </RowDetail>
       ) : null}
 
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">
           <td colSpan={6} className="px-5 py-3">
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              {presets.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  aria-pressed={reason === preset}
-                  onClick={() => choosePreset(preset)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
-                    reason === preset
-                      ? "border-ink bg-ink text-surface"
-                      : "border-line bg-surface text-ink-soft hover:bg-canvas",
-                  )}
-                >
-                  {preset}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => choosePreset("")}
-                className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] text-ink-faint transition-colors hover:bg-canvas"
-              >
-                Other…
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                ref={inputRef}
-                autoFocus
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={`Reason for ${action}ning @${user.username} — pick one above or write your own`}
-                className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-[11px] outline-none placeholder:text-ink-faint"
-              />
-              <button
-                type="button"
-                onClick={submit}
-                disabled={submitting || !reason.trim()}
-                className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
-              >
-                {submitting ? "Submitting..." : `Confirm ${action}`}
-              </button>
-              <button
-                type="button"
-                onClick={() => setReason(null)}
-                className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
-              >
-                Cancel
-              </button>
-            </div>
+            <ReasonForm
+              presets={presets}
+              reason={reason}
+              onReason={setReason}
+              onSubmit={submit}
+              onCancel={() => setReason(null)}
+              submitting={submitting}
+              placeholder={`Reason for ${action}ning @${user.username} — pick one above or write your own`}
+              confirmLabel={`Confirm ${action}`}
+            />
           </td>
         </tr>
       ) : null}

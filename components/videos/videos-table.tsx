@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { EyeOff, Play, RotateCcw, Search, X } from "lucide-react";
 import {
@@ -14,6 +15,8 @@ import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
+import { ReasonForm } from "@/components/moderation/reason-form";
+import { PRESET_REASONS, playable } from "@/lib/moderation";
 import type {
   AdminVideoResponse,
   UserProfileResponse,
@@ -45,50 +48,6 @@ const STATUS_STYLES: Record<VideoStatus, string> = {
   REJECTED: "border-danger/25 bg-danger-bg text-danger",
   TAKEN_DOWN: "border-danger/25 bg-danger-bg text-danger",
 };
-
-/**
- * Preset reasons, per action. They are written to read on their own months later, because what
- * ends up in the audit row is this exact string and nothing else — "spam" alone tells a reviewer
- * nothing about what was actually removed.
- *
- * Shortcuts, not a closed list: a preset fills the box and the box stays editable, so an admin can
- * pick the closest one and add the specifics. That is also the "other" case — there is no separate
- * mode to switch into, just an empty box.
- */
-const PRESET_REASONS: Record<"takedown" | "restore", readonly string[]> = {
-  takedown: [
-    "Sexual or nude content",
-    "Graphic violence",
-    "Hate speech or harassment",
-    "Dangerous act likely to be imitated",
-    "Spam or scam",
-    "Copyright infringement",
-    "Harmful misinformation",
-    "Involves a minor",
-  ],
-  restore: [
-    "Reviewed — automatic flag was wrong",
-    "Appeal upheld — no violation",
-    "Taken down in error",
-    "Reviewed again, within policy",
-    "Rights holder withdrew the claim",
-  ],
-};
-
-/**
- * A video nobody can watch has no meaningful view or like total to show. The
- * moderation states qualify: the file is transcoded and playable, it is only
- * held back — and a reviewer needs to open it to decide.
- */
-function playable(status: VideoStatus) {
-  return (
-    status === "PUBLISHED" ||
-    status === "TAKEN_DOWN" ||
-    status === "REJECTED" ||
-    status === "PENDING_REVIEW" ||
-    status === "PENDING_MODERATION"
-  );
-}
 
 /**
  * What the classifier said, phrased for the reason column.
@@ -174,7 +133,7 @@ export function VideosTable({
               <input
                 value={term}
                 onChange={(e) => setTerm(e.target.value)}
-                placeholder="Search title..."
+                placeholder="Search title or owner..."
                 className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
               />
             </label>
@@ -292,8 +251,6 @@ function VideoRow({
     return () => timers.forEach(clearTimeout);
   }, [awaiting, pending, router]);
 
-  const inputRef = useRef<HTMLInputElement>(null);
-
   // Approving what automatic moderation held back is the same write as undoing
   // an admin's takedown — both put the video back to PUBLISHED through
   // VideoRestoredEvent — so it is the same action rather than a second one.
@@ -305,13 +262,6 @@ function VideoRow({
       : "takedown";
   const watchable = playable(video.status);
   const presets = PRESET_REASONS[action];
-
-  function choosePreset(preset: string) {
-    // Toggling off leaves an empty box rather than the previous text: clicking the highlighted
-    // chip is how an admin says "not that one", and re-showing what they just rejected is wrong.
-    setReason((current) => (current === preset ? "" : preset));
-    inputRef.current?.focus();
-  }
 
   function submit() {
     startSubmit(async () => {
@@ -507,63 +457,30 @@ function VideoRow({
               loading={modLoading}
             />
           </Field>
+          <Field label="" wide>
+            <Link
+              href={`/videos/${video.id}` as never}
+              className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+            >
+              Open this video&apos;s page →
+            </Link>
+          </Field>
         </RowDetail>
       ) : null}
 
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">
           <td colSpan={9} className="px-5 py-3">
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              {presets.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  aria-pressed={reason === preset}
-                  onClick={() => choosePreset(preset)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
-                    reason === preset
-                      ? "border-ink bg-ink text-surface"
-                      : "border-line bg-surface text-ink-soft hover:bg-canvas",
-                  )}
-                >
-                  {preset}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => choosePreset("")}
-                className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] text-ink-faint transition-colors hover:bg-canvas"
-              >
-                Other…
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                ref={inputRef}
-                autoFocus
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder={`Reason for ${action === "takedown" ? "taking down" : "restoring"} "${video.title}" — pick one above or write your own`}
-                className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-[11px] outline-none placeholder:text-ink-faint"
-              />
-              <button
-                type="button"
-                onClick={submit}
-                disabled={submitting || !reason.trim()}
-                className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
-              >
-                {submitting ? "Submitting..." : `Confirm ${action}`}
-              </button>
-              <button
-                type="button"
-                onClick={() => setReason(null)}
-                className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
-              >
-                Cancel
-              </button>
-            </div>
+            <ReasonForm
+              presets={presets}
+              reason={reason}
+              onReason={setReason}
+              onSubmit={submit}
+              onCancel={() => setReason(null)}
+              submitting={submitting}
+              placeholder={`Reason for ${action === "takedown" ? "taking down" : "restoring"} "${video.title}" — pick one above or write your own`}
+              confirmLabel={`Confirm ${action}`}
+            />
           </td>
         </tr>
       ) : null}

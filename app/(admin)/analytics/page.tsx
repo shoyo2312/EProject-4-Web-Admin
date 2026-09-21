@@ -1,12 +1,15 @@
 import { AudienceGrowth } from "@/components/analytics/audience-growth";
 import { EngagementMix } from "@/components/analytics/engagement-mix";
+import { TopVideos } from "@/components/analytics/top-videos";
 import { EngagementTrend } from "@/components/dashboard/engagement-trend";
 import { KpiCards, type KpiCard } from "@/components/dashboard/kpi-cards";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import {
+  getDailyActiveUsers,
   getDailySignups,
   getEngagementOverview,
+  getTopVideos,
   referenceNow,
 } from "@/lib/api/admin";
 import {
@@ -16,33 +19,8 @@ import {
   resolveWindow,
   sliceToWindow,
 } from "@/lib/api/window";
+import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatCompact, formatDate, formatNumber } from "@/lib/format";
-
-/**
- * Percentage change of the last `size` entries against the `size` before them.
- * The dashboard shows hardcoded deltas; here the doubled pull makes a real one cheap.
- */
-function deltaPercent(values: number[], size: number) {
-  const recent = values.slice(-size).reduce((sum, v) => sum + v, 0);
-  const previous = values.slice(-size * 2, -size).reduce((sum, v) => sum + v, 0);
-  if (previous === 0) return 0;
-  return Math.round(((recent - previous) / previous) * 100);
-}
-
-function sumLast(values: number[], size: number) {
-  return values.slice(-size).reduce((sum, v) => sum + v, 0);
-}
-
-/** Eight buckets is what Sparkbars is drawn for; more than that and they stop reading. */
-function spark(values: number[], size: number) {
-  const window = values.slice(-size);
-  const step = Math.max(Math.ceil(window.length / 8), 1);
-  const buckets: number[] = [];
-  for (let i = 0; i < window.length; i += step) {
-    buckets.push(window.slice(i, i + step).reduce((sum, v) => sum + v, 0));
-  }
-  return buckets;
-}
 
 export default async function AnalyticsPage({
   searchParams,
@@ -58,11 +36,15 @@ export default async function AnalyticsPage({
   let data;
   try {
     // Twice the display window, so every KPI can be compared against the period before it.
-    const [signups, engagement] = await Promise.all([
-      getDailySignups(window.fetchDays + window.spanDays),
+    const [signups, engagement, activeUsers, topVideos] = await Promise.all([
+      getDailySignups(window.compareDays),
       getEngagementOverview(asOfMs),
+      getDailyActiveUsers(window.compareDays),
+      // The window's own span, not the doubled one: this list is "what people watched over
+      // these days", and there is nothing to compare it against.
+      getTopVideos(window.spanDays),
     ]);
-    data = { signups, engagement };
+    data = { signups, engagement, activeUsers, topVideos };
   } catch (error) {
     return (
       <>
@@ -72,7 +54,7 @@ export default async function AnalyticsPage({
     );
   }
 
-  const { signups, engagement } = data;
+  const { signups, engagement, activeUsers, topVideos } = data;
   const span = window.spanDays;
   const unit = BUCKET_UNIT[window.granularity];
 
@@ -81,6 +63,11 @@ export default async function AnalyticsPage({
   const signupHistory = signups.filter((d) => d.day <= window.asOf);
 
   const signupCounts = signupHistory.map((d) => d.signups);
+
+  // Average over the span rather than the latest day: one day's figure is a weekday or a
+  // weekend, and the card sits next to a delta that compares two spans.
+  const dauCounts = activeUsers.filter((d) => d.day <= window.asOf).map((d) => d.activeUsers);
+  const dauAverage = dauCounts.length === 0 ? 0 : Math.round(sumLast(dauCounts, span) / span);
 
   const engagementTotal = engagement.mix.reduce((sum, row) => sum + row.total, 0);
 
@@ -92,6 +79,14 @@ export default async function AnalyticsPage({
       delta: deltaPercent(signupCounts, span),
       deltaLabel: `vs previous ${span}d`,
       spark: spark(signupCounts, span),
+    },
+    {
+      label: "Daily Active Users",
+      value: dauCounts.length === 0 ? "—" : formatNumber(dauAverage),
+      unit: `Average over ${span}d`,
+      delta: deltaPercent(dauCounts, span),
+      deltaLabel: `vs previous ${span}d`,
+      spark: spark(dauCounts, span),
     },
     {
       label: "Engagement Events",
@@ -137,6 +132,8 @@ export default async function AnalyticsPage({
         </div>
 
         <AudienceGrowth days={signupBuckets} unit={unit} />
+
+        <TopVideos rows={topVideos} days={span} />
       </div>
     </>
   );

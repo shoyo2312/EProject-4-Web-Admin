@@ -41,13 +41,15 @@ export async function moderateUserAction(
   userId: string,
   action: "ban" | "unban",
   reason: string,
+  /** Days until the ban lapses; null is permanent. auth-service lifts it on a sweep. */
+  banDays: number | null = null,
 ): Promise<ModerationResult> {
   if (!reason.trim()) {
     return { ok: false, message: "A reason is required — it goes into the audit log." };
   }
 
   try {
-    await moderateUser(userId, action, reason.trim());
+    await moderateUser(userId, action, reason.trim(), banDays);
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
@@ -57,7 +59,9 @@ export async function moderateUserAction(
     ok: true,
     message:
       action === "ban"
-        ? "Ban recorded. Sessions are revoked once auth-service consumes the event."
+        ? banDays === null
+          ? "Ban recorded. Sessions are revoked once auth-service consumes the event."
+          : `Ban recorded for ${banDays} day${banDays === 1 ? "" : "s"}. It lifts on its own once the deadline passes.`
         : "Unban recorded. The account can sign in again once the event is consumed.",
   };
 }

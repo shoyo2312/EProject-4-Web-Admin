@@ -61,6 +61,9 @@ export function parseAsOf(value: string | undefined, latest: string): string {
   return value > latest ? latest : value;
 }
 
+/** The analytics endpoints reject `days` above this. */
+const API_MAX_DAYS = 365;
+
 export interface TimeWindow {
   granularity: Granularity;
   /** Inclusive end of the window, YYYY-MM-DD. */
@@ -69,6 +72,11 @@ export interface TimeWindow {
   spanDays: number;
   /** What to ask the API for: the window, plus the gap back from today to `asOf`. */
   fetchDays: number;
+  /**
+   * `fetchDays` plus one more span, so a KPI can be compared against the period
+   * before it — clamped to what the API accepts.
+   */
+  compareDays: number;
 }
 
 export function resolveWindow(
@@ -78,11 +86,13 @@ export function resolveWindow(
   const granularity = parseGranularity(params.g);
   const asOf = parseAsOf(params.asOf, latest);
   const spanDays = SPAN_DAYS[granularity];
+  const fetchDays = daysBetween(asOf, latest) + spanDays;
   return {
     granularity,
     asOf,
     spanDays,
-    fetchDays: daysBetween(asOf, latest) + spanDays,
+    fetchDays,
+    compareDays: Math.min(fetchDays + spanDays, API_MAX_DAYS),
   };
 }
 

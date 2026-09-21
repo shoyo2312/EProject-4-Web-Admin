@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronsUpDown, Gavel, Search } from "lucide-react";
 import {
   reportTargetDetailAction,
@@ -14,6 +14,8 @@ import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
+import { ResolveForm } from "@/components/moderation/resolve-form";
+import type { ReportSortField } from "@/lib/moderation";
 import type {
   ModerationActionType,
   ReportResponse,
@@ -26,7 +28,19 @@ import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = ReportStatus | "ALL";
-type SortKey = "id" | "target" | "status" | "createdAt";
+type TargetFilter = ReportTargetType | "ALL";
+
+/**
+ * What the server was asked for, echoed back so the controls can show it. Present only where
+ * the ledger is paged and the backend does the narrowing; the dashboard's eight-row card passes
+ * nothing and draws no controls, because there is nothing there worth filtering.
+ */
+export interface ReportsFilter {
+  status: StatusFilter;
+  targetType: TargetFilter;
+  sort: ReportSortField;
+  ascending: boolean;
+}
 
 const COLUMNS = 7;
 
@@ -37,124 +51,85 @@ const STATUS_FILTERS = [
   { value: "DISMISSED" as const, label: "Dismissed" },
 ];
 
-/**
- * What a moderator may decide about each kind of target. Narrower than ModerationActionType on
- * purpose: resolving a report copies the report's own targetType onto the action, so offering
- * BAN_USER against a VIDEO would write an audit row no consumer can apply. RESTORE_VIDEO and
- * UNBAN_USER are absent for the same reason — a report is never the thing that undoes an action.
- */
-const ACTIONS_BY_TARGET: Record<
-  ReportTargetType,
-  readonly { value: ModerationActionType; label: string }[]
-> = {
-  VIDEO: [
-    { value: "TAKEDOWN_VIDEO", label: "Take down video" },
-    { value: "DISMISS_REPORT", label: "Dismiss report" },
-  ],
-  COMMENT: [
-    { value: "REMOVE_COMMENT", label: "Remove comment" },
-    { value: "DISMISS_REPORT", label: "Dismiss report" },
-  ],
-  USER: [
-    { value: "BAN_USER", label: "Ban account" },
-    { value: "WARN_USER", label: "Warn account" },
-    { value: "DISMISS_REPORT", label: "Dismiss report" },
-  ],
-};
-
-/**
- * Preset reasons. What ends up in the audit row is this exact string and nothing else, so they are
- * written to read on their own months later. Shortcuts, not a closed list: a preset fills the box
- * and the box stays editable — that is also the "other" case, no second mode to switch into.
- */
-const ENFORCE_PRESETS = [
-  "Confirmed the reported violation",
-  "Repeat offence after an earlier warning",
-  "Spam or scam — coordinated posting",
-  "Sexual content",
-  "Harassment of a named person",
-] as const;
-
-const DISMISS_PRESETS = [
-  "Reviewed — no policy violation",
-  "Duplicate of an earlier report on the same target",
-  "Already actioned under another report",
-  "Not enough in the report to act on",
-] as const;
+const TARGET_FILTERS = [
+  { value: "ALL" as const, label: "Any" },
+  { value: "VIDEO" as const, label: "Videos" },
+  { value: "USER" as const, label: "Accounts" },
+  { value: "COMMENT" as const, label: "Comments" },
+];
 
 export function ReportsTable({
   reports,
+  title = "Reports Queue",
   limit,
   footerHref,
+  filter,
 }: {
   reports: ReportResponse[];
+  /** The ledger sits under the real queue on the Reports page, where both titles would read alike. */
+  title?: string;
   /** Dashboard shows a slice; the Reports Queue page shows everything. */
   limit?: number;
   footerHref?: string;
+  /**
+   * Given by a page that fetched this ledger filtered and ordered server-side. It turns the
+   * controls on — they write to the URL and the next render is a fresh query. Without it the
+   * table is a read-only card: a status tab over one page would claim to be a platform total.
+   */
+  filter?: ReportsFilter;
 }) {
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<StatusFilter>("ALL");
-  const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({
-    key: "createdAt",
-    asc: false,
-  });
   const belowXl = useBelowXl();
+  const [query, setQuery] = useState("");
 
+  /**
+   * Status, target and ordering are the server's answer already. The box is the one control
+   * that cannot be: admin-service's listing takes no search term, so this narrows the rows on
+   * screen and says so — hence "on this page" rather than "Search reports", which is what a
+   * moderator would reasonably read as "in the ledger".
+   *
+   * ponytail: a `q` on `GET /api/v1/admin/reports` matching the reason and the target id is
+   * what would make it a real search. Worth it the first time someone has to find one report
+   * by id across pages.
+   */
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const filtered = reports.filter((report) => {
-      if (status !== "ALL" && report.status !== status) return false;
-      if (!needle) return true;
-      const handle = MOCK_REPORTER_HANDLES[report.reporterId] ?? "";
-      return (
-        report.id.includes(needle) ||
-        report.targetId.includes(needle) ||
-        report.targetType.toLowerCase().includes(needle) ||
-        report.reason.toLowerCase().includes(needle) ||
-        handle.toLowerCase().includes(needle)
-      );
-    });
-
-    const direction = sort.asc ? 1 : -1;
-    const sorted = [...filtered].sort((a, b) => {
-      switch (sort.key) {
-        case "id":
-          return a.id.localeCompare(b.id) * direction;
-        case "target":
-          return a.targetType.localeCompare(b.targetType) * direction;
-        case "status":
-          return a.status.localeCompare(b.status) * direction;
-        default:
-          return a.createdAt.localeCompare(b.createdAt) * direction;
-      }
-    });
-
-    return limit ? sorted.slice(0, limit) : sorted;
-  }, [reports, query, status, sort, limit]);
+    const matching = needle
+      ? reports.filter((report) => {
+          const handle = MOCK_REPORTER_HANDLES[report.reporterId] ?? "";
+          return (
+            report.id.includes(needle)
+            || report.targetId.includes(needle)
+            || report.targetType.toLowerCase().includes(needle)
+            || report.reason.toLowerCase().includes(needle)
+            || handle.toLowerCase().includes(needle)
+          );
+        })
+      : reports;
+    return limit ? matching.slice(0, limit) : matching;
+  }, [reports, query, limit]);
 
   return (
     <Card>
       <CardHeader
-        title="Reports Queue"
+        title={title}
         hint="GET /api/v1/admin/reports — resolve writes a moderation action and emits a Kafka event"
         actions={
-          <>
-            <label className="flex w-[180px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 lg:w-[240px]">
-              <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search reports..."
-                className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
-              />
-            </label>
-            <Segmented
-              options={STATUS_FILTERS}
-              value={status}
-              onChange={setStatus}
-            />
+          filter ? (
+            <>
+              <label className="flex w-[180px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 lg:w-[240px]">
+                <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Filter rows on this page..."
+                  className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
+                />
+              </label>
+              <LedgerControls filter={filter} />
+            </>
+          ) : (
             <CardMenuButton />
-          </>
+          )
         }
       />
 
@@ -165,31 +140,19 @@ export function ReportsTable({
               <SortableHeader
                 label="ID"
                 sortKey="id"
-                sort={sort}
-                onSort={setSort}
+                filter={filter}
                 className="hidden pl-5 xl:table-cell"
               />
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reporter</th>
               <SortableHeader
                 label="Target"
-                sortKey="target"
-                sort={sort}
-                onSort={setSort}
+                sortKey="targetType"
+                filter={filter}
                 className="pl-5 xl:pl-3"
               />
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reason</th>
-              <SortableHeader
-                label="Status"
-                sortKey="status"
-                sort={sort}
-                onSort={setSort}
-              />
-              <SortableHeader
-                label="Created"
-                sortKey="createdAt"
-                sort={sort}
-                onSort={setSort}
-              />
+              <SortableHeader label="Status" sortKey="status" filter={filter} />
+              <SortableHeader label="Created" sortKey="createdAt" filter={filter} />
               <th className="label-caps px-5 py-3 text-right text-ink-soft">
                 Actions
               </th>
@@ -237,14 +200,11 @@ function ReportRow({
   const [detail, setDetail] = useState(false);
   const [target, setTarget] = useState<ReportTargetDetail | null>(null);
   const [targetLoading, setTargetLoading] = useState(false);
-  /** Null while the resolve form is closed; the chosen action once it is open. */
-  const [action, setAction] = useState<ModerationActionType | null>(null);
-  const [reason, setReason] = useState("");
+  const [resolving, setResolving] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
 
   const pending = report.status === "PENDING";
-  const choices = ACTIONS_BY_TARGET[report.targetType];
   const reporter = MOCK_REPORTER_HANDLES[report.reporterId]
     ? `@${MOCK_REPORTER_HANDLES[report.reporterId]}`
     : `#${report.reporterId.slice(-6)}`;
@@ -262,13 +222,12 @@ function ReportRow({
     }
   }
 
-  function submit() {
-    if (!action) return;
+  function submit(action: ModerationActionType, reason: string) {
     startSubmit(async () => {
       const outcome = await resolveReportAction(report.id, action, reason);
       setResult(outcome.message);
       if (outcome.ok) {
-        setAction(null);
+        setResolving(false);
         // The report's own status is written synchronously, so one re-read shows it. The
         // enforcement it triggers lands on the target's service later, which is what the
         // returned message says rather than a spinner that lies.
@@ -276,8 +235,6 @@ function ReportRow({
       }
     });
   }
-
-  const presets = action === "DISMISS_REPORT" ? DISMISS_PRESETS : ENFORCE_PRESETS;
 
   return (
     <Fragment>
@@ -314,12 +271,7 @@ function ReportRow({
             <button
               type="button"
               onClick={() => {
-                if (action !== null) {
-                  setAction(null);
-                  return;
-                }
-                setAction(choices[0].value);
-                setReason("");
+                setResolving((open) => !open);
                 setResult(null);
               }}
               className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors hover:bg-surface"
@@ -397,89 +349,16 @@ function ReportRow({
         </RowDetail>
       ) : null}
 
-      {action !== null ? (
+      {resolving ? (
         <tr className="border-b border-line bg-surface-muted">
           <td colSpan={COLUMNS} className="px-5 py-3">
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              {choices.map((choice) => (
-                <button
-                  key={choice.value}
-                  type="button"
-                  aria-pressed={action === choice.value}
-                  onClick={() => setAction(choice.value)}
-                  className={cn(
-                    "rounded-md border px-2.5 py-1 text-[11px] transition-colors",
-                    action === choice.value
-                      ? "border-ink bg-ink text-surface"
-                      : "border-line bg-surface text-ink-soft hover:bg-canvas",
-                  )}
-                >
-                  {choice.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              {/* The reporter's own words first, for an enforcement: most of them agree with the
-                  report, and retyping what it already says is how audit rows end up saying "spam". */}
-              {(action === "DISMISS_REPORT"
-                ? [...presets]
-                : [report.reason, ...presets]
-              ).map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  aria-pressed={reason === preset}
-                  // Clicking the highlighted chip is how an admin says "not that one", so it
-                  // clears the box rather than putting back what they just rejected.
-                  onClick={() => setReason((current) => (current === preset ? "" : preset))}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
-                    reason === preset
-                      ? "border-ink bg-ink text-surface"
-                      : "border-line bg-surface text-ink-soft hover:bg-canvas",
-                  )}
-                >
-                  {preset}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setReason("")}
-                className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] text-ink-faint transition-colors hover:bg-canvas"
-              >
-                Other…
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                autoFocus
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Reason — the audit row is this string and nothing else, so write what you saw"
-                className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-[11px] outline-none placeholder:text-ink-faint"
-              />
-              <button
-                type="button"
-                onClick={submit}
-                disabled={submitting || !reason.trim()}
-                className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
-              >
-                {submitting
-                  ? "Submitting..."
-                  : action === "DISMISS_REPORT"
-                    ? "Confirm dismissal"
-                    : "Confirm action"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setAction(null)}
-                className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
-              >
-                Cancel
-              </button>
-            </div>
+            <ResolveForm
+              targetType={report.targetType}
+              reporterReason={report.reason}
+              submitting={submitting}
+              onSubmit={submit}
+              onCancel={() => setResolving(false)}
+            />
           </td>
         </tr>
       ) : null}
@@ -495,33 +374,129 @@ function ReportRow({
   );
 }
 
+/**
+ * The status and target tabs, as navigation.
+ *
+ * No Suspense boundary around the `useSearchParams` here, unlike `Pager` and `PageHeader`: this
+ * table only ever renders inside a page that already awaits `searchParams` and is therefore
+ * dynamic, so a boundary buys no static generation — and one placed here does not hydrate at
+ * all, leaving tabs that render but never navigate. The directory tables call the hook the same
+ * bare way, for the same reason.
+ */
+function LedgerControls({ filter }: { filter: ReportsFilter }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const [navigating, startNavigation] = useTransition();
+
+  function go(next: URLSearchParams) {
+    // Back to page one: page 3 of the previous result set is not page 3 of this one, and is
+    // usually past its end.
+    next.delete("page");
+    const query = next.toString();
+    startNavigation(() =>
+      router.replace((query ? `${pathname}?${query}` : pathname) as never),
+    );
+  }
+
+  /** Built from the current params, so changing one control never drops the others. */
+  function withParam(key: string, value: string | null) {
+    const next = new URLSearchParams(params);
+    if (value) next.set(key, value);
+    else next.delete(key);
+    return next;
+  }
+
+  return (
+    <div className={cn("flex flex-wrap items-center gap-2", navigating && "opacity-50")}>
+      <Segmented
+        options={TARGET_FILTERS}
+        value={filter.targetType}
+        onChange={(value) => go(withParam("target", value === "ALL" ? null : value))}
+      />
+      <Segmented
+        options={STATUS_FILTERS}
+        value={filter.status}
+        onChange={(value) => go(withParam("status", value === "ALL" ? null : value))}
+      />
+    </div>
+  );
+}
+
+/**
+ * A plain header when the table has no `filter`, and a navigating one when it does. Sorting a
+ * page client-side could only reorder the twenty-five rows that already won, which is a
+ * different list from "the oldest reports on the platform" while looking exactly like it.
+ */
 function SortableHeader({
   label,
   sortKey,
-  sort,
-  onSort,
+  filter,
   className,
 }: {
   label: string;
-  sortKey: SortKey;
-  sort: { key: SortKey; asc: boolean };
-  onSort: (sort: { key: SortKey; asc: boolean }) => void;
+  sortKey: ReportSortField;
+  filter?: ReportsFilter;
   className?: string;
 }) {
-  const active = sort.key === sortKey;
+  if (!filter) {
+    return (
+      <th className={cn("label-caps px-3 py-3 text-ink-soft", className)}>{label}</th>
+    );
+  }
   return (
-    <th className={cn("px-3 py-3", className)}>
-      <button
-        type="button"
-        onClick={() => onSort({ key: sortKey, asc: active ? !sort.asc : false })}
-        className={cn(
-          "label-caps flex items-center gap-1 transition-colors hover:text-ink",
-          active ? "text-ink" : "text-ink-soft",
-        )}
-      >
-        {label}
-        <ChevronsUpDown className="h-3 w-3" />
-      </button>
+    <th
+      className={cn("px-3 py-3", className)}
+      aria-sort={
+        filter.sort === sortKey
+          ? filter.ascending
+            ? "ascending"
+            : "descending"
+          : "none"
+      }
+    >
+      <SortButton label={label} sortKey={sortKey} filter={filter} />
     </th>
+  );
+}
+
+function SortButton({
+  label,
+  sortKey,
+  filter,
+}: {
+  label: string;
+  sortKey: ReportSortField;
+  filter: ReportsFilter;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const active = filter.sort === sortKey;
+
+  function toggle() {
+    const next = new URLSearchParams(params);
+    next.delete("page");
+    next.set("sort", sortKey);
+    // A fresh column starts descending — newest, highest, last — and only clicking the column
+    // that is already active flips it.
+    if (active && !filter.ascending) next.set("dir", "asc");
+    else next.delete("dir");
+    const query = next.toString();
+    router.replace((query ? `${pathname}?${query}` : pathname) as never);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className={cn(
+        "label-caps flex items-center gap-1 transition-colors hover:text-ink",
+        active ? "text-ink" : "text-ink-soft",
+      )}
+    >
+      {label}
+      <ChevronsUpDown className="h-3 w-3" />
+    </button>
   );
 }

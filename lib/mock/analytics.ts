@@ -1,6 +1,8 @@
 import type {
+  DailyActiveUsersResponse,
   DailyCountResponse,
   DailySignupResponse,
+  TopVideoResponse,
 } from "@/lib/api/types";
 import { MOCK_NOW, between, seededRandom } from "./random";
 
@@ -64,4 +66,39 @@ export function mockDailySignups(days = 7): DailySignupResponse[] {
     day: dayString(days - 1 - i),
     signups: between(rand, 380, 940),
   }));
+}
+
+/**
+ * Daily active users. Shaped like the signup series — weekend dip, steady growth — because the
+ * point of the mock is that the chart looks like a chart, not that the numbers are anyone's.
+ */
+export function mockDailyActiveUsers(days = 7): DailyActiveUsersResponse[] {
+  const rand = seededRandom(8181 + days);
+  const rows: DailyActiveUsersResponse[] = [];
+  for (let d = days - 1; d >= 0; d--) {
+    const date = new Date(MOCK_NOW - d * DAY_MS);
+    const weekend = date.getUTCDay() % 6 === 0;
+    const age = (days - 1 - d) / Math.max(days - 1, 1);
+    const base = 600 + age * 420;
+    rows.push({
+      day: dayString(d),
+      activeUsers: Math.round(base * (weekend ? 1.25 : 1) + between(rand, 0, 90)),
+    });
+  }
+  return rows;
+}
+
+/** Most-watched videos, already ordered by watched time the way ClickHouse returns them. */
+export function mockTopVideos(limit = 20): TopVideoResponse[] {
+  const rand = seededRandom(9393);
+  return Array.from({ length: limit }, (_, i) => {
+    const views = between(rand, 400, 9000) + (limit - i) * 250;
+    return {
+      videoId: `video_${i + 1}`,
+      views,
+      watchedMs: views * between(rand, 4_000, 22_000),
+      completions: Math.round(views * (between(rand, 15, 70) / 100)),
+      viewers: Math.round(views * (between(rand, 55, 95) / 100)),
+    };
+  }).sort((a, b) => b.watchedMs - a.watchedMs);
 }
