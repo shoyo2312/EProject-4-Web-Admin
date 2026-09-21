@@ -1,4 +1,5 @@
 import type {
+  DailyAdminStatsResponse,
   ModerationActionResponse,
   ModerationActionType,
   ReportGroupResponse,
@@ -204,3 +205,19 @@ export const mockStatsSummary: StatsSummaryResponse = {
     (a) => MOCK_NOW - Date.parse(a.createdAt) < 24 * 60 * 60_000,
   ).length,
 };
+
+/** Reports filed and actions taken per day — bucketed from the same fixtures the tables read. */
+export function mockDailyAdminStats(days = 7): DailyAdminStatsResponse[] {
+  const dayString = (daysAgo: number) =>
+    new Date(MOCK_NOW - daysAgo * 24 * 60 * 60_000).toISOString().slice(0, 10);
+  const rows: DailyAdminStatsResponse[] = [];
+  for (let d = days - 1; d >= 0; d--) {
+    const day = dayString(d);
+    rows.push({
+      day,
+      reportsCreated: mockReports.filter((r) => r.createdAt.slice(0, 10) === day).length,
+      actionsTaken: mockModerationActions.filter((a) => a.createdAt.slice(0, 10) === day).length,
+    });
+  }
+  return rows;
+}

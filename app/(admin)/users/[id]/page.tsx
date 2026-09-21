@@ -4,16 +4,35 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { EnforcePanel } from "@/components/moderation/enforce-panel";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
+import { AvatarBody } from "@/components/users/avatar-body";
+import { UserUploads } from "@/components/users/user-uploads";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
 import {
   getAdminUser,
   getReportCount,
   getStrikeCount,
+  getUserProfiles,
   listTargetActions,
+  listVideos,
 } from "@/lib/api/admin";
-import { formatDate } from "@/lib/format";
-import type { AdminUserResponse, ModerationActionResponse } from "@/lib/api/types";
+import { formatCount, formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import type {
+  AdminUserResponse,
+  ModerationActionResponse,
+  UserProfileResponse,
+  UserStatus,
+} from "@/lib/api/types";
+
+const STATUS_STYLES: Record<UserStatus, string> = {
+  ACTIVE: "border-success/25 bg-success-bg text-success",
+  BANNED: "border-danger/25 bg-danger-bg text-danger",
+  LOCKED: "border-line bg-neutral-bg text-neutral",
+};
+
+/** How many uploads to show inline before pointing at the full, filterable Videos page. */
+const INLINE_UPLOADS = 16;
 
 /**
  * One account by id — what a report resolves to, since a report against a user carries the id
@@ -35,16 +54,23 @@ export default async function UserDetailPage({
   let reportCount: number;
   let actions: ModerationActionResponse[];
   let strikes: number;
+  let profile: UserProfileResponse | undefined;
+  let uploads: Awaited<ReturnType<typeof listVideos>> | null;
   try {
     user = await getAdminUser(id);
-    // Not fetched before the account is known to exist: three calls thrown away on every bad id.
-    [reportCount, actions, strikes] = user
+    // Not fetched before the account is known to exist: four calls thrown away on every bad id.
+    [reportCount, actions, strikes, profile, uploads] = user
       ? await Promise.all([
           getReportCount("USER", id),
           listTargetActions("USER", id),
           getStrikeCount("USER", id),
+          getUserProfiles([id]).then((profiles) => profiles[id]),
+          // ponytail: no owner-videos aggregate endpoint exists, so "total likes" is summed
+          // over this one page rather than the account's whole history. Fine at admin-console
+          // scale; add a real aggregate if an account with hundreds of uploads makes it lie.
+          listVideos({ ownerIds: [id], size: 100 }),
         ])
-      : [0, [], 0];
+      : [0, [], 0, undefined, null];
   } catch (error) {
     return (
       <>
@@ -68,13 +94,47 @@ export default async function UserDetailPage({
   }
 
   const action = user.status === "BANNED" ? "unban" : "ban";
+  const totalLikes = (uploads?.content ?? []).reduce((sum, v) => sum + v.likeCount, 0);
 
   return (
     <>
-      <DetailHeader
-        title={`@${user.username}`}
-        subtitle={`${user.status} · ${user.role} · joined ${formatDate(user.createdAt)}`}
-      />
+      <Link
+        href="/users"
+        className="mb-3 inline-flex items-center gap-1.5 text-[11px] text-ink-soft underline-offset-4 hover:underline"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" />
+        All accounts
+      </Link>
+
+      <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Avatar avatarUrl={profile?.avatarUrl ?? null} username={user.username} />
+          <div>
+            <h1 className="text-[26px] leading-tight font-bold tracking-tight">
+              @{user.username}
+            </h1>
+            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-soft">
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                  STATUS_STYLES[user.status],
+                )}
+              >
+                {user.status}
+              </span>
+              <span>
+                · {user.role} · joined {formatDate(user.createdAt)}
+              </span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-5">
+          <Stat label="Following" value={profile?.followingCount ?? 0} />
+          <Stat label="Followers" value={profile?.followerCount ?? 0} />
+          <Stat label="Likes" value={totalLikes} />
+        </div>
+      </div>
 
       <div className="space-y-4">
         <Card>
@@ -85,7 +145,12 @@ export default async function UserDetailPage({
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
             <Field label="Handle">@{user.username}</Field>
             <Field label="Status">
-              <span className={user.status === "BANNED" ? "text-danger" : undefined}>
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                  STATUS_STYLES[user.status],
+                )}
+              >
                 {user.status}
               </span>
             </Field>
@@ -141,17 +206,24 @@ export default async function UserDetailPage({
               </Field>
             ) : null}
           </dl>
-          <div className="border-t border-line px-5 py-3">
-            {/* The video search resolves a handle to owner ids, so this lands on the account's
-                uploads. It is still a search and not a filter: a video someone else titled after
-                this handle comes back too. */}
-            <Link
-              href={{ pathname: "/videos", query: { q: user.username } } as never}
-              className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
-            >
-              Uploads by @{user.username} →
-            </Link>
-          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title={`Uploads by @${user.username}`}
+            hint="GET /api/v1/videos/admin?ownerId= — served by video-service"
+            actions={
+              uploads && uploads.totalElements > INLINE_UPLOADS ? (
+                <Link
+                  href={{ pathname: "/videos", query: { q: user.username } } as never}
+                  className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+                >
+                  All {uploads.totalElements} →
+                </Link>
+              ) : undefined
+            }
+          />
+          <UserUploads videos={(uploads?.content ?? []).slice(0, INLINE_UPLOADS)} />
         </Card>
 
         <Card>
@@ -199,5 +271,26 @@ function DetailHeader({ title, subtitle }: { title: string; subtitle?: string })
       </Link>
       <PageHeader title={title} subtitle={subtitle} />
     </>
+  );
+}
+
+/** Round avatar image, or the handle's initials over a neutral fill when there is none — also
+ * the fallback once a broken CDN url 404s, which a bare `<img>` cannot recover from itself. */
+function Avatar({ avatarUrl, username }: { avatarUrl: string | null; username: string }) {
+  return (
+    <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-surface-muted text-[16px] font-semibold text-ink-soft uppercase">
+      <AvatarBody avatarUrl={avatarUrl} initials={username.slice(0, 2)} />
+    </span>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="text-right">
+      <div className="figure text-[18px] font-bold leading-tight" title={String(value)}>
+        {formatCount(value)}
+      </div>
+      <div className="label-caps text-[10px] text-ink-faint">{label}</div>
+    </div>
   );
 }

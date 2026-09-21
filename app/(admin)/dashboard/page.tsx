@@ -4,6 +4,7 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportsTable } from "@/components/moderation/reports-table";
 import {
+  getDailyAdminStats,
   getDailySignups,
   getEngagementSeries,
   getStatsSummary,
@@ -17,7 +18,7 @@ import {
   sliceToWindow,
 } from "@/lib/api/window";
 import { getSessionProfile } from "@/lib/api/session";
-import { deltaPercent } from "@/lib/series";
+import { deltaPercent, spark } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
 
 export default async function DashboardPage({
@@ -33,18 +34,21 @@ export default async function DashboardPage({
 
   let data;
   try {
-    const [stats, signups, series, reports] = await Promise.all([
+    const [stats, signups, adminStats, series, reports] = await Promise.all([
       getStatsSummary(),
       // Twice the display window, so the signup KPI can be compared against the period before
       // it. The same pull the analytics page makes, for the same reason.
       getDailySignups(window.compareDays),
+      // Same doubled window: Pending Reports and Actions(24h) compare against the period
+      // before them the same way Signups does.
+      getDailyAdminStats(window.compareDays),
       getEngagementSeries(asOfMs),
       // Over-fetched, then cut to the picked date: the eight newest reports as of
       // three weeks ago are not the eight newest today.
       // Only the newest slice — the dashboard card shows a handful and links to the queue.
       listReports({ size: 8 }).then((page) => page.content),
     ]);
-    data = { stats, signups, series, reports };
+    data = { stats, signups, adminStats, series, reports };
   } catch (error) {
     return (
       <>
@@ -56,7 +60,7 @@ export default async function DashboardPage({
     );
   }
 
-  const { stats, signups, series } = data;
+  const { stats, signups, adminStats, series } = data;
 
   const reports = data.reports
     .filter((r) => r.createdAt.slice(0, 10) <= window.asOf)
@@ -76,28 +80,31 @@ export default async function DashboardPage({
     .filter((d) => d.day <= window.asOf)
     .map((d) => d.signups);
 
-  /**
-   * No delta and no sparkline on the two moderation figures, because nothing on this page
-   * measures either of them over time: `/stats/summary` answers with a snapshot, and the only
-   * series to hand is engagement. Drawing engagement bars under "Pending Reports" and a
-   * percentage next to them invents a trend for a number that has none — and a dashboard is
-   * exactly where an invented trend gets believed and acted on.
-   *
-   * ponytail: an `actions_last_24h`-style daily series out of admin-service (or a
-   * `GET /admin/stats/daily`) is what would fill them in honestly. Until then, the figure alone.
-   */
+  // Same shape as signupCounts below: daily and uncut, so the delta compares the window
+  // against the window before it rather than just the picked slice.
+  const dailyStats = adminStats.filter((d) => d.day <= window.asOf);
+  const reportsCreatedCounts = dailyStats.map((d) => d.reportsCreated);
+  const actionsTakenCounts = dailyStats.map((d) => d.actionsTaken);
+
   const cards: KpiCard[] = [
     {
       label: "Pending Reports",
       value: formatNumber(stats.pendingReports),
       unit: "Reports",
-      // More reports waiting is worse, so an upward move would read red here
+      // Reports filed is the flow behind the queue depth; more filed is worse, so an
+      // upward move reads red here same as the depth figure itself would.
+      delta: deltaPercent(reportsCreatedCounts, window.spanDays),
+      deltaLabel: `vs previous ${window.spanDays}d`,
       invertDelta: true,
+      spark: spark(reportsCreatedCounts, window.spanDays),
     },
     {
       label: "Actions (24h)",
       value: formatNumber(stats.actionsLast24h),
       unit: "Actions",
+      delta: deltaPercent(actionsTakenCounts, window.spanDays),
+      deltaLabel: `vs previous ${window.spanDays}d`,
+      spark: spark(actionsTakenCounts, window.spanDays),
     },
     {
       label: "New Signups",

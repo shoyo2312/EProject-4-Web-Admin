@@ -9,6 +9,7 @@ import type {
   AdminUserResponse,
   AdminVideoResponse,
   DailyActiveUsersResponse,
+  DailyAdminStatsResponse,
   DailyCountResponse,
   DailySignupResponse,
   ModerationSettingsResponse,
@@ -39,6 +40,7 @@ import {
   mockTopVideos,
 } from "@/lib/mock/analytics";
 import {
+  mockDailyAdminStats,
   mockModerationActions,
   mockReportQueue,
   mockReports,
@@ -94,6 +96,12 @@ export function referenceNow(): number {
 export async function getStatsSummary(): Promise<StatsSummaryResponse> {
   if (USE_MOCK) return mockStatsSummary;
   return apiGet<StatsSummaryResponse>("/api/v1/admin/stats/summary");
+}
+
+/** Reports filed and actions taken per day — what the dashboard's deltas are computed from. */
+export async function getDailyAdminStats(days = 7): Promise<DailyAdminStatsResponse[]> {
+  if (USE_MOCK) return mockDailyAdminStats(days);
+  return apiGet<DailyAdminStatsResponse[]>(`/api/v1/admin/stats/daily?days=${days}`);
 }
 
 /**

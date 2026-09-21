@@ -251,6 +251,13 @@ export interface StatsSummaryResponse {
   actionsLast24h: number;
 }
 
+/** GET /api/v1/admin/stats/daily?days= — DailyAdminStatsResponse */
+export interface DailyAdminStatsResponse {
+  day: string;
+  reportsCreated: number;
+  actionsTaken: number;
+}
+
 /** GET /api/v1/analytics/engagement/daily?days= — DailyCountResponse */
 export interface DailyCountResponse {
   day: string;
