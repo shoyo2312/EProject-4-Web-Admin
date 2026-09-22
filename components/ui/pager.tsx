@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useTransition } from "react";
 import { formatNumber } from "@/lib/format";
+import { hrefWith } from "@/lib/url";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,15 +45,12 @@ function PagerControls({
   const [pending, startTransition] = useTransition();
 
   function go(next: number) {
-    const query = new URLSearchParams(params);
-    // Page 0 is the default; leaving ?page=0 in the bar is noise.
-    // One-based in the URL — page 1 is what the pager is showing, not an index.
-    if (next <= 0) query.delete("page");
-    else query.set("page", String(next + 1));
-    const search = query.toString();
-    startTransition(() =>
-      router.replace(search ? `${pathname}?${search}` : pathname),
-    );
+    // Page 0 is the default, and one-based in the URL — page 1 is what the pager is showing,
+    // not an index.
+    const href = hrefWith(pathname, params, {
+      page: next <= 0 ? null : String(next + 1),
+    });
+    startTransition(() => router.replace(href));
   }
 
   const first = total === 0 ? 0 : page * size + 1;

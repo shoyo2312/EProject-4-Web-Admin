@@ -8,6 +8,7 @@ import { AvatarBody } from "@/components/users/avatar-body";
 import { UserUploads } from "@/components/users/user-uploads";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
+import { UserStatusBadge } from "@/components/ui/status-badge";
 import {
   getAdminUser,
   getReportCount,
@@ -16,20 +17,12 @@ import {
   listTargetActions,
   listVideos,
 } from "@/lib/api/admin";
-import { formatCount, formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
+import { formatCount, formatDateTime } from "@/lib/format";
 import type {
   AdminUserResponse,
   ModerationActionResponse,
   UserProfileResponse,
-  UserStatus,
 } from "@/lib/api/types";
-
-const STATUS_STYLES: Record<UserStatus, string> = {
-  ACTIVE: "border-success/25 bg-success-bg text-success",
-  BANNED: "border-danger/25 bg-danger-bg text-danger",
-  LOCKED: "border-line bg-neutral-bg text-neutral",
-};
 
 /** How many uploads to show inline before pointing at the full, filterable Videos page. */
 const INLINE_UPLOADS = 16;
@@ -114,16 +107,9 @@ export default async function UserDetailPage({
               @{user.username}
             </h1>
             <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-soft">
-              <span
-                className={cn(
-                  "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium",
-                  STATUS_STYLES[user.status],
-                )}
-              >
-                {user.status}
-              </span>
+              <UserStatusBadge status={user.status} dense />
               <span>
-                · {user.role} · joined {formatDate(user.createdAt)}
+                · {user.role} · joined {formatDateTime(user.createdAt)}
               </span>
             </p>
           </div>
@@ -145,14 +131,7 @@ export default async function UserDetailPage({
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
             <Field label="Handle">@{user.username}</Field>
             <Field label="Status">
-              <span
-                className={cn(
-                  "inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium",
-                  STATUS_STYLES[user.status],
-                )}
-              >
-                {user.status}
-              </span>
+              <UserStatusBadge status={user.status} dense />
             </Field>
             <Field label="Role">{user.role}</Field>
             <Field label="Reports against">{reportCount}</Field>
@@ -162,7 +141,7 @@ export default async function UserDetailPage({
                   {user.email}
                   {user.emailVerified
                     ? user.emailVerifiedAt
-                      ? ` · verified ${formatDate(user.emailVerifiedAt)}`
+                      ? ` · verified ${formatDateTime(user.emailVerifiedAt)}`
                       : " · verified"
                     : " (unverified)"}
                 </span>
@@ -178,10 +157,10 @@ export default async function UserDetailPage({
             {/* The one field that says whether a banned account is still being reached for, and
                 whether a quiet account was ever really in use at all. */}
             <Field label="Last login">
-              {user.lastLoginAt ? formatDate(user.lastLoginAt) : "never"}
+              {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "never"}
             </Field>
-            <Field label="Joined">{formatDate(user.createdAt)}</Field>
-            <Field label="Updated">{formatDate(user.updatedAt)}</Field>
+            <Field label="Joined">{formatDateTime(user.createdAt)}</Field>
+            <Field label="Updated">{formatDateTime(user.updatedAt)}</Field>
             <Field label="User ID">
               <span className="figure break-all">{user.id}</span>
             </Field>
@@ -197,9 +176,9 @@ export default async function UserDetailPage({
             {user.bannedAt ? (
               <Field label="Banned" wide>
                 <span className="text-danger">
-                  {formatDate(user.bannedAt)}
+                  {formatDateTime(user.bannedAt)}
                   {user.bannedUntil
-                    ? ` until ${formatDate(user.bannedUntil)}`
+                    ? ` until ${formatDateTime(user.bannedUntil)}`
                     : " — permanent"}
                   {user.banReason ? ` — ${user.banReason}` : ""}
                 </span>

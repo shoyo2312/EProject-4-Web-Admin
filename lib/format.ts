@@ -15,6 +15,13 @@ export function formatCompact(value: number) {
   return String(value);
 }
 
+/** "03 minutes 07 seconds" — uploads are capped under 10 minutes, so minutes always fits in 2 digits. */
+export function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${String(m).padStart(2, "0")} minutes ${String(s).padStart(2, "0")} seconds`;
+}
+
 /** TikTok's own abbreviation style: 1.2B, 355.8K, 20.1K, 6834 (no suffix under 10k). */
 export function formatCount(n: number): string {
   if (n >= 1_000_000_000) {
@@ -35,6 +42,12 @@ export function formatCount(n: number): string {
 /** Snowflake ids are long; the table only needs enough to eyeball-match a row. */
 export function shortId(id: string, keep = 6) {
   return id.length <= keep ? id : `${id.slice(0, keep)}…`;
+}
+
+/** "12 days" / "less than a day" left in the 30-day trash window before video-service purges the video — see video.trash.retention on the backend. */
+export function daysUntilPurge(deletedAtIso: string, retentionDays = 30, now = Date.now()) {
+  const daysLeft = retentionDays - (now - new Date(deletedAtIso).getTime()) / 86_400_000;
+  return daysLeft < 1 ? "less than a day" : `${Math.ceil(daysLeft)} days`;
 }
 
 export function relativeTime(iso: string, now = Date.now()) {
@@ -63,5 +76,24 @@ export function formatDate(iso: string) {
     // shifts a bar's label to the day before west of Greenwich, and the label no
     // longer matches the value the filters and the CSV are keyed on.
     timeZone: "UTC",
+  });
+}
+
+/**
+ * DD/MM/YYYY HH:MM:SS for exact-moment fields (joined, last login, checked...).
+ * Pinned to Asia/Ho_Chi_Minh — the admin team is Vietnam-based — rather than
+ * formatDate()'s UTC pin, which exists only to keep calendar-bucket dates
+ * (chart axes, CSV keys) matching their filter value, not to show a wall clock.
+ */
+export function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Ho_Chi_Minh",
   });
 }

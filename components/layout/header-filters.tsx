@@ -3,12 +3,16 @@
 import { CalendarDays, ChevronDown } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTransition } from "react";
-import { GRANULARITIES, type Granularity } from "@/lib/api/window";
+import { PERIODS, type Period } from "@/lib/api/window";
 import { formatDate } from "@/lib/format";
+import { hrefWith } from "@/lib/url";
 
 export interface HeaderFilterConfig {
-  /** Bucket size for the page's charts. Omitted on pages that only show lists. */
-  granularity?: Granularity;
+  /**
+   * The period every figure on the page covers, and the one each percentage under it is
+   * measured against. Omitted only on a page with no dated figure at all.
+   */
+  period?: Period;
   asOf: string;
   /** Newest date with data — the mock clock in mock mode, today otherwise. */
   latest: string;
@@ -19,37 +23,33 @@ export interface HeaderFilterConfig {
  * reload and can be pasted to someone else. Server components re-run on the change,
  * which is what refetches the narrower window.
  */
-export function HeaderFilters({ granularity, asOf, latest }: HeaderFilterConfig) {
+export function HeaderFilters({ period, asOf, latest }: HeaderFilterConfig) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [pending, startTransition] = useTransition();
 
   function setParam(key: string, value: string, isDefault: boolean) {
-    const next = new URLSearchParams(params);
-    // A parameter sitting at its default is noise in the address bar, and it makes the
-    // "is anything filtered" check below unreliable.
-    if (isDefault) next.delete(key);
-    else next.set(key, value);
-    const query = next.toString();
-    startTransition(() => router.replace(query ? `${pathname}?${query}` : pathname));
+    // A parameter sitting at its default is noise in the address bar.
+    const href = hrefWith(pathname, params, { [key]: isDefault ? null : value });
+    startTransition(() => router.replace(href));
   }
 
   const dimmed = pending ? "opacity-60" : "";
 
   return (
     <>
-      {granularity ? (
+      {period ? (
         <div className={`relative ${dimmed}`}>
           <select
-            value={granularity}
-            aria-label="Bucket size"
+            value={period}
+            aria-label="Period"
             onChange={(e) =>
-              setParam("g", e.target.value, e.target.value === "daily")
+              setParam("p", e.target.value, e.target.value === "month")
             }
             className="appearance-none rounded-lg border border-line bg-surface py-2 pr-8 pl-3 text-[12px] transition-colors hover:bg-surface-muted"
           >
-            {GRANULARITIES.map((option) => (
+            {PERIODS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

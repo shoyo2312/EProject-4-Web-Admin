@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CornerDownRight, Heart, MessageSquare, Trash2 } from "lucide-react";
 import {
@@ -11,45 +11,17 @@ import {
 } from "@/app/(admin)/comments/actions";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
+import { ReasonForm } from "@/components/moderation/reason-form";
+import { PRESET_REASONS } from "@/lib/moderation";
 import type {
   AdminCommentFilter,
   AdminCommentResponse,
   UserProfileResponse,
 } from "@/lib/api/types";
 import { formatCompact, relativeTime, shortId } from "@/lib/format";
+import { hrefWith } from "@/lib/url";
+import { usePropagation } from "@/lib/use-propagation";
 import { cn } from "@/lib/utils";
-
-/**
- * Preset reasons. They are written to read on their own months later, because what ends up in the
- * audit row is this exact string and nothing else — "spam" alone tells a reviewer nothing about
- * what was actually removed.
- *
- * Shortcuts, not a closed list: a preset fills the box and the box stays editable, so an admin can
- * pick the closest one and add the specifics. That is also the "other" case — there is no separate
- * mode to switch into, just an empty box.
- */
-const PRESET_REASONS = [
-  "Harassment or targeted abuse",
-  "Hate speech",
-  "Spam or scam link",
-  "Sexual content",
-  "Threat of violence",
-  "Doxxing — shares private information",
-  "Impersonation",
-  "Off-platform solicitation",
-] as const;
-
-/**
- * When to re-read after a successful removal, in milliseconds from the submit.
- *
- * The write is not the state change: admin-service records the action and publishes it, and
- * interaction-service applies the soft delete only when it consumes the event — so a refetch fired
- * the instant the POST returns reliably reads the comment back still live. Bounded rather than a
- * live poll: if it has not landed inside this window something is wrong with the pipeline, and
- * retrying forever would hide that rather than show it.
- */
-const REFRESH_AT = [900, 2500, 6000];
-const GIVE_UP_AT = 9000;
 
 const FILTER_OPTIONS: readonly { value: AdminCommentFilter; label: string }[] = [
   { value: "THREAD", label: "Thread" },
@@ -115,10 +87,9 @@ export function CommentsTable({
   }
 
   function selectFilter(next: AdminCommentFilter) {
-    const params_ = new URLSearchParams(params);
-    if (next === "THREAD") params_.delete("filter");
-    else params_.set("filter", next);
-    router.replace(`${pathname}?${params_}` as never);
+    // THREAD is the default; a parameter sitting at its default is noise in the address bar.
+    const href = hrefWith(pathname, params, { filter: next === "THREAD" ? null : next });
+    router.replace(href as never);
   }
 
   function loadMore() {
@@ -256,20 +227,18 @@ function CommentRow({
   parents: Record<string, AdminCommentResponse | undefined>;
   nested?: boolean;
 }) {
-  const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
-  /** True from the moment a removal is submitted until the row comes back removed. */
-  const [awaitingRemoval, setAwaitingRemoval] = useState(false);
   /** The thread under this comment, once it has been asked for. */
   const [replies, setReplies] = useState<CommentPageView | null>(null);
   const [loadingReplies, startLoadingReplies] = useTransition();
 
   const removed = comment.deletedAt !== null;
-  /** Still moving: the row is showing the comment as live after a removal went in. */
-  const pending = awaitingRemoval && !removed;
+  const { pending, stalled, watch } = usePropagation(
+    removed,
+    "Still listed — interaction-service has not consumed the event yet. The removal is recorded; reload in a moment.",
+  );
 
   const isReply = comment.parentId !== null;
   const author = authors[comment.userId];
@@ -279,43 +248,13 @@ function CommentRow({
   const answeredUserId = comment.replyToUserId ?? parent?.userId ?? null;
   const answered = answeredUserId ? authors[answeredUserId] : undefined;
 
-  useEffect(() => {
-    if (!awaitingRemoval) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    if (pending) {
-      REFRESH_AT.forEach((ms) => timers.push(setTimeout(() => router.refresh(), ms)));
-      timers.push(
-        setTimeout(() => {
-          setAwaitingRemoval(false);
-          setResult(
-            "Still listed — interaction-service has not consumed the event yet. The removal is recorded; reload in a moment.",
-          );
-        }, GIVE_UP_AT),
-      );
-    } else {
-      // Landed. Cleared on the next tick rather than inside the effect body, which the
-      // set-state-in-effect rule forbids.
-      timers.push(setTimeout(() => setAwaitingRemoval(false), 0));
-    }
-
-    return () => timers.forEach(clearTimeout);
-  }, [awaitingRemoval, pending, router]);
-
-  function choosePreset(preset: string) {
-    // Toggling off leaves an empty box rather than the previous text: clicking the highlighted
-    // chip is how an admin says "not that one", and re-showing what they just rejected is wrong.
-    setReason((current) => (current === preset ? "" : preset));
-    inputRef.current?.focus();
-  }
-
   function submit() {
     startSubmit(async () => {
       const outcome = await removeCommentAction(comment.videoId, comment.commentId, reason ?? "");
       setResult(outcome.message);
       if (outcome.ok) {
         setReason(null);
-        setAwaitingRemoval(true);
+        watch();
       }
     });
   }
@@ -453,61 +392,22 @@ function CommentRow({
 
         {reason !== null ? (
           <div className="mt-3 rounded-lg border border-line bg-surface-muted p-3">
-            <div className="mb-2 flex flex-wrap items-center gap-1.5">
-              {PRESET_REASONS.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  aria-pressed={reason === preset}
-                  onClick={() => choosePreset(preset)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
-                    reason === preset
-                      ? "border-ink bg-ink text-surface"
-                      : "border-line bg-surface text-ink-soft hover:bg-canvas",
-                  )}
-                >
-                  {preset}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => choosePreset("")}
-                className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] text-ink-faint transition-colors hover:bg-canvas"
-              >
-                Other…
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                ref={inputRef}
-                autoFocus
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Reason for removing this comment — pick one above or write your own"
-                className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-[11px] outline-none placeholder:text-ink-faint"
-              />
-              <button
-                type="button"
-                onClick={submit}
-                disabled={submitting || !reason.trim()}
-                className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
-              >
-                {submitting ? "Submitting..." : "Confirm removal"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setReason(null)}
-                className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
-              >
-                Cancel
-              </button>
-            </div>
+            <ReasonForm
+              presets={PRESET_REASONS.removeComment}
+              reason={reason}
+              onReason={setReason}
+              onSubmit={submit}
+              onCancel={() => setReason(null)}
+              submitting={submitting}
+              placeholder="Reason for removing this comment — pick one above or write your own"
+              confirmLabel="Confirm removal"
+            />
           </div>
         ) : null}
 
-        {result ? <p className="mt-2 text-[11px] text-ink-soft">{result}</p> : null}
+        {(stalled ?? result) ? (
+          <p className="mt-2 text-[11px] text-ink-soft">{stalled ?? result}</p>
+        ) : null}
       </div>
 
       {replies ? (

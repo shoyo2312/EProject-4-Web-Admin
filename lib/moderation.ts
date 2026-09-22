@@ -64,8 +64,12 @@ export type EnforcementAction = "ban" | "unban" | "takedown" | "restore";
  * One copy, because the wording is what the audit log is made of: a takedown reason offered on
  * the videos table and a different one offered on the video's own page would show up months
  * later as two vocabularies for the same decision.
+ *
+ * `removeComment` is not an {@link EnforcementAction} — it is started from the comment console
+ * rather than from a directory row, and has no undo — but its reasons land in the same audit
+ * log and so belong in the same vocabulary.
  */
-export const PRESET_REASONS: Record<EnforcementAction, readonly string[]> = {
+export const PRESET_REASONS: Record<EnforcementAction | "removeComment", readonly string[]> = {
   ban: [
     "Repeated policy violations",
     "Spam or bot activity",
@@ -98,5 +102,15 @@ export const PRESET_REASONS: Record<EnforcementAction, readonly string[]> = {
     "Taken down in error",
     "Reviewed again, within policy",
     "Rights holder withdrew the claim",
+  ],
+  removeComment: [
+    "Harassment or targeted abuse",
+    "Hate speech",
+    "Spam or scam link",
+    "Sexual content",
+    "Threat of violence",
+    "Doxxing — shares private information",
+    "Impersonation",
+    "Off-platform solicitation",
   ],
 };

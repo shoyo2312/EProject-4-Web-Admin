@@ -174,11 +174,13 @@ export interface AdminVideoResponse {
   failureReason: string | null;
   /** Why moderation removed it; null unless status is TAKEN_DOWN. */
   takedownReason: string | null;
-  /**
-   * When the owner deleted the video. Only the by-id admin route ever returns a deleted video —
-   * the listing drops them — so this is null on every row that came from a listing.
-   */
+  /** When the owner deleted the video. Null for a video that has never been deleted. */
   deletedAt: string | null;
+  /**
+   * When the VideoDeletedEvent for this row was acknowledged by the broker. Null both for a
+   * live video and for one deleted so recently the outbox poll (every 5s) hasn't caught up yet.
+   */
+  deleteEventPublishedAt: string | null;
   /** What the classifier scored. Admin reads only — the public API withholds it. */
   moderation: ModerationSummary | null;
 }
@@ -251,11 +253,37 @@ export interface StatsSummaryResponse {
   actionsLast24h: number;
 }
 
-/** GET /api/v1/admin/stats/daily?days= — DailyAdminStatsResponse */
+/**
+ * GET /api/v1/admin/stats/daily?days= — DailyAdminStatsResponse
+ *
+ * Two clocks: `reportsCreated` and the three action counts are dated by when the row was
+ * written, `reportsResolved` / `reportsDismissed` by when the report was closed. A report
+ * filed in March and dismissed in September belongs to September here.
+ */
 export interface DailyAdminStatsResponse {
   day: string;
   reportsCreated: number;
   actionsTaken: number;
+  reportsResolved: number;
+  reportsDismissed: number;
+  usersBanned: number;
+  videosTakenDown: number;
+  commentsRemoved: number;
+}
+
+/**
+ * GET /api/v1/videos/admin/stats/daily?days= — DailyVideoStatsResponse
+ *
+ * `uploads` is a flow. The other two are cohort counts: of the videos uploaded that day, how
+ * many are *now* awaiting review or unwatchable. Nothing stamps a status change, and both are
+ * states a video passes through quickly, so this answers "is the backlog growing" and nothing
+ * that needs the day a decision was made.
+ */
+export interface DailyVideoStatsResponse {
+  day: string;
+  uploads: number;
+  pendingReview: number;
+  notPlayable: number;
 }
 
 /** GET /api/v1/analytics/engagement/daily?days= — DailyCountResponse */

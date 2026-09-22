@@ -24,6 +24,7 @@ import type {
 } from "@/lib/api/types";
 import { MOCK_REPORTER_HANDLES } from "@/lib/mock/moderation";
 import { formatDate, relativeTime, shortId } from "@/lib/format";
+import { hrefWith } from "@/lib/url";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
 
@@ -389,22 +390,9 @@ function LedgerControls({ filter }: { filter: ReportsFilter }) {
   const params = useSearchParams();
   const [navigating, startNavigation] = useTransition();
 
-  function go(next: URLSearchParams) {
-    // Back to page one: page 3 of the previous result set is not page 3 of this one, and is
-    // usually past its end.
-    next.delete("page");
-    const query = next.toString();
-    startNavigation(() =>
-      router.replace((query ? `${pathname}?${query}` : pathname) as never),
-    );
-  }
-
-  /** Built from the current params, so changing one control never drops the others. */
-  function withParam(key: string, value: string | null) {
-    const next = new URLSearchParams(params);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    return next;
+  function go(key: string, value: string | null) {
+    const href = hrefWith(pathname, params, { [key]: value, page: null });
+    startNavigation(() => router.replace(href as never));
   }
 
   return (
@@ -412,12 +400,12 @@ function LedgerControls({ filter }: { filter: ReportsFilter }) {
       <Segmented
         options={TARGET_FILTERS}
         value={filter.targetType}
-        onChange={(value) => go(withParam("target", value === "ALL" ? null : value))}
+        onChange={(value) => go("target", value === "ALL" ? null : value)}
       />
       <Segmented
         options={STATUS_FILTERS}
         value={filter.status}
-        onChange={(value) => go(withParam("status", value === "ALL" ? null : value))}
+        onChange={(value) => go("status", value === "ALL" ? null : value)}
       />
     </div>
   );
@@ -475,15 +463,14 @@ function SortButton({
   const active = filter.sort === sortKey;
 
   function toggle() {
-    const next = new URLSearchParams(params);
-    next.delete("page");
-    next.set("sort", sortKey);
     // A fresh column starts descending — newest, highest, last — and only clicking the column
     // that is already active flips it.
-    if (active && !filter.ascending) next.set("dir", "asc");
-    else next.delete("dir");
-    const query = next.toString();
-    router.replace((query ? `${pathname}?${query}` : pathname) as never);
+    const href = hrefWith(pathname, params, {
+      sort: sortKey,
+      dir: active && !filter.ascending ? "asc" : null,
+      page: null,
+    });
+    router.replace(href as never);
   }
 
   return (

@@ -206,17 +206,60 @@ export const mockStatsSummary: StatsSummaryResponse = {
   ).length,
 };
 
-/** Reports filed and actions taken per day — bucketed from the same fixtures the tables read. */
+/**
+ * The moderation flow per day.
+ *
+ * Bucketed from the same fixtures the tables read, so the dashboard's percentage and the rows
+ * underneath it cannot disagree — but only as far back as those fixtures go (nine days of
+ * reports, six of actions). A year-over-year comparison asks for two years, so anything older
+ * than a fixture's own span is filled in with a seeded series instead. Without that the whole
+ * feature reads as broken in mock mode, which is the mode `npm run dev` starts in.
+ */
 export function mockDailyAdminStats(days = 7): DailyAdminStatsResponse[] {
   const dayString = (daysAgo: number) =>
     new Date(MOCK_NOW - daysAgo * 24 * 60 * 60_000).toISOString().slice(0, 10);
+  // Oldest day each fixture actually covers. Past it, the fixture has nothing to say and a
+  // derived zero would read as "nothing happened" rather than "nothing was generated".
+  const oldestReport = mockReports[mockReports.length - 1].createdAt.slice(0, 10);
+  const oldestAction =
+    mockModerationActions[mockModerationActions.length - 1].createdAt.slice(0, 10);
+
+  const rand = seededRandom(5150 + days);
   const rows: DailyAdminStatsResponse[] = [];
   for (let d = days - 1; d >= 0; d--) {
     const day = dayString(d);
+    const weekend = new Date(MOCK_NOW - d * 24 * 60 * 60_000).getUTCDay() % 6 === 0;
+    // Older days run lighter, so a period-over-period delta comes out as growth rather than
+    // as noise around a flat line.
+    const age = days <= 1 ? 1 : (days - 1 - d) / (days - 1);
+    const swing = (0.5 + age * 0.8) * (weekend ? 0.7 : 1);
+
+    const created =
+      day >= oldestReport
+        ? mockReports.filter((r) => r.createdAt.slice(0, 10) === day).length
+        : Math.round(between(rand, 4, 18) * swing);
+
+    const onDay =
+      day >= oldestAction
+        ? mockModerationActions.filter((a) => a.createdAt.slice(0, 10) === day)
+        : null;
+    const taken = onDay ? onDay.length : Math.round(between(rand, 3, 14) * swing);
+    const countType = (type: ModerationActionType, share: number) =>
+      onDay
+        ? onDay.filter((a) => a.actionType === type).length
+        : Math.round(taken * share);
+
     rows.push({
       day,
-      reportsCreated: mockReports.filter((r) => r.createdAt.slice(0, 10) === day).length,
-      actionsTaken: mockModerationActions.filter((a) => a.createdAt.slice(0, 10) === day).length,
+      reportsCreated: created,
+      actionsTaken: taken,
+      // Closures trail the filings: a queue that clears everything the day it arrives is not
+      // a queue, and a 100% ratio makes every resolved/dismissed delta a copy of this one.
+      reportsResolved: Math.round(created * 0.55),
+      reportsDismissed: Math.round(created * 0.2),
+      usersBanned: countType("BAN_USER", 0.18),
+      videosTakenDown: countType("TAKEDOWN_VIDEO", 0.3),
+      commentsRemoved: countType("REMOVE_COMMENT", 0.22),
     });
   }
   return rows;

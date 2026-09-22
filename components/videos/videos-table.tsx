@@ -4,14 +4,16 @@ import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { EyeOff, Play, RotateCcw, Search, X } from "lucide-react";
+import { EyeOff, Play, RotateCcw, X } from "lucide-react";
 import {
   moderateVideoAction,
   videoModerationDetailAction,
   type ModerationDetail,
 } from "@/app/(admin)/videos/actions";
 import { Card, CardHeader } from "@/components/ui/card";
+import { SearchBox } from "@/components/ui/search-box";
 import { Segmented } from "@/components/ui/segmented";
+import { VideoStatusBadge } from "@/components/ui/status-badge";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
@@ -22,10 +24,20 @@ import type {
   UserProfileResponse,
   VideoStatus,
 } from "@/lib/api/types";
-import { formatCompact, formatCount, formatDate, relativeTime, shortId } from "@/lib/format";
+import {
+  daysUntilPurge,
+  formatCompact,
+  formatCount,
+  formatDateTime,
+  formatDuration,
+  relativeTime,
+  shortId,
+} from "@/lib/format";
+import { hrefWith } from "@/lib/url";
+import { usePropagation } from "@/lib/use-propagation";
 import { cn } from "@/lib/utils";
 
-type StatusFilter = VideoStatus | "ALL";
+type StatusFilter = VideoStatus | "ALL" | "DELETED";
 
 const STATUS_FILTERS = [
   { value: "ALL" as const, label: "All" },
@@ -37,17 +49,10 @@ const STATUS_FILTERS = [
   { value: "FAILED" as const, label: "Failed" },
   { value: "REJECTED" as const, label: "Auto-removed" },
   { value: "TAKEN_DOWN" as const, label: "Down" },
+  // Not a VideoStatus — a video keeps its pipeline status after its owner deletes it, so this
+  // filters on deletedAt instead. The page translates it to listVideos({ deleted: true }).
+  { value: "DELETED" as const, label: "Deleted" },
 ];
-
-const STATUS_STYLES: Record<VideoStatus, string> = {
-  PUBLISHED: "border-success/25 bg-success-bg text-success",
-  PROCESSING: "border-pending/25 bg-pending-bg text-pending",
-  PENDING_MODERATION: "border-pending/25 bg-pending-bg text-pending",
-  PENDING_REVIEW: "border-pending/25 bg-pending-bg text-pending",
-  FAILED: "border-danger/25 bg-danger-bg text-danger",
-  REJECTED: "border-danger/25 bg-danger-bg text-danger",
-  TAKEN_DOWN: "border-danger/25 bg-danger-bg text-danger",
-};
 
 /**
  * What the classifier said, phrased for the reason column.
@@ -104,21 +109,15 @@ export function VideosTable({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const [term, setTerm] = useState(query);
   const [navigating, startNavigation] = useTransition();
 
-  // Filtering happens on the server, so the box drives the URL. Debounced because every
-  // keystroke would otherwise be a round trip through the gateway to video-service.
-  useEffect(() => {
-    if (term === query) return;
-    const timer = setTimeout(() => {
-      startNavigation(() => router.replace(buildHref(pathname, params, term, status)));
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [term, query, status, pathname, params, router]);
-
-  function changeStatus(next: StatusFilter) {
-    startNavigation(() => router.replace(buildHref(pathname, params, term, next)));
+  function go(term: string, next: StatusFilter) {
+    const href = hrefWith(pathname, params, {
+      q: term || null,
+      status: next === "ALL" ? null : next,
+      page: null,
+    });
+    startNavigation(() => router.replace(href as never));
   }
 
   return (
@@ -128,16 +127,16 @@ export function VideosTable({
         hint="GET /api/v1/videos/admin — served by video-service, which owns status and visibility"
         actions={
           <>
-            <label className="flex w-[180px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 lg:w-[240px]">
-              <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
-              <input
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                placeholder="Search title or owner..."
-                className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
-              />
-            </label>
-            <Segmented options={STATUS_FILTERS} value={status} onChange={changeStatus} />
+            <SearchBox
+              query={query}
+              onCommit={(term) => go(term, status)}
+              placeholder="Search title or owner..."
+            />
+            <Segmented
+              options={STATUS_FILTERS}
+              value={status}
+              onChange={(next) => go(query, next)}
+            />
           </>
         }
       />
@@ -176,18 +175,6 @@ export function VideosTable({
   );
 }
 
-/**
- * When to re-read after a successful action, in milliseconds from the submit.
- *
- * The write is not the state change: admin-service records the action and publishes it, and
- * video-service applies it only when it consumes the event — so a refetch fired the instant the
- * POST returns reliably reads the old status back. Bounded rather than a live poll: if it has not
- * landed inside this window something is wrong with the pipeline, and retrying forever would hide
- * that rather than show it.
- */
-const REFRESH_AT = [900, 2500, 6000];
-const GIVE_UP_AT = 9000;
-
 function VideoRow({
   video,
   owner,
@@ -195,7 +182,6 @@ function VideoRow({
   video: AdminVideoResponse;
   owner?: UserProfileResponse;
 }) {
-  const router = useRouter();
   const [reason, setReason] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [detail, setDetail] = useState(false);
@@ -215,41 +201,11 @@ function VideoRow({
         .finally(() => setModLoading(false));
     }
   }
-  /**
-   * The status this row had when its action was submitted, or null when nothing is in flight.
-   *
-   * Held as what the video is moving *away from*, not what it is moving *to*: a restore has no
-   * single destination — video-service puts the video back to whatever it was before the takedown,
-   * which may be PUBLISHED, PROCESSING or FAILED. Any value other than this one means it landed.
-   */
-  const [awaiting, setAwaiting] = useState<VideoStatus | null>(null);
-
-  /** Still moving: the row is showing the status it had when the action went in. */
-  const pending = awaiting !== null && video.status === awaiting;
+  const { pending, stalled, watch } = usePropagation(
+    video.status,
+    "Still the old status — video-service has not consumed the event yet. The action is recorded; reload in a moment.",
+  );
   const machineReason = describeModeration(video);
-
-  useEffect(() => {
-    if (awaiting === null) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    if (pending) {
-      REFRESH_AT.forEach((ms) => timers.push(setTimeout(() => router.refresh(), ms)));
-      timers.push(
-        setTimeout(() => {
-          setAwaiting(null);
-          setResult(
-            "Still the old status — video-service has not consumed the event yet. The action is recorded; reload in a moment.",
-          );
-        }, GIVE_UP_AT),
-      );
-    } else {
-      // Landed. The marker is dropped on the next tick rather than inside the effect body,
-      // so a later return to this same status is not read as a fresh action in flight.
-      timers.push(setTimeout(() => setAwaiting(null), 0));
-    }
-
-    return () => timers.forEach(clearTimeout);
-  }, [awaiting, pending, router]);
 
   // Approving what automatic moderation held back is the same write as undoing
   // an admin's takedown — both put the video back to PUBLISHED through
@@ -269,7 +225,7 @@ function VideoRow({
       setResult(outcome.message);
       if (outcome.ok) {
         setReason(null);
-        setAwaiting(video.status);
+        watch();
       }
     });
   }
@@ -301,18 +257,15 @@ function VideoRow({
           )}
         </td>
         <td className="px-3 py-3">
-          <span
-            className={cn(
-              "inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-medium",
-              STATUS_STYLES[video.status],
-              // Dimmed while the event is in flight: the badge is still showing the old
-              // status truthfully, and pretending it already flipped would be a lie the
-              // next reload contradicts.
-              pending && "opacity-50",
-            )}
-          >
-            {video.status}
-          </span>
+          {/* A deleted video's pipeline status (PUBLISHED, TAKEN_DOWN, ...) stopped mattering
+              the moment its owner removed it — showing both reads as "which one is it". */}
+          {video.deletedAt ? (
+            <span className="inline-flex items-center rounded-md border border-danger/25 bg-danger-bg px-2 py-1 text-[11px] font-medium text-danger uppercase">
+              Deleted
+            </span>
+          ) : (
+            <VideoStatusBadge status={video.status} dimmed={pending} />
+          )}
           {pending ? (
             <span className="ml-2 text-[10px] text-ink-faint">applying…</span>
           ) : null}
@@ -361,8 +314,11 @@ function VideoRow({
           <div className="inline-flex items-center gap-1.5">
             {/* The file at hlsUrl is a faststart mp4, not an HLS playlist — a bare
                 <video> plays it in every browser, no player library. Shown only when
-                the video is transcoded and holdable: the states playable() covers. */}
-            {watchable && video.hlsUrl ? (
+                the video is transcoded and holdable: the states playable() covers.
+                A deleted video sits in a 30-day trash window with its media intact, so this
+                stays available until deleteEventPublishedAt — media-worker has by then
+                consumed the delete event and erased hlsUrl from MinIO for good. */}
+            {watchable && video.hlsUrl && !video.deleteEventPublishedAt ? (
               <Tooltip label="Watch">
                 <button
                   type="button"
@@ -377,13 +333,15 @@ function VideoRow({
             <button
               type="button"
               // Disabled until the change lands, so a second click cannot queue the same
-              // action twice against a status that has not moved yet.
-              disabled={pending}
+              // action twice against a status that has not moved yet. Also disabled once
+              // deleted — the backend's own compareAndSet filters on deletedAt == null, so a
+              // moderation write here would silently fail to land.
+              disabled={pending || Boolean(video.deletedAt)}
               onClick={() => setReason(reason === null ? "" : null)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
-                pending ? "cursor-not-allowed text-ink-faint" : "hover:bg-surface",
-                action === "takedown" && !pending && "text-danger",
+                pending || video.deletedAt ? "cursor-not-allowed text-ink-faint" : "hover:bg-surface",
+                action === "takedown" && !pending && !video.deletedAt && "text-danger",
               )}
             >
               {action === "takedown" ? (
@@ -419,13 +377,34 @@ function VideoRow({
                 : "—"}
           </Field>
           <Field label="Duration">
-            {video.durationSeconds != null ? `${video.durationSeconds}s` : "—"}
+            {video.durationSeconds != null ? formatDuration(video.durationSeconds) : "—"}
           </Field>
-          <Field label="Uploaded">{formatDate(video.createdAt)}</Field>
+          <Field label="Uploaded">{formatDateTime(video.createdAt)}</Field>
           <Field label="Published">
-            {video.publishedAt ? formatDate(video.publishedAt) : "—"}
+            {video.publishedAt ? formatDateTime(video.publishedAt) : "—"}
           </Field>
-          <Field label="Updated">{formatDate(video.updatedAt)}</Field>
+          <Field label="Updated">{formatDateTime(video.updatedAt)}</Field>
+          {video.deletedAt ? (
+            <>
+              <Field label="Deleted at">{formatDateTime(video.deletedAt)}</Field>
+              <Field label="Deleted by">
+                {owner?.username ? `@${owner.username}` : `#${shortId(video.userId.slice(-8), 8)}`}
+                <span className="text-ink-faint"> · owner (self-delete)</span>
+              </Field>
+              {video.deleteEventPublishedAt ? (
+                <Field label="Media purged">{formatDateTime(video.deleteEventPublishedAt)}</Field>
+              ) : (
+                <Field label="Purges in">{daysUntilPurge(video.deletedAt)}</Field>
+              )}
+              <Field label="Media" wide>
+                <span className="text-ink-faint">
+                  {video.deleteEventPublishedAt
+                    ? "Permanently removed from storage — media-worker deleted the raw upload, thumbnail and HLS files once it consumed this video's delete event. The URLs below are what the record still points at; they no longer resolve."
+                    : "Still in trash — the video's owner deleted it, but its media stays in storage and watchable here until the retention window above expires."}
+                </span>
+              </Field>
+            </>
+          ) : null}
           {video.rawFileUrl ? (
             <Field label="Raw file" wide>
               <span className="break-all">{video.rawFileUrl}</span>
@@ -485,10 +464,10 @@ function VideoRow({
         </tr>
       ) : null}
 
-      {result ? (
+      {(stalled ?? result) ? (
         <tr className="border-b border-line">
           <td colSpan={9} className="px-5 py-2 text-[11px] text-ink-soft">
-            {result}
+            {stalled ?? result}
           </td>
         </tr>
       ) : null}
@@ -558,26 +537,4 @@ function WatchOverlay({
     </div>,
     document.body,
   );
-}
-
-/**
- * Built from the current params rather than from scratch, so changing the status filter does not
- * silently drop the header's date filter — the page would then show rows the picker excludes.
- */
-function buildHref(
-  pathname: string,
-  params: URLSearchParams,
-  term: string,
-  status: StatusFilter,
-) {
-  const next = new URLSearchParams(params);
-  // Back to page one: page 3 of the previous result set is not page 3 of this one, and is
-  // usually past its end.
-  next.delete("page");
-  if (term.trim()) next.set("q", term.trim());
-  else next.delete("q");
-  if (status !== "ALL") next.set("status", status);
-  else next.delete("status");
-  const query = next.toString();
-  return (query ? `${pathname}?${query}` : pathname) as never;
 }

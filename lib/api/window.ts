@@ -1,28 +1,66 @@
 /**
- * The two header controls: how coarsely to bucket, and where the window ends.
+ * The two header controls: which period every figure on the page covers, and where that
+ * period ends.
  *
- * The analytics endpoints only take `days` — a count backwards from today, with no
- * end-date parameter — so an "as of" date is served by asking for a longer stretch and
- * cutting it here. That keeps the picker honest without a backend change.
+ * The period is one control, not two, because it answers both questions a dated console asks:
+ * how much of a figure to show, and what to compare it against. Picking "Month" means a
+ * figure covering the last 30 days with a percentage against the 30 before it — a separate
+ * "compare against" control could be set to disagree with the figure above it, and then the
+ * percentage is describing a period the number is not.
+ *
+ * The analytics endpoints only take `days` — a count backwards from today, with no end-date
+ * parameter — so an "as of" date is served by asking for a longer stretch and cutting it here.
  */
 
+/** How the charts bucket their bars. Independent of the period: see `CHART` below. */
 export type Granularity = "daily" | "weekly" | "monthly";
 
-export const GRANULARITIES: readonly { value: Granularity; label: string }[] = [
-  { value: "daily", label: "Daily" },
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
+/** The period a figure covers, and the length of the period it is compared against. */
+export type Period = "day" | "week" | "month" | "year";
+
+export const PERIODS: readonly { value: Period; label: string }[] = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "year", label: "Year" },
 ];
 
+const PERIOD_DAYS: Record<Period, number> = {
+  day: 1,
+  week: 7,
+  month: 30,
+  year: 365,
+};
+
+/** The grey caption under a figure, saying how much time it covers. */
+const PERIOD_LABEL: Record<Period, string> = {
+  day: "Last 24h",
+  week: "Last 7d",
+  month: "Last 30d",
+  year: "Last 365d",
+};
+
+/** What the delta footer says it is comparing against. */
+const COMPARE_LABEL: Record<Period, string> = {
+  day: "vs yesterday",
+  week: "vs last week",
+  month: "vs last month",
+  year: "vs last year",
+};
+
 /**
- * Granularity sets the span too. Twelve weekly bars off a 30-day window would be two
- * bars, so a separate length control would only ever be set to the one value that
- * makes the chart readable.
+ * How a chart is drawn for each period, which is not the period itself.
+ *
+ * A one-day period would be a one-bar chart, and 365 daily bars is a smear — so the chart
+ * shows the longest stretch that still reads at that resolution. Month and year draw the same
+ * chart on purpose: 365 days is the widest window the engagement rollup pulls, and a
+ * thirty-six-bar version of it would be the same picture stretched.
  */
-export const SPAN_DAYS: Record<Granularity, number> = {
-  daily: 30,
-  weekly: 84,
-  monthly: 365,
+const CHART: Record<Period, { bucket: Granularity; days: number }> = {
+  day: { bucket: "daily", days: 30 },
+  week: { bucket: "weekly", days: 84 },
+  month: { bucket: "monthly", days: 365 },
+  year: { bucket: "monthly", days: 365 },
 };
 
 /** Suffix for "last 30d" style captions, so a weekly chart stops claiming days. */
@@ -44,10 +82,8 @@ export function daysBetween(from: string, to: string): number {
   return Math.max(Math.round(diff / DAY_MS), 0);
 }
 
-export function parseGranularity(value: string | undefined): Granularity {
-  return GRANULARITIES.some((g) => g.value === value)
-    ? (value as Granularity)
-    : "daily";
+export function parsePeriod(value: string | undefined): Period {
+  return PERIODS.some((p) => p.value === value) ? (value as Period) : "month";
 }
 
 /**
@@ -61,47 +97,73 @@ export function parseAsOf(value: string | undefined, latest: string): string {
   return value > latest ? latest : value;
 }
 
-/** The analytics endpoints reject `days` above this. */
-const API_MAX_DAYS = 365;
+/**
+ * The longest window every dated endpoint accepts. Three years, so a year-over-year delta
+ * can ask for the year before the one on screen — see the `@Max` on AnalyticsController,
+ * ModerationActionController and AdminVideoController, which have to agree with this.
+ */
+const API_MAX_DAYS = 1095;
 
 export interface TimeWindow {
-  granularity: Granularity;
+  period: Period;
+  /** Bucket size for the page's charts — derived from the period, not picked separately. */
+  bucket: Granularity;
   /** Inclusive end of the window, YYYY-MM-DD. */
   asOf: string;
+  /** Days a KPI figure covers, and the length of the period behind it it is compared to. */
+  periodDays: number;
+  /** "Last 30d" and friends — the caption under a figure covering exactly one period. */
+  periodLabel: string;
   /** Days of history the charts show. */
-  spanDays: number;
-  /** What to ask the API for: the window, plus the gap back from today to `asOf`. */
-  fetchDays: number;
+  chartDays: number;
+  /** "vs last month" and friends — what the delta under a figure is claiming. */
+  compareLabel: string;
   /**
-   * `fetchDays` plus one more span, so a KPI can be compared against the period
-   * before it — clamped to what the API accepts.
+   * What to ask the API for: the gap back from today to `asOf`, plus whichever is longer —
+   * the chart's stretch, or two periods so a figure has something to compare against.
    */
-  compareDays: number;
+  fetchDays: number;
 }
 
 export function resolveWindow(
-  params: { g?: string; asOf?: string },
+  params: { p?: string; asOf?: string },
   latest: string,
 ): TimeWindow {
-  const granularity = parseGranularity(params.g);
+  const period = parsePeriod(params.p);
   const asOf = parseAsOf(params.asOf, latest);
-  const spanDays = SPAN_DAYS[granularity];
-  const fetchDays = daysBetween(asOf, latest) + spanDays;
+  const periodDays = PERIOD_DAYS[period];
+  const chart = CHART[period];
+  const gap = daysBetween(asOf, latest);
   return {
-    granularity,
+    period,
+    bucket: chart.bucket,
     asOf,
-    spanDays,
-    fetchDays,
-    compareDays: Math.min(fetchDays + spanDays, API_MAX_DAYS),
+    periodDays,
+    periodLabel: PERIOD_LABEL[period],
+    chartDays: chart.days,
+    compareLabel: COMPARE_LABEL[period],
+    fetchDays: Math.min(gap + Math.max(chart.days, periodDays * 2), API_MAX_DAYS),
   };
 }
 
-/** Trims a daily series to the window: everything up to `asOf`, at most `spanDays` of it. */
+/** Trims a daily series to the chart window: everything up to `asOf`, at most `chartDays` of it. */
 export function sliceToWindow<T extends { day: string }>(
   rows: T[],
   window: TimeWindow,
 ): T[] {
-  return rows.filter((r) => r.day <= window.asOf).slice(-window.spanDays);
+  return rows.filter((r) => r.day <= window.asOf).slice(-window.chartDays);
+}
+
+/**
+ * The part of a daily series a delta is computed over: everything up to `asOf`, uncut, so the
+ * two periods behind it are still there. Cutting to the window first would leave nothing to
+ * compare against.
+ */
+export function historyUpTo<T extends { day: string }>(
+  rows: T[],
+  window: TimeWindow,
+): T[] {
+  return rows.filter((r) => r.day <= window.asOf);
 }
 
 /**

@@ -13,7 +13,7 @@ import {
   listTargetActions,
 } from "@/lib/api/admin";
 import { playable } from "@/lib/moderation";
-import { formatCompact, formatCount, formatDate } from "@/lib/format";
+import { daysUntilPurge, formatCompact, formatCount, formatDateTime, formatDuration } from "@/lib/format";
 import type {
   AdminVideoResponse,
   ModerationActionResponse,
@@ -89,8 +89,10 @@ export default async function VideoDetailPage({
         title={video.title || "(untitled upload)"}
         subtitle={
           video.deletedAt
-            ? `Deleted by its owner on ${formatDate(video.deletedAt)} — readable here, and nowhere else.`
-            : `${video.status} · ${video.visibility} · uploaded ${formatDate(video.createdAt)}`
+            ? video.deleteEventPublishedAt
+              ? `Deleted by its owner on ${formatDateTime(video.deletedAt)} — media permanently purged.`
+              : `Deleted by its owner on ${formatDateTime(video.deletedAt)} — in trash, ${daysUntilPurge(video.deletedAt)} left before permanent deletion.`
+            : `${video.status} · ${video.visibility} · uploaded ${formatDateTime(video.createdAt)}`
         }
       />
 
@@ -98,10 +100,13 @@ export default async function VideoDetailPage({
         <Card>
           <CardHeader
             title="Preview"
-            hint="GET /api/v1/videos/admin/{id} — no visibility rule applied, so a removed video still plays here"
+            hint="GET /api/v1/videos/admin/{id} — no visibility rule applied, so a taken-down or trashed video still plays here"
           />
           <div className="px-5 py-4">
-            {watchable && video.hlsUrl ? (
+            {/* A deleted video keeps its media for a 30-day trash window before permanent
+                purge — deleteEventPublishedAt (not deletedAt) is the signal that media-worker
+                has actually erased it from MinIO, which is when hlsUrl stops resolving. */}
+            {watchable && video.hlsUrl && !video.deleteEventPublishedAt ? (
               // A faststart mp4 rather than an HLS playlist, so a bare <video> plays it in
               // every browser with no player library.
               <video
@@ -112,9 +117,11 @@ export default async function VideoDetailPage({
               />
             ) : (
               <p className="text-[12px] text-ink-faint">
-                {watchable
-                  ? "No playable file on the record — the transcode produced no output."
-                  : `Nothing to play: the video is ${video.status}, so no transcoded file exists yet.`}
+                {video.deleteEventPublishedAt
+                  ? "Media permanently removed from storage — nothing left to play."
+                  : watchable
+                    ? "No playable file on the record — the transcode produced no output."
+                    : `Nothing to play: the video is ${video.status}, so no transcoded file exists yet.`}
               </p>
             )}
           </div>
@@ -140,7 +147,7 @@ export default async function VideoDetailPage({
             <Field label="Status">{video.status}</Field>
             <Field label="Visibility">{video.visibility}</Field>
             <Field label="Duration">
-              {video.durationSeconds != null ? `${video.durationSeconds}s` : "—"}
+              {video.durationSeconds != null ? formatDuration(video.durationSeconds) : "—"}
             </Field>
             {/* An em dash rather than 0: a video still transcoding has no view count, and
                 printing zero would read as one nobody watched. */}
@@ -154,11 +161,17 @@ export default async function VideoDetailPage({
                   : "—"}
             </Field>
             <Field label="Reports">{reportCount}</Field>
-            <Field label="Uploaded">{formatDate(video.createdAt)}</Field>
+            <Field label="Uploaded">{formatDateTime(video.createdAt)}</Field>
             <Field label="Published">
-              {video.publishedAt ? formatDate(video.publishedAt) : "—"}
+              {video.publishedAt ? formatDateTime(video.publishedAt) : "—"}
             </Field>
-            <Field label="Updated">{formatDate(video.updatedAt)}</Field>
+            <Field label="Updated">{formatDateTime(video.updatedAt)}</Field>
+            {video.deletedAt && !video.deleteEventPublishedAt ? (
+              <Field label="Purges in">{daysUntilPurge(video.deletedAt)}</Field>
+            ) : null}
+            {video.deleteEventPublishedAt ? (
+              <Field label="Media purged">{formatDateTime(video.deleteEventPublishedAt)}</Field>
+            ) : null}
             <Field label="Video ID">
               <span className="figure break-all">{video.id}</span>
             </Field>
@@ -285,7 +298,7 @@ function ClassifierVerdict({ video }: { video: AdminVideoResponse }) {
       </Field>
       <Field label="Model">{moderation.model ?? "unknown"}</Field>
       <Field label="Model version">{moderation.modelVersion ?? "unversioned"}</Field>
-      <Field label="Checked">{formatDate(moderation.checkedAt)}</Field>
+      <Field label="Checked">{formatDateTime(moderation.checkedAt)}</Field>
       {moderation.reason ? (
         <Field label="Check did not complete" wide>
           <span className="text-pending">{moderation.reason}</span>

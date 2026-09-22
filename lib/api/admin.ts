@@ -12,6 +12,7 @@ import type {
   DailyAdminStatsResponse,
   DailyCountResponse,
   DailySignupResponse,
+  DailyVideoStatsResponse,
   ModerationSettingsResponse,
   TopVideoResponse,
   ModerationActionResponse,
@@ -48,7 +49,7 @@ import {
 } from "@/lib/mock/moderation";
 import { mockUsers } from "@/lib/mock/users";
 import { mockCommentPage, mockCommentsByIds, mockReplyPage } from "@/lib/mock/comments";
-import { mockVideos } from "@/lib/mock/videos";
+import { mockDailyVideoStats, mockVideos } from "@/lib/mock/videos";
 import { MOCK_NOW } from "@/lib/mock/random";
 
 /**
@@ -98,10 +99,24 @@ export async function getStatsSummary(): Promise<StatsSummaryResponse> {
   return apiGet<StatsSummaryResponse>("/api/v1/admin/stats/summary");
 }
 
-/** Reports filed and actions taken per day — what the dashboard's deltas are computed from. */
+/**
+ * The moderation flow per day — reports filed and closed, actions taken by kind. Every
+ * period-over-period percentage on a moderation figure is computed from this one series,
+ * which is why it comes back as one call rather than a count per card.
+ */
 export async function getDailyAdminStats(days = 7): Promise<DailyAdminStatsResponse[]> {
   if (USE_MOCK) return mockDailyAdminStats(days);
   return apiGet<DailyAdminStatsResponse[]>(`/api/v1/admin/stats/daily?days=${days}`);
+}
+
+/**
+ * Uploads per day, with each day's cohort standing. video-service owns this rather than
+ * analytics-service because the two cohort counts are read off the videos' current status,
+ * which only the library itself holds.
+ */
+export async function getDailyVideoStats(days = 7): Promise<DailyVideoStatsResponse[]> {
+  if (USE_MOCK) return mockDailyVideoStats(days);
+  return apiGet<DailyVideoStatsResponse[]>(`/api/v1/videos/admin/stats/daily?days=${days}`);
 }
 
 /**
@@ -528,16 +543,22 @@ export async function listVideos(options: {
    * be resolved to ids before it gets here — see `resolveOwners`.
    */
   ownerIds?: string[];
+  /**
+   * Undefined for no filter on it (both live and deleted rows match, the default); true for
+   * deleted rows only; false for live rows only.
+   */
+  deleted?: boolean;
   page?: number;
   size?: number;
 } = {}): Promise<Page<AdminVideoResponse>> {
-  const { q, status, ownerIds, page = 0, size = LIST_PAGE_SIZE } = options;
+  const { q, status, ownerIds, deleted, page = 0, size = LIST_PAGE_SIZE } = options;
 
   if (USE_MOCK) {
     const needle = q?.trim().toLowerCase();
     const owners = new Set(ownerIds);
     const filtered = mockVideos.filter((video) => {
       if (status && video.status !== status) return false;
+      if (deleted != null && Boolean(video.deletedAt) !== deleted) return false;
       if (!needle && owners.size === 0) return true;
       return (
         (!!needle && video.title.toLowerCase().includes(needle)) || owners.has(video.userId)
@@ -549,6 +570,7 @@ export async function listVideos(options: {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (q) params.set("q", q);
   if (status) params.set("status", status);
+  if (deleted != null) params.set("deleted", String(deleted));
   for (const ownerId of ownerIds ?? []) params.append("ownerId", ownerId);
 
   return apiGet<Page<AdminVideoResponse>>(`/api/v1/videos/admin?${params}`);

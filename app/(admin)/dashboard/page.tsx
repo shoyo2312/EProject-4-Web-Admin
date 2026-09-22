@@ -13,35 +13,34 @@ import {
 } from "@/lib/api/admin";
 import {
   bucketByGranularity,
+  historyUpTo,
   isoDay,
   resolveWindow,
   sliceToWindow,
 } from "@/lib/api/window";
 import { getSessionProfile } from "@/lib/api/session";
-import { deltaPercent, spark } from "@/lib/series";
+import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ g?: string; asOf?: string }>;
+  searchParams: Promise<{ p?: string; asOf?: string }>;
 }) {
   const session = await getSessionProfile();
   const latest = isoDay(referenceNow());
   const window = resolveWindow(await searchParams, latest);
-  const filters = { granularity: window.granularity, asOf: window.asOf, latest };
+  const filters = { period: window.period, asOf: window.asOf, latest };
   const asOfMs = Date.parse(`${window.asOf}T23:59:59Z`);
 
   let data;
   try {
     const [stats, signups, adminStats, series, reports] = await Promise.all([
       getStatsSummary(),
-      // Twice the display window, so the signup KPI can be compared against the period before
-      // it. The same pull the analytics page makes, for the same reason.
-      getDailySignups(window.compareDays),
-      // Same doubled window: Pending Reports and Actions(24h) compare against the period
-      // before them the same way Signups does.
-      getDailyAdminStats(window.compareDays),
+      // fetchDays already holds two periods on top of the chart's stretch, so every card
+      // below has the period before this one to compare itself against.
+      getDailySignups(window.fetchDays),
+      getDailyAdminStats(window.fetchDays),
       getEngagementSeries(asOfMs),
       // Over-fetched, then cut to the picked date: the eight newest reports as of
       // three weeks ago are not the eight newest today.
@@ -61,6 +60,7 @@ export default async function DashboardPage({
   }
 
   const { stats, signups, adminStats, series } = data;
+  const { periodDays, periodLabel, compareLabel } = window;
 
   const reports = data.reports
     .filter((r) => r.createdAt.slice(0, 10) <= window.asOf)
@@ -68,53 +68,57 @@ export default async function DashboardPage({
 
   const signupBuckets = bucketByGranularity(
     sliceToWindow(signups, window),
-    window.granularity,
+    window.bucket,
     (a, b) => ({ day: a.day, signups: a.signups + b.signups }),
   );
 
-  const signupTotal = signupBuckets.reduce((sum, d) => sum + d.signups, 0);
-
-  // Daily and uncut, so the delta below compares the window against the window before it —
-  // signupBuckets is only the window itself, and has nothing behind it to compare to.
-  const signupCounts = signups
-    .filter((d) => d.day <= window.asOf)
-    .map((d) => d.signups);
-
-  // Same shape as signupCounts below: daily and uncut, so the delta compares the window
-  // against the window before it rather than just the picked slice.
-  const dailyStats = adminStats.filter((d) => d.day <= window.asOf);
+  // Daily and uncut, so each delta compares the period against the period before it —
+  // the bucketed series above is only the chart's window, with nothing behind it.
+  const signupCounts = historyUpTo(signups, window).map((d) => d.signups);
+  const dailyStats = historyUpTo(adminStats, window);
   const reportsCreatedCounts = dailyStats.map((d) => d.reportsCreated);
   const actionsTakenCounts = dailyStats.map((d) => d.actionsTaken);
+  const takedownCounts = dailyStats.map((d) => d.videosTakenDown);
 
   const cards: KpiCard[] = [
     {
       label: "Pending Reports",
       value: formatNumber(stats.pendingReports),
-      unit: "Reports",
-      // Reports filed is the flow behind the queue depth; more filed is worse, so an
-      // upward move reads red here same as the depth figure itself would.
-      delta: deltaPercent(reportsCreatedCounts, window.spanDays),
-      deltaLabel: `vs previous ${window.spanDays}d`,
+      unit: "Right now",
+      // Queue depth is a snapshot: nothing records how deep it was a month ago. The
+      // percentage is on the flow that fills it — reports filed this period against the
+      // period before — which is the thing that actually moved. More filed is worse, so it
+      // reads red rising, same as the depth itself would.
+      delta: deltaPercent(reportsCreatedCounts, periodDays),
+      deltaLabel: `filed, ${compareLabel}`,
       invertDelta: true,
-      spark: spark(reportsCreatedCounts, window.spanDays),
+      spark: spark(reportsCreatedCounts, window.chartDays),
     },
     {
-      label: "Actions (24h)",
-      value: formatNumber(stats.actionsLast24h),
-      unit: "Actions",
-      delta: deltaPercent(actionsTakenCounts, window.spanDays),
-      deltaLabel: `vs previous ${window.spanDays}d`,
-      spark: spark(actionsTakenCounts, window.spanDays),
+      label: "Actions Taken",
+      value: formatNumber(sumLast(actionsTakenCounts, periodDays)),
+      unit: periodLabel,
+      delta: deltaPercent(actionsTakenCounts, periodDays),
+      deltaLabel: compareLabel,
+      spark: spark(actionsTakenCounts, window.chartDays),
     },
     {
       label: "New Signups",
-      value: formatNumber(signupTotal),
-      unit: "New Users",
-      // Real, and the only one here that can be: signups come back as a daily series, pulled
-      // long enough above to hold the period before this one.
-      delta: deltaPercent(signupCounts, window.spanDays),
-      deltaLabel: `vs previous ${window.spanDays}d`,
+      value: formatNumber(sumLast(signupCounts, periodDays)),
+      unit: periodLabel,
+      delta: deltaPercent(signupCounts, periodDays),
+      deltaLabel: compareLabel,
       spark: signupBuckets.map((d) => d.signups),
+    },
+    {
+      label: "Videos Taken Down",
+      value: formatNumber(sumLast(takedownCounts, periodDays)),
+      unit: periodLabel,
+      // Not inverted: a busier week of takedowns is a queue being worked, not a platform
+      // getting worse. The figure that would be bad rising is the backlog, one card along.
+      delta: deltaPercent(takedownCounts, periodDays),
+      deltaLabel: compareLabel,
+      spark: spark(takedownCounts, window.chartDays),
     },
   ];
 
@@ -130,7 +134,7 @@ export default async function DashboardPage({
       <div className="space-y-4">
         <KpiCards cards={cards} />
 
-        <EngagementTrend series={series} range={window.granularity} />
+        <EngagementTrend series={series} range={window.bucket} />
 
         <ReportsTable reports={reports} footerHref="/moderation/reports" />
       </div>

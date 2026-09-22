@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { MessageSquareOff, Search } from "lucide-react";
+import { MessageSquareOff } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
+import { SearchBox } from "@/components/ui/search-box";
 import type { AdminVideoResponse } from "@/lib/api/types";
 import { formatCompact } from "@/lib/format";
+import { hrefWith } from "@/lib/url";
 import { cn } from "@/lib/utils";
 
 /**
@@ -25,29 +27,18 @@ export function VideoPicker({
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const [term, setTerm] = useState(query);
   const [navigating, startNavigation] = useTransition();
 
-  // Debounced, same as the other directories: every keystroke would otherwise be a round trip
-  // through the gateway to video-service.
-  useEffect(() => {
-    if (term === query) return;
-    const timer = setTimeout(() => {
-      const next = new URLSearchParams(params);
-      if (term.trim()) next.set("q", term.trim());
-      else next.delete("q");
-      // The selected video is dropped: it is almost certainly not in the new result set, and
-      // leaving a thread on screen that the list beside it no longer contains reads as a bug.
-      next.delete("videoId");
-      startNavigation(() => router.replace(`${pathname}?${next}` as never));
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [term, query, pathname, params, router]);
+  function search(term: string) {
+    // The selected video is dropped: it is almost certainly not in the new result set, and
+    // leaving a thread on screen that the list beside it no longer contains reads as a bug.
+    const href = hrefWith(pathname, params, { q: term || null, videoId: null });
+    startNavigation(() => router.replace(href as never));
+  }
 
   function select(videoId: string) {
-    const next = new URLSearchParams(params);
-    next.set("videoId", videoId);
-    startNavigation(() => router.replace(`${pathname}?${next}` as never));
+    const href = hrefWith(pathname, params, { videoId });
+    startNavigation(() => router.replace(href as never));
   }
 
   return (
@@ -58,15 +49,7 @@ export function VideoPicker({
       />
 
       <div className="border-b border-line px-4 py-3">
-        <label className="flex items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5">
-          <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
-          <input
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-            placeholder="Search title..."
-            className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
-          />
-        </label>
+        <SearchBox query={query} onCommit={search} placeholder="Search title..." full />
       </div>
 
       <div

@@ -11,7 +11,7 @@ const BUCKET_LABEL: Record<MosaicRange, string> = {
 
 /**
  * The range comes from the page header rather than a control of its own: two
- * granularity pickers on one screen can disagree, and then neither is trustworthy.
+ * period pickers on one screen can disagree, and then neither is trustworthy.
  */
 export function EngagementTrend({
   series,

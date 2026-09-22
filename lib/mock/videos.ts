@@ -1,5 +1,6 @@
 import type {
   AdminVideoResponse,
+  DailyVideoStatsResponse,
   ModerationSummary,
   VideoStatus,
   VideoVisibility,
@@ -16,10 +17,14 @@ const TITLES = [
 
 const TAGS = ["food", "travel", "coding", "diy", "music", "fitness", "vlog", "review"] as const;
 
-/** Weighted: most uploads are live, a few are stuck or removed. */
+/**
+ * Weighted: most uploads are live, a few are stuck, removed, or held for a reviewer.
+ * PENDING_REVIEW is in the mix because the console has a card and a percentage for exactly
+ * that backlog — a fixture without one leaves both reading zero.
+ */
 const STATUSES: VideoStatus[] = [
   "PUBLISHED", "PUBLISHED", "PUBLISHED", "PUBLISHED", "PUBLISHED",
-  "PROCESSING", "TAKEN_DOWN", "FAILED",
+  "PROCESSING", "TAKEN_DOWN", "FAILED", "PENDING_REVIEW", "PENDING_REVIEW",
 ];
 
 const VISIBILITIES: VideoVisibility[] = ["PUBLIC", "PUBLIC", "PUBLIC", "FRIENDS", "PRIVATE"];
@@ -117,9 +122,55 @@ export const mockVideos: AdminVideoResponse[] = (() => {
       failureReason:
         status === "FAILED" ? "ffmpeg: moov atom not found — upload truncated" : null,
       takedownReason: status === "TAKEN_DOWN" ? pick(rand, TAKEDOWN_REASONS) : null,
-      // The fixtures stand in for the admin listing, which never returns a deleted video.
-      deletedAt: null,
+      // One row stands in for an owner-deleted video, which the admin listing now includes.
+      deletedAt: i === 3 ? new Date(MOCK_NOW - 2 * DAY_MS).toISOString() : null,
+      deleteEventPublishedAt: i === 3 ? new Date(MOCK_NOW - 2 * DAY_MS + 5_000).toISOString() : null,
       moderation: moderationFor(status, i, createdAt),
     };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 })();
+
+/**
+ * Uploads per day, with each day's cohort standing — the series the Videos page's percentages
+ * are computed from.
+ *
+ * Counted off `mockVideos` for the 240 days that fixture covers, so the page's totals and the
+ * percentage under them describe the same set. Older days are filled in with a seeded series:
+ * a year-over-year comparison asks for two years, and a derived zero there would read as
+ * "nobody uploaded anything" rather than "the fixture stops here".
+ */
+export function mockDailyVideoStats(days = 7): DailyVideoStatsResponse[] {
+  const oldest = mockVideos[mockVideos.length - 1].createdAt.slice(0, 10);
+  const rand = seededRandom(6120 + days);
+  const rows: DailyVideoStatsResponse[] = [];
+
+  for (let d = days - 1; d >= 0; d--) {
+    const at = MOCK_NOW - d * DAY_MS;
+    const day = new Date(at).toISOString().slice(0, 10);
+
+    if (day >= oldest) {
+      const onDay = mockVideos.filter((v) => v.createdAt.slice(0, 10) === day);
+      rows.push({
+        day,
+        uploads: onDay.length,
+        pendingReview: onDay.filter((v) => v.status === "PENDING_REVIEW").length,
+        notPlayable: onDay.filter(
+          (v) => v.status === "PROCESSING" || v.status === "FAILED",
+        ).length,
+      });
+      continue;
+    }
+
+    // Older days run lighter, so the delta comes out as growth rather than as noise.
+    const age = days <= 1 ? 1 : (days - 1 - d) / (days - 1);
+    const uploads = Math.round(between(rand, 6, 22) * (0.5 + age * 0.8));
+    rows.push({
+      day,
+      uploads,
+      // A cohort this old has been dealt with; only the newest days still hold a backlog.
+      pendingReview: 0,
+      notPlayable: 0,
+    });
+  }
+  return rows;
+}

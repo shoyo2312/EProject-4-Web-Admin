@@ -1,18 +1,9 @@
 import Link from "next/link";
 import { Eye, Heart, Play } from "lucide-react";
-import type { AdminVideoResponse, VideoStatus } from "@/lib/api/types";
+import { VIDEO_STATUS_STYLES } from "@/components/ui/status-badge";
+import type { AdminVideoResponse } from "@/lib/api/types";
 import { formatCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-const STATUS_STYLES: Record<VideoStatus, string> = {
-  PUBLISHED: "border-success/25 bg-success-bg text-success",
-  PROCESSING: "border-pending/25 bg-pending-bg text-pending",
-  PENDING_MODERATION: "border-pending/25 bg-pending-bg text-pending",
-  PENDING_REVIEW: "border-pending/25 bg-pending-bg text-pending",
-  FAILED: "border-danger/25 bg-danger-bg text-danger",
-  REJECTED: "border-danger/25 bg-danger-bg text-danger",
-  TAKEN_DOWN: "border-danger/25 bg-danger-bg text-danger",
-};
 
 /** This account's uploads, shown right on its own page rather than sending the admin to a search. */
 export function UserUploads({ videos }: { videos: AdminVideoResponse[] }) {
@@ -33,7 +24,11 @@ export function UserUploads({ videos }: { videos: AdminVideoResponse[] }) {
           className="group overflow-hidden rounded-lg border border-line bg-surface-muted transition-colors hover:border-line-strong"
         >
           <div className="relative aspect-[9/16] bg-neutral-bg">
-            {video.thumbnailUrl ? (
+            {/* A deleted video sits in a 30-day trash window with its media intact — deletedAt
+                alone does not mean the file is gone. deleteEventPublishedAt is what tells us
+                media-worker has actually consumed the delete event and erased it from MinIO;
+                only then is thumbnailUrl a dangling reference. */}
+            {video.thumbnailUrl && !video.deleteEventPublishedAt ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={video.thumbnailUrl}
@@ -45,13 +40,17 @@ export function UserUploads({ videos }: { videos: AdminVideoResponse[] }) {
                 <Play className="h-4 w-4 text-ink-faint" />
               </div>
             )}
+            {/* A deleted video keeps its pre-deletion status (PUBLISHED, TAKEN_DOWN, ...) on
+                the record — showing that here would read as still live. */}
             <span
               className={cn(
                 "absolute top-1 left-1 rounded border px-1 py-0.5 text-[8px] leading-none font-medium",
-                STATUS_STYLES[video.status],
+                video.deletedAt
+                  ? "border-danger/25 bg-danger-bg text-danger"
+                  : VIDEO_STATUS_STYLES[video.status],
               )}
             >
-              {video.status}
+              {video.deletedAt ? "DELETED" : video.status}
             </span>
           </div>
           <div className="px-1.5 py-1">

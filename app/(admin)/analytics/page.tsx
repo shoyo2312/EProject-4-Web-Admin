@@ -15,6 +15,7 @@ import {
 import {
   BUCKET_UNIT,
   bucketByGranularity,
+  historyUpTo,
   isoDay,
   resolveWindow,
   sliceToWindow,
@@ -25,24 +26,25 @@ import { formatCompact, formatDate, formatNumber } from "@/lib/format";
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ g?: string; asOf?: string }>;
+  searchParams: Promise<{ p?: string; asOf?: string }>;
 }) {
   const latest = isoDay(referenceNow());
   const window = resolveWindow(await searchParams, latest);
-  const filters = { granularity: window.granularity, asOf: window.asOf, latest };
+  const filters = { period: window.period, asOf: window.asOf, latest };
   // Inclusive end of day: a row stamped on `asOf` itself belongs inside the window.
   const asOfMs = Date.parse(`${window.asOf}T23:59:59Z`);
 
   let data;
   try {
-    // Twice the display window, so every KPI can be compared against the period before it.
+    // fetchDays covers the charts and two periods on top, so every KPI below can be
+    // compared against the period before it.
     const [signups, engagement, activeUsers, topVideos] = await Promise.all([
-      getDailySignups(window.compareDays),
+      getDailySignups(window.fetchDays),
       getEngagementOverview(asOfMs),
-      getDailyActiveUsers(window.compareDays),
-      // The window's own span, not the doubled one: this list is "what people watched over
+      getDailyActiveUsers(window.fetchDays),
+      // The period itself, not the doubled window: this list is "what people watched over
       // these days", and there is nothing to compare it against.
-      getTopVideos(window.spanDays),
+      getTopVideos(window.periodDays),
     ]);
     data = { signups, engagement, activeUsers, topVideos };
   } catch (error) {
@@ -55,57 +57,56 @@ export default async function AnalyticsPage({
   }
 
   const { signups, engagement, activeUsers, topVideos } = data;
-  const span = window.spanDays;
-  const unit = BUCKET_UNIT[window.granularity];
+  const { periodDays, periodLabel, compareLabel, chartDays } = window;
+  const unit = BUCKET_UNIT[window.bucket];
 
-  // Everything up to the picked date. The KPI helpers below read the last two spans of
-  // this, so the comparison period moves with the picker instead of always being today.
-  const signupHistory = signups.filter((d) => d.day <= window.asOf);
-
+  // Everything up to the picked date, uncut. The KPI helpers below read the last two periods
+  // of this, so the comparison moves with the picker instead of always being today.
+  const signupHistory = historyUpTo(signups, window);
   const signupCounts = signupHistory.map((d) => d.signups);
 
-  // Average over the span rather than the latest day: one day's figure is a weekday or a
-  // weekend, and the card sits next to a delta that compares two spans.
-  const dauCounts = activeUsers.filter((d) => d.day <= window.asOf).map((d) => d.activeUsers);
-  const dauAverage = dauCounts.length === 0 ? 0 : Math.round(sumLast(dauCounts, span) / span);
+  // Average over the period rather than the latest day: one day's figure is a weekday or a
+  // weekend, and the card sits next to a percentage that compares two whole periods.
+  const dauCounts = historyUpTo(activeUsers, window).map((d) => d.activeUsers);
+  const dauAverage =
+    dauCounts.length === 0 ? 0 : Math.round(sumLast(dauCounts, periodDays) / periodDays);
 
+  const engagementCounts = engagement.series.daily.map((b) => b.primary + b.secondary);
   const engagementTotal = engagement.mix.reduce((sum, row) => sum + row.total, 0);
 
   const cards: KpiCard[] = [
     {
       label: "New Signups",
-      value: formatNumber(sumLast(signupCounts, span)),
-      unit: "Accounts",
-      delta: deltaPercent(signupCounts, span),
-      deltaLabel: `vs previous ${span}d`,
-      spark: spark(signupCounts, span),
+      value: formatNumber(sumLast(signupCounts, periodDays)),
+      unit: periodLabel,
+      delta: deltaPercent(signupCounts, periodDays),
+      deltaLabel: compareLabel,
+      spark: spark(signupCounts, chartDays),
     },
     {
       label: "Daily Active Users",
       value: dauCounts.length === 0 ? "—" : formatNumber(dauAverage),
-      unit: `Average over ${span}d`,
-      delta: deltaPercent(dauCounts, span),
-      deltaLabel: `vs previous ${span}d`,
-      spark: spark(dauCounts, span),
+      unit: `Average, ${periodLabel.toLowerCase()}`,
+      delta: deltaPercent(dauCounts, periodDays),
+      deltaLabel: compareLabel,
+      spark: spark(dauCounts, chartDays),
     },
     {
       label: "Engagement Events",
       value: formatCompact(engagementTotal),
       unit: "Last 365d",
-      delta: deltaPercent(
-        engagement.series.daily.map((b) => b.primary + b.secondary),
-        7,
-      ),
-      deltaLabel: "vs previous 7d",
-      spark: engagement.series.daily
-        .slice(-8)
-        .map((b) => b.primary + b.secondary),
+      // The rollup behind this is a fixed 365-day pull, so a year-long period has only one
+      // year of history and no year before it to compare against — deltaPercent answers
+      // null there rather than comparing a year against nothing.
+      delta: deltaPercent(engagementCounts, periodDays),
+      deltaLabel: compareLabel,
+      spark: spark(engagementCounts, chartDays),
     },
   ];
 
   const signupBuckets = bucketByGranularity(
     sliceToWindow(signupHistory, window),
-    window.granularity,
+    window.bucket,
     (a, b) => ({ day: a.day, signups: a.signups + b.signups }),
   );
 
@@ -118,22 +119,22 @@ export default async function AnalyticsPage({
     <>
       <PageHeader
         title="Analytics"
-        subtitle={`Platform-wide engagement and growth over the ${span} days ending ${formatDate(window.asOf)}.`}
+        subtitle={`Platform-wide engagement and growth over the ${chartDays} days ending ${formatDate(window.asOf)}.`}
         filters={filters}
-        csv={{ name: `analytics-${window.granularity}`, rows: dailyRows }}
+        csv={{ name: `analytics-${window.period}`, rows: dailyRows }}
       />
 
       <div className="space-y-4">
         <KpiCards cards={cards} />
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
-          <EngagementTrend series={engagement.series} range={window.granularity} />
+          <EngagementTrend series={engagement.series} range={window.bucket} />
           <EngagementMix rows={engagement.mix} />
         </div>
 
         <AudienceGrowth days={signupBuckets} unit={unit} />
 
-        <TopVideos rows={topVideos} days={span} />
+        <TopVideos rows={topVideos} days={periodDays} />
       </div>
     </>
   );

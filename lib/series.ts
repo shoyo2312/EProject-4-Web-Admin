@@ -25,6 +25,25 @@ export function deltaPercent(values: number[], size: number): number | null {
   return Math.round(((sumLast(values, size) - previous) / previous) * 100);
 }
 
+/**
+ * Growth of a running total against the period before it, from the total itself and how much
+ * of it arrived during the period.
+ *
+ * A cumulative figure — accounts on the platform, videos in the library — has no series
+ * behind it, so `deltaPercent` cannot speak for it: comparing this period's arrivals against
+ * last period's is a claim about the flow, not about the total. What the total grew by is
+ * `inflow / (total - inflow)`, the size it had when the period began.
+ *
+ * Null when that starting size is zero or negative: everything that exists arrived in this
+ * period, which is not a percentage, and a negative comes from a total and an inflow counted
+ * over different sets — better to show nothing than a figure built from a mismatch.
+ */
+export function growthPercent(total: number, inflow: number): number | null {
+  const before = total - inflow;
+  if (before <= 0) return null;
+  return Math.round((inflow / before) * 100);
+}
+
 /** Eight buckets is what Sparkbars is drawn for; more than that and they stop reading. */
 export function spark(values: number[], size: number): number[] {
   const window = values.slice(-size);
