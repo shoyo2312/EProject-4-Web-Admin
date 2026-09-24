@@ -27,10 +27,17 @@ type Tokens = {
  * refresh cookie is present, rotate it here, before the request is served.
  *
  * auth-service rotates the refresh token single-use with replay detection (10s
- * grace). Two admin tabs whose polls both refresh with the same token inside the
- * same second will trip that and force one re-login — rare enough for an internal
- * console to leave alone; the alternative is a cross-request lock this layer
- * cannot hold.
+ * grace), so exactly one of several concurrent requests wins the rotation and the
+ * rest are rejected. That is routine here, not an attack: the access cookie's
+ * maxAge is the token's own lifetime, so it lapses from every in-flight request at
+ * the same instant, and the sidebar's <Link> prefetches plus AutoRefresh's poll
+ * mean several are usually in flight. The losers must therefore be treated as
+ * "try again", never as a dead session — see the redirect below.
+ *
+ * ponytail: no cross-request single-flight, which this layer cannot hold. The cost
+ * is a few wasted rotate() calls every 15 minutes and, when the loser is the
+ * navigation itself, one redirect to /login that immediately rotates and bounces
+ * back to /dashboard. Add a shared lock only if that flash becomes a complaint.
  */
 async function rotate(refreshToken: string): Promise<Tokens | null> {
   try {
@@ -91,7 +98,6 @@ export async function middleware(request: NextRequest) {
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
 
   let refreshed: Tokens | null = null;
-  let refreshFailed = false;
   if (!signedIn && refreshToken) {
     refreshed = await rotate(refreshToken);
     if (refreshed) {
@@ -100,8 +106,6 @@ export async function middleware(request: NextRequest) {
       // pass read the new token instead of throwing "not signed in" once.
       request.cookies.set(SESSION_COOKIE, refreshed.accessToken);
       request.cookies.set(REFRESH_COOKIE, refreshed.refreshToken);
-    } else {
-      refreshFailed = true;
     }
   }
 
@@ -112,14 +116,15 @@ export async function middleware(request: NextRequest) {
     url.pathname = "/login";
     // Come back to whatever was being opened once signed in
     url.searchParams.set("next", request.nextUrl.pathname);
-    const res = NextResponse.redirect(url);
-    // A refresh token that failed to rotate is spent — drop it so the next
-    // request does not retry it and trip replay detection.
-    if (refreshFailed) {
-      res.cookies.delete(SESSION_COOKIE);
-      res.cookies.delete(REFRESH_COOKIE);
-    }
-    return res;
+    // Deliberately no cookie delete on a failed rotation. A failure here is far
+    // more often a lost race or an unreachable gateway than a dead chain, and
+    // deleting destroyed the 7-day refresh token that the *winning* request had
+    // just rotated — the automatic logout every ~15 minutes. Leaving the cookie
+    // costs one wasted rotate() on the next request and self-heals, because
+    // /login is public and its own pass through here rotates and bounces to
+    // /dashboard. A genuinely revoked token is torn down by the ?expired=1 branch
+    // above, which is the one place that knows the gateway rejected the session.
+    return NextResponse.redirect(url);
   }
 
   if (signedIn && onLoginPage) {
