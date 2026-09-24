@@ -84,8 +84,8 @@ export function MosaicChart({
       <div className="flex gap-3">
         {/* Y axis — height pinned to the plot so the "0" tick lands on the baseline */}
         <div className="flex h-[280px] flex-col justify-between text-[10px] text-ink-faint">
-          {axisTicks.map((tick) => (
-            <span key={tick} className="figure leading-none">
+          {axisTicks.map((tick, i) => (
+            <span key={i} className="figure leading-none">
               {tick}
             </span>
           ))}
