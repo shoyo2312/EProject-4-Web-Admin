@@ -20,6 +20,7 @@ import type {
   Page,
   ReportGroupResponse,
   ReportResponse,
+  SecurityEventResponse,
   ReportStatus,
   ReportTargetType,
   StatsSummaryResponse,
@@ -48,6 +49,7 @@ import {
   mockStatsSummary,
 } from "@/lib/mock/moderation";
 import { mockUsers } from "@/lib/mock/users";
+import { mockSecurityEvents } from "@/lib/mock/security-events";
 import { mockCommentPage, mockCommentsByIds, mockReplyPage } from "@/lib/mock/comments";
 import { mockDailyVideoStats, mockVideos } from "@/lib/mock/videos";
 import { MOCK_NOW } from "@/lib/mock/random";
@@ -145,9 +147,17 @@ function sortReports(
  * twenty-five" while reading as a platform total — and a sort applied here can only reorder the
  * rows that already won.
  */
+/**
+ * The report ledger. `targetId` and `reporterId` are the two halves an account's activity
+ * history needs — what was filed against it, and what it filed against others — and both are
+ * filtered server-side: narrowing a fetched page client-side would show whichever of the
+ * account's reports happened to land on page 0 and call it the whole history.
+ */
 export async function listReports(options: {
   status?: ReportStatus;
   targetType?: ReportTargetType;
+  targetId?: string;
+  reporterId?: string;
   sort?: ReportSortField;
   ascending?: boolean;
   page?: number;
@@ -156,6 +166,8 @@ export async function listReports(options: {
   const {
     status,
     targetType,
+    targetId,
+    reporterId,
     sort = "createdAt",
     ascending = false,
     page = 0,
@@ -166,7 +178,9 @@ export async function listReports(options: {
     const filtered = mockReports.filter(
       (report) =>
         (!status || report.status === status)
-        && (!targetType || report.targetType === targetType),
+        && (!targetType || report.targetType === targetType)
+        && (!targetId || report.targetId === targetId)
+        && (!reporterId || report.reporterId === reporterId),
     );
     return mockPage(sortReports(filtered, sort, ascending), page, size);
   }
@@ -178,6 +192,8 @@ export async function listReports(options: {
   });
   if (status) params.set("status", status);
   if (targetType) params.set("targetType", targetType);
+  if (targetId) params.set("targetId", targetId);
+  if (reporterId) params.set("reporterId", reporterId);
 
   return apiGet<Page<ReportResponse>>(`/api/v1/admin/reports?${params}`);
 }
@@ -505,6 +521,26 @@ export async function getAdminUser(userId: string): Promise<AdminUserResponse | 
   // account that contains it and push the exact one past row twenty-five.
   const page = await listUsers({ q: handle, size: 100 });
   return page.content.find((user) => user.id === userId) ?? null;
+}
+
+/**
+ * One account's security log — sign-ins, failed attempts, password resets, address changes, the
+ * admin second factor. auth-service, like the directory above: that is the database that records
+ * them, and admin-service is not allowed to read it.
+ *
+ * Newest first, and no filter parameter: the console merges this into one timeline and narrows
+ * there, so a second filter here would be a second thing to keep in step with the first.
+ */
+export async function listSecurityEvents(
+  userId: string,
+  size = LIST_PAGE_SIZE,
+): Promise<Page<SecurityEventResponse>> {
+  if (USE_MOCK) return mockPage(mockSecurityEvents[userId] ?? [], 0, size);
+
+  const params = new URLSearchParams({ page: "0", size: String(size) });
+  return apiGet<Page<SecurityEventResponse>>(
+    `/api/v1/auth/admin/users/${userId}/security-events?${params}`,
+  );
 }
 
 /**

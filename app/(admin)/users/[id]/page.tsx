@@ -206,7 +206,17 @@ export default async function UserDetailPage({
         </Card>
 
         <Card>
-          <CardHeader title="Moderation history" />
+          <CardHeader
+            title="Moderation history"
+            actions={
+              <Link
+                href={`/users/${user.id}/activity` as never}
+                className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+              >
+                Full activity →
+              </Link>
+            }
+          />
           <div className="px-5 py-4">
             <ModerationHistory reportCount={reportCount} actions={actions} loading={false} />
           </div>

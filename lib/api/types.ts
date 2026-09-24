@@ -115,6 +115,43 @@ export interface AdminUserResponse {
   linkedProviders: AuthProvider[];
 }
 
+/**
+ * What auth-service records in `auth_security_events`. Names match the Java enum; an unknown
+ * one is possible if the service ships a new kind before the console does, so the timeline
+ * falls back rather than assuming this list is complete.
+ */
+export type SecurityEventType =
+  | "LOGIN_SUCCEEDED"
+  | "LOGIN_FAILED"
+  | "LOGOUT"
+  | "PASSWORD_RESET_REQUESTED"
+  | "PASSWORD_RESET_COMPLETED"
+  | "EMAIL_CHANGED"
+  | "EMAIL_VERIFIED"
+  | "MFA_CHALLENGED"
+  | "DEVICE_REMEMBERED"
+  | "SESSIONS_REVOKED";
+
+/**
+ * GET /api/v1/auth/admin/users/{id}/security-events — one entry of an account's security log.
+ *
+ * Token refreshes are not in here, and neither are bans: refreshes because a client makes one
+ * every fifteen minutes, bans because they are moderation decisions already recorded with their
+ * admin and reason in admin-service's audit log.
+ */
+export interface SecurityEventResponse {
+  id: string;
+  eventType: SecurityEventType;
+  /** The address api-gateway resolved, or null when nothing HTTP caused the entry. */
+  ipAddress: string | null;
+  userAgent: string | null;
+  /** "Chrome on macOS" — null when the agent named nothing recognised. */
+  deviceLabel: string | null;
+  /** A short phrase: the new address, why sessions were revoked. Never a secret. */
+  detail: string | null;
+  createdAt: string;
+}
+
 /** GET /api/v1/users?ids= — user-service UserProfileResponse. Used to name a video's owner. */
 export interface UserProfileResponse {
   userId: string;
