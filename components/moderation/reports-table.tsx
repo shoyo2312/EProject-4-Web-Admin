@@ -23,7 +23,7 @@ import type {
   ReportTargetType,
 } from "@/lib/api/types";
 import { MOCK_REPORTER_HANDLES } from "@/lib/mock/moderation";
-import { formatDate, relativeTime, shortId } from "@/lib/format";
+import { formatDateTime, relativeTime, shortId } from "@/lib/format";
 import { hrefWith } from "@/lib/url";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
@@ -303,12 +303,12 @@ function ReportRow({
           <Field label="Target">
             {report.targetType} · {report.targetId}
           </Field>
-          <Field label="Created">{formatDate(report.createdAt)}</Field>
+          <Field label="Created">{formatDateTime(report.createdAt)}</Field>
           {report.resolvedBy ? (
             <Field label="Resolved by">#{report.resolvedBy.slice(-8)}</Field>
           ) : null}
           {report.resolvedAt ? (
-            <Field label="Resolved at">{formatDate(report.resolvedAt)}</Field>
+            <Field label="Resolved at">{formatDateTime(report.resolvedAt)}</Field>
           ) : null}
 
           {/* What is actually being judged. A target with no preview is still worth showing as

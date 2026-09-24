@@ -1,5 +1,5 @@
 import type { ModerationActionResponse } from "@/lib/api/types";
-import { formatDate } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
 
 /**
  * The moderation trail for one user or video, shown inside an expanded table row: how many
@@ -38,7 +38,7 @@ export function ModerationHistory({
               </span>
               <span className="text-ink-soft">{action.reason}</span>
               <span className="text-ink-faint">
-                · admin #{action.adminId.slice(-6)} · {formatDate(action.createdAt)}
+                · admin #{action.adminId.slice(-6)} · {formatDateTime(action.createdAt)}
                 {action.reportId ? ` · report #${action.reportId.slice(-6)}` : ""}
               </span>
             </li>

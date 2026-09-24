@@ -15,7 +15,7 @@ import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ResolveForm } from "@/components/moderation/resolve-form";
 import type { ModerationActionType, ReportGroupResponse } from "@/lib/api/types";
-import { formatDate, relativeTime } from "@/lib/format";
+import { formatDateTime, relativeTime } from "@/lib/format";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
 
@@ -210,8 +210,8 @@ function QueueRow({
           <Field label="Target">
             {group.targetType} · {group.targetId}
           </Field>
-          <Field label="First reported">{formatDate(group.firstReportedAt)}</Field>
-          <Field label="Last reported">{formatDate(group.lastReportedAt)}</Field>
+          <Field label="First reported">{formatDateTime(group.firstReportedAt)}</Field>
+          <Field label="Last reported">{formatDateTime(group.lastReportedAt)}</Field>
           <Field label="Rank">
             {group.reportCount} × severity {group.severity} = {group.priority}
           </Field>

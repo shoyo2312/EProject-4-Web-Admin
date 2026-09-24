@@ -9,7 +9,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import type { ModerationActionResponse, ModerationActionType } from "@/lib/api/types";
-import { formatDate, relativeTime, shortId } from "@/lib/format";
+import { formatDateTime, relativeTime, shortId } from "@/lib/format";
 import { ENFORCED } from "@/lib/moderation";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
@@ -248,7 +248,7 @@ function ActionRow({
               ? `#${shortId(action.adminId.slice(-8), 8)}`
               : (target?.adminHandle ?? `#${shortId(action.adminId.slice(-8), 8)}`)}
           </Field>
-          <Field label="When">{formatDate(action.createdAt)}</Field>
+          <Field label="When">{formatDateTime(action.createdAt)}</Field>
 
           {/* What the action was actually done to. A target with no preview is still worth
               showing as such: a taken-down video or a deleted account resolves to nothing, and
