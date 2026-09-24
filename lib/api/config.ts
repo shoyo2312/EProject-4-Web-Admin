@@ -30,3 +30,10 @@ export const DEVICE_COOKIE = "admin_device";
  * to 68px on every reload. Not httpOnly — the toggle is a client component and writes it.
  */
 export const SIDEBAR_COOKIE = "admin_sidebar";
+
+/**
+ * Newest notification timestamp (epoch ms) the admin had seen when they last opened the bell.
+ * A cookie for the same reason as the sidebar's: the layout reads it, so the unread badge is
+ * right on first paint instead of flashing in after hydration.
+ */
+export const NOTIFICATIONS_SEEN_COOKIE = "admin_notifications_seen";

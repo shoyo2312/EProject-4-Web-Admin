@@ -1,16 +1,24 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Bell, ChevronRight, Inbox, Search } from "lucide-react";
+import { ChevronRight, Inbox, Search } from "lucide-react";
 import { resolveCrumb } from "./nav-config";
+import { NotificationBell } from "./notification-bell";
 import type { AdminSession } from "@/lib/api/session";
+import type { AdminNotification } from "@/lib/notifications";
 
 export function Topbar({
   session,
   usingMockData,
+  notifications,
+  notificationsSeenAt,
+  now,
 }: {
   session: AdminSession;
   usingMockData: boolean;
+  notifications: AdminNotification[] | null;
+  notificationsSeenAt: number;
+  now: number;
 }) {
   const pathname = usePathname();
   const crumb = resolveCrumb(pathname);
@@ -44,14 +52,7 @@ export function Topbar({
           </kbd>
         </label>
 
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-line text-ink-soft transition-colors hover:bg-surface-muted"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute top-1.5 right-2 h-1.5 w-1.5 rounded-full bg-pending" />
-        </button>
+        <NotificationBell items={notifications} seenAt={notificationsSeenAt} now={now} />
         <button
           type="button"
           aria-label="Inbox"

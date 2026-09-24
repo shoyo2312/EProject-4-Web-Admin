@@ -35,6 +35,7 @@ import {
   type MosaicSeries,
 } from "./rollup";
 import type { ReportSortField } from "@/lib/moderation";
+import { buildNotifications, type AdminNotification } from "@/lib/notifications";
 import {
   mockDailyEngagement,
   mockDailyActiveUsers,
@@ -624,6 +625,26 @@ export async function listVideos(options: {
   for (const ownerId of ownerIds ?? []) params.append("ownerId", ownerId);
 
   return apiGet<Page<AdminVideoResponse>>(`/api/v1/videos/admin?${params}`);
+}
+
+/**
+ * The bell's feed. Only the first page of each source — the bell is a nudge that links to the
+ * full listing, not a second copy of it. The trash reads soonest-to-expire first, so its first
+ * page holds every video close enough to the purge to mention.
+ */
+export async function getNotifications(): Promise<AdminNotification[]> {
+  const size = 10;
+  const [queue, review, trash] = await Promise.all([
+    listReportQueue({ size }),
+    listVideos({ status: "PENDING_REVIEW", deleted: false, size }),
+    listVideos({ deleted: true, purged: false, sort: "deletedAt,asc", size }),
+  ]);
+  return buildNotifications({
+    queue: queue.content,
+    review: review.content,
+    trash: trash.content,
+    now: referenceNow(),
+  });
 }
 
 /**
