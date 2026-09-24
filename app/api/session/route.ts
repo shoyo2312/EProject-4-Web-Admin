@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { GATEWAY_URL } from "@/lib/api/config";
+import { forwardedHeaders } from "@/lib/api/forwarded";
 import { parseWithLongIdsAsStrings } from "@/lib/api/json";
 import type { ApiResponse } from "@/lib/api/types";
 import {
@@ -14,9 +15,17 @@ import {
   type TokenResponse,
 } from "@/lib/api/session";
 
-async function call<T>(path: string, init: RequestInit): Promise<ApiResponse<T>> {
+/**
+ * One call to the gateway, carrying the browser's identity with it.
+ *
+ * `from` is the request this handler is serving, and its user agent and forwarded-for chain are
+ * relayed so auth-service's security log names the person signing in. Without it every sign-in
+ * was recorded as the device "node" — undici's own user agent — at this server's address.
+ */
+async function call<T>(path: string, init: RequestInit, from: Request): Promise<ApiResponse<T>> {
   const response = await fetch(`${GATEWAY_URL}${path}`, {
     ...init,
+    headers: { ...(init.headers as Record<string, string> | undefined), ...forwardedHeaders(from) },
     cache: "no-store",
   });
   const text = await response.text();
@@ -38,10 +47,10 @@ const GATEWAY_DOWN = NextResponse.json(
  * — a valid non-admin token would sail past the gateway and then 403 on every panel, which reads
  * as a broken app rather than a refusal. Shared by the remembered-device path and the OTP path.
  */
-async function establishSession(tokens: TokenResponse) {
+async function establishSession(tokens: TokenResponse, from: Request) {
   const me = await call<AuthUserResponse>("/api/v1/auth/me", {
     headers: { Authorization: `Bearer ${tokens.accessToken}` },
-  });
+  }, from);
 
   if (!me.success || !me.data || me.data.role !== "ADMIN") {
     return NextResponse.json(
@@ -98,7 +107,7 @@ export async function POST(request: Request) {
           turnstileToken: body.turnstileToken,
           rememberDevice: Boolean(body.rememberDevice),
         }),
-      });
+      }, request);
     } catch {
       return GATEWAY_DOWN;
     }
@@ -109,7 +118,7 @@ export async function POST(request: Request) {
         { status: 401 },
       );
     }
-    return establishSession(otpLogin.data);
+    return establishSession(otpLogin.data, request);
   }
 
   // ---- Step one: password + Turnstile (+ a remembered-device token, if this browser has one) ----
@@ -131,7 +140,7 @@ export async function POST(request: Request) {
         turnstileToken: body.turnstileToken,
         deviceToken: await getDeviceToken(),
       }),
-    });
+    }, request);
   } catch {
     return GATEWAY_DOWN;
   }
@@ -150,11 +159,11 @@ export async function POST(request: Request) {
   }
 
   // Reached only when the device was remembered and auth-service skipped the OTP step.
-  return establishSession(login.data);
+  return establishSession(login.data, request);
 }
 
 /** Sign out — revokes the refresh token server-side, then drops the session cookies. */
-export async function DELETE() {
+export async function DELETE(request: Request) {
   const refreshToken = await getRefreshToken();
 
   if (refreshToken) {
@@ -163,7 +172,7 @@ export async function DELETE() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refreshToken }),
-      });
+      }, request);
     } catch {
       // Best effort: the cookies still go, so this browser is signed out either way.
     }

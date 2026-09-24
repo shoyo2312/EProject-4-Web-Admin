@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { GATEWAY_URL } from "@/lib/api/config";
+import { forwardedHeaders } from "@/lib/api/forwarded";
 import { parseWithLongIdsAsStrings } from "@/lib/api/json";
 import type { ApiResponse } from "@/lib/api/types";
 
-async function call(path: string, payload: unknown): Promise<ApiResponse<null>> {
+/**
+ * `from` is the request being served, relayed so the reset lands in auth-service's security log
+ * as the browser that asked for it rather than as this server. See `forwardedHeaders`.
+ */
+async function call(path: string, payload: unknown, from: Request): Promise<ApiResponse<null>> {
   const response = await fetch(`${GATEWAY_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...forwardedHeaders(from) },
     body: JSON.stringify(payload),
     cache: "no-store",
   });
@@ -64,7 +69,7 @@ export async function POST(request: Request) {
         email,
         otp: body.otp,
         newPassword: body.newPassword,
-      });
+      }, request);
     } catch {
       return GATEWAY_DOWN;
     }
@@ -87,7 +92,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    await call("/api/v1/auth/forgot-password", { email, turnstileToken: body.turnstileToken });
+    await call("/api/v1/auth/forgot-password", { email, turnstileToken: body.turnstileToken }, request);
   } catch {
     return GATEWAY_DOWN;
   }
