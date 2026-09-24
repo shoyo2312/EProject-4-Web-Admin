@@ -126,13 +126,15 @@ export async function resolveQueueAction(
   targetId: string,
   actionType: ModerationActionType,
   reason: string,
+  /** Days until a BAN_USER lapses; null is permanent. Ignored for every other action. */
+  banDays: number | null = null,
 ): Promise<ModerationResult> {
   if (!reason.trim()) {
     return { ok: false, message: "A reason is required — it goes into the audit log." };
   }
 
   try {
-    await resolveQueueRow(targetType, targetId, actionType, reason.trim());
+    await resolveQueueRow(targetType, targetId, actionType, reason.trim(), banDays);
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
@@ -158,13 +160,15 @@ export async function resolveReportAction(
   reportId: string,
   actionType: ModerationActionType,
   reason: string,
+  /** Days until a BAN_USER lapses; null is permanent. Ignored for every other action. */
+  banDays: number | null = null,
 ): Promise<ModerationResult> {
   if (!reason.trim()) {
     return { ok: false, message: "A reason is required — it goes into the audit log." };
   }
 
   try {
-    await resolveReport(reportId, actionType, reason.trim());
+    await resolveReport(reportId, actionType, reason.trim(), banDays);
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }

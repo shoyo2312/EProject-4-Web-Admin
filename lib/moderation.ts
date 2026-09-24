@@ -53,6 +53,29 @@ export type ReportSortField = (typeof REPORT_SORT_FIELDS)[number];
 export type EnforcementAction = "ban" | "unban" | "takedown" | "restore";
 
 /**
+ * How long a ban lasts. "Permanent" is first and is the default: a ban with no end is what every
+ * ban was until auth-service learned to lift them, and picking a duration should be a decision
+ * rather than the thing that happens when nobody chose.
+ *
+ * One list for a target's own page and for resolving a report, so a ban decided from either
+ * offers the same choices.
+ */
+export const BAN_DURATIONS = [
+  { value: "permanent", label: "Permanent" },
+  { value: "1", label: "1 day" },
+  { value: "3", label: "3 days" },
+  { value: "7", label: "7 days" },
+  { value: "30", label: "30 days" },
+] as const;
+
+export type BanDuration = (typeof BAN_DURATIONS)[number]["value"];
+
+/** The `banDays` admin-service takes: null for a permanent ban. */
+export function banDaysOf(duration: BanDuration): number | null {
+  return duration === "permanent" ? null : Number(duration);
+}
+
+/**
  * Preset reasons, per enforcement. They are written to read on their own months later, because
  * what ends up in the audit row is this exact string and nothing else — "spam" alone tells a
  * reviewer nothing about what the account actually did.

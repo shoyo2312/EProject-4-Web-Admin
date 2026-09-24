@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Segmented } from "@/components/ui/segmented";
 import type { ModerationActionType, ReportTargetType } from "@/lib/api/types";
+import { BAN_DURATIONS, banDaysOf, type BanDuration } from "@/lib/moderation";
 import { cn } from "@/lib/utils";
 
 /**
@@ -65,7 +67,8 @@ export function ResolveForm({
   /** The reporter's own scenario label, offered as the first preset for an enforcement. */
   reporterReason: string;
   submitting: boolean;
-  onSubmit: (action: ModerationActionType, reason: string) => void;
+  /** `banDays` is null for a permanent ban and for every action that is not a ban. */
+  onSubmit: (action: ModerationActionType, reason: string, banDays: number | null) => void;
   onCancel: () => void;
 }) {
   const choices = ACTIONS_BY_TARGET[targetType];
@@ -73,8 +76,10 @@ export function ResolveForm({
   // initial state and reopening a row starts clean — no reset effect to keep in step.
   const [action, setAction] = useState<ModerationActionType>(choices[0].value);
   const [reason, setReason] = useState("");
+  const [duration, setDuration] = useState<BanDuration>("permanent");
 
   const dismissing = action === "DISMISS_REPORT";
+  const banning = action === "BAN_USER";
   const presets = dismissing
     ? [...DISMISS_PRESETS]
     : // The reporter's own words first: most enforcements agree with the report, and retyping
@@ -101,6 +106,13 @@ export function ResolveForm({
           </button>
         ))}
       </div>
+
+      {banning ? (
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="label-caps text-ink-soft">Duration</span>
+          <Segmented options={BAN_DURATIONS} value={duration} onChange={setDuration} />
+        </div>
+      ) : null}
 
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
         {presets.map((preset) => (
@@ -140,7 +152,7 @@ export function ResolveForm({
         />
         <button
           type="button"
-          onClick={() => onSubmit(action, reason)}
+          onClick={() => onSubmit(action, reason, banning ? banDaysOf(duration) : null)}
           disabled={submitting || !reason.trim()}
           className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
         >
@@ -148,7 +160,9 @@ export function ResolveForm({
             ? "Submitting..."
             : dismissing
               ? "Confirm dismissal"
-              : "Confirm action"}
+              : banning && duration !== "permanent"
+                ? `Ban for ${duration}d`
+                : "Confirm action"}
         </button>
         <button
           type="button"

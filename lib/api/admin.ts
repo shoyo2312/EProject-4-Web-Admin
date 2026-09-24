@@ -214,6 +214,8 @@ export async function resolveQueueRow(
   targetId: string,
   actionType: ModerationActionType,
   reason: string,
+  /** Days until a BAN_USER lapses, or null for one that does not. Ignored for other actions. */
+  banDays: number | null = null,
 ): Promise<ModerationActionResponse> {
   if (USE_MOCK) {
     throw new Error("Resolving a report requires the live backend (ADMIN_USE_MOCK=false).");
@@ -223,6 +225,7 @@ export async function resolveQueueRow(
     targetId,
     actionType,
     reason,
+    banDays,
   });
 }
 
@@ -335,6 +338,8 @@ export async function resolveReport(
   reportId: string,
   actionType: ModerationActionType,
   reason: string,
+  /** Days until a BAN_USER lapses, or null for one that does not. Ignored for other actions. */
+  banDays: number | null = null,
 ): Promise<ReportResponse> {
   if (USE_MOCK) {
     throw new Error("Resolving a report requires the live backend (ADMIN_USE_MOCK=false).");
@@ -342,6 +347,7 @@ export async function resolveReport(
   return apiPost<ReportResponse>(`/api/v1/admin/reports/${reportId}/resolve`, {
     actionType,
     reason,
+    banDays,
   });
 }
 

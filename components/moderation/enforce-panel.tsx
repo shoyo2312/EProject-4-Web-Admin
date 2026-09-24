@@ -7,7 +7,13 @@ import { moderateUserAction } from "@/app/(admin)/users/actions";
 import { moderateVideoAction } from "@/app/(admin)/videos/actions";
 import { ReasonForm } from "@/components/moderation/reason-form";
 import { Segmented } from "@/components/ui/segmented";
-import { PRESET_REASONS, type EnforcementAction } from "@/lib/moderation";
+import {
+  BAN_DURATIONS,
+  PRESET_REASONS,
+  banDaysOf,
+  type BanDuration,
+  type EnforcementAction,
+} from "@/lib/moderation";
 import { cn } from "@/lib/utils";
 
 const ICONS = {
@@ -16,21 +22,6 @@ const ICONS = {
   takedown: EyeOff,
   restore: RotateCcw,
 } as const;
-
-/**
- * How long a ban lasts. "Permanent" is first and is the default: a ban with no end is what every
- * ban was until auth-service learned to lift them, and picking a duration should be a decision
- * rather than the thing that happens when nobody chose.
- */
-const BAN_DURATIONS = [
-  { value: "permanent", label: "Permanent" },
-  { value: "1", label: "1 day" },
-  { value: "3", label: "3 days" },
-  { value: "7", label: "7 days" },
-  { value: "30", label: "30 days" },
-] as const;
-
-type BanDuration = (typeof BAN_DURATIONS)[number]["value"];
 
 const BUTTON_LABELS: Record<EnforcementAction, string> = {
   ban: "Ban account",
@@ -82,7 +73,7 @@ export function EnforcePanel({
               targetId,
               action as "ban" | "unban",
               reason ?? "",
-              duration === "permanent" ? null : Number(duration),
+              banDaysOf(duration),
             )
           : await moderateVideoAction(
               targetId,

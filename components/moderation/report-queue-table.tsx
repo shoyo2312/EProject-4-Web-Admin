@@ -130,13 +130,14 @@ function QueueRow({
     }
   }
 
-  function submit(action: ModerationActionType, reason: string) {
+  function submit(action: ModerationActionType, reason: string, banDays: number | null) {
     startSubmit(async () => {
       const outcome = await resolveQueueAction(
         group.targetType,
         group.targetId,
         action,
         reason,
+        banDays,
       );
       setResult(outcome.message);
       if (outcome.ok) {

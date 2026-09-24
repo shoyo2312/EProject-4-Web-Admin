@@ -223,9 +223,9 @@ function ReportRow({
     }
   }
 
-  function submit(action: ModerationActionType, reason: string) {
+  function submit(action: ModerationActionType, reason: string, banDays: number | null) {
     startSubmit(async () => {
-      const outcome = await resolveReportAction(report.id, action, reason);
+      const outcome = await resolveReportAction(report.id, action, reason, banDays);
       setResult(outcome.message);
       if (outcome.ok) {
         setResolving(false);
