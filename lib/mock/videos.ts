@@ -96,6 +96,8 @@ export const mockVideos: AdminVideoResponse[] = (() => {
     const commentsDisabled = i % 9 === 4;
     const createdAt = new Date(MOCK_NOW - between(rand, 1, 240) * DAY_MS).toISOString();
     const views = ready ? between(rand, 120, 480_000) : 0;
+    // Owner-deleted rows: two still in the trash (one about to run out), one already purged.
+    const deletedDaysAgo = ({ 3: 2, 7: 28, 12: 40 } as Record<number, number | undefined>)[i];
 
     return {
       id: String(7_310_000_000_000_000_000n + BigInt(i * 2048)),
@@ -122,9 +124,12 @@ export const mockVideos: AdminVideoResponse[] = (() => {
       failureReason:
         status === "FAILED" ? "ffmpeg: moov atom not found — upload truncated" : null,
       takedownReason: status === "TAKEN_DOWN" ? pick(rand, TAKEDOWN_REASONS) : null,
-      // One row stands in for an owner-deleted video, which the admin listing now includes.
-      deletedAt: i === 3 ? new Date(MOCK_NOW - 2 * DAY_MS).toISOString() : null,
-      deleteEventPublishedAt: i === 3 ? new Date(MOCK_NOW - 2 * DAY_MS + 5_000).toISOString() : null,
+      deletedAt:
+        deletedDaysAgo != null ? new Date(MOCK_NOW - deletedDaysAgo * DAY_MS).toISOString() : null,
+      purgeEventPublishedAt:
+        deletedDaysAgo != null && deletedDaysAgo > 30
+          ? new Date(MOCK_NOW - (deletedDaysAgo - 30) * DAY_MS).toISOString()
+          : null,
       moderation: moderationFor(status, i, createdAt),
     };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));

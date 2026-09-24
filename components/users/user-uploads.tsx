@@ -16,7 +16,7 @@ export function UserUploads({ videos }: { videos: AdminVideoResponse[] }) {
   }
 
   return (
-    <div className="grid grid-cols-3 gap-2.5 p-4 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7">
+    <div className="grid grid-cols-3 gap-2.5 p-4 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
       {videos.map((video) => (
         <Link
           key={video.id}
@@ -25,10 +25,10 @@ export function UserUploads({ videos }: { videos: AdminVideoResponse[] }) {
         >
           <div className="relative aspect-[9/16] bg-neutral-bg">
             {/* A deleted video sits in a 30-day trash window with its media intact — deletedAt
-                alone does not mean the file is gone. deleteEventPublishedAt is what tells us
-                media-worker has actually consumed the delete event and erased it from MinIO;
+                alone does not mean the file is gone. purgeEventPublishedAt is what tells us
+                media-worker has actually consumed the purge event and erased it from MinIO;
                 only then is thumbnailUrl a dangling reference. */}
-            {video.thumbnailUrl && !video.deleteEventPublishedAt ? (
+            {video.thumbnailUrl && !video.purgeEventPublishedAt ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={video.thumbnailUrl}

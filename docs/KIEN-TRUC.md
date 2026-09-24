@@ -217,3 +217,11 @@ chỉ cần sửa ở đây và TypeScript sẽ báo lỗi mọi chỗ dùng sai
 
 Menu "Queues & DLQ" (`/system/queues`) chưa có `ready: true` — nghĩa là chưa có endpoint backend
 tương ứng, màn hình hiện chỉ là placeholder. Đừng ngạc nhiên nếu nó không hoạt động đầy đủ.
+
+**Thùng rác (`/trash`) — chưa có thông báo cho admin.** Video bị chủ xoá nằm trong thùng rác 30
+ngày (`video.trash.retention` ở video-service), hết hạn thì tự động xoá vĩnh viễn; admin cũng có
+thể xoá tay (`PURGE_VIDEO`, ghi vào audit log). Việc **gửi mail/thông báo cho admin khi video bị
+xoá tự động** chưa làm — sẽ gộp vào mục thông báo chung của admin khi mục đó được xây. Nguồn sự
+kiện là `VideoPurgedEvent` (video-service phát, media-worker đang tiêu thụ); event hiện không phân
+biệt xoá tự động với xoá tay, nên khi làm cần thêm cờ đó vào event, hoặc bỏ qua các video đã có
+action `PURGE_VIDEO` trong `moderation_actions`.

@@ -89,7 +89,7 @@ export default async function VideoDetailPage({
         title={video.title || "(untitled upload)"}
         subtitle={
           video.deletedAt
-            ? video.deleteEventPublishedAt
+            ? video.purgeEventPublishedAt
               ? `Deleted by its owner on ${formatDateTime(video.deletedAt)} — media permanently purged.`
               : `Deleted by its owner on ${formatDateTime(video.deletedAt)} — in trash, ${daysUntilPurge(video.deletedAt)} left before permanent deletion.`
             : `${video.status} · ${video.visibility} · uploaded ${formatDateTime(video.createdAt)}`
@@ -104,9 +104,9 @@ export default async function VideoDetailPage({
           />
           <div className="px-5 py-4">
             {/* A deleted video keeps its media for a 30-day trash window before permanent
-                purge — deleteEventPublishedAt (not deletedAt) is the signal that media-worker
+                purge — purgeEventPublishedAt (not deletedAt) is the signal that media-worker
                 has actually erased it from MinIO, which is when hlsUrl stops resolving. */}
-            {watchable && video.hlsUrl && !video.deleteEventPublishedAt ? (
+            {watchable && video.hlsUrl && !video.purgeEventPublishedAt ? (
               // A faststart mp4 rather than an HLS playlist, so a bare <video> plays it in
               // every browser with no player library.
               <video
@@ -117,7 +117,7 @@ export default async function VideoDetailPage({
               />
             ) : (
               <p className="text-[12px] text-ink-faint">
-                {video.deleteEventPublishedAt
+                {video.purgeEventPublishedAt
                   ? "Media permanently removed from storage — nothing left to play."
                   : watchable
                     ? "No playable file on the record — the transcode produced no output."
@@ -166,11 +166,11 @@ export default async function VideoDetailPage({
               {video.publishedAt ? formatDateTime(video.publishedAt) : "—"}
             </Field>
             <Field label="Updated">{formatDateTime(video.updatedAt)}</Field>
-            {video.deletedAt && !video.deleteEventPublishedAt ? (
+            {video.deletedAt && !video.purgeEventPublishedAt ? (
               <Field label="Purges in">{daysUntilPurge(video.deletedAt)}</Field>
             ) : null}
-            {video.deleteEventPublishedAt ? (
-              <Field label="Media purged">{formatDateTime(video.deleteEventPublishedAt)}</Field>
+            {video.purgeEventPublishedAt ? (
+              <Field label="Media purged">{formatDateTime(video.purgeEventPublishedAt)}</Field>
             ) : null}
             <Field label="Video ID">
               <span className="figure break-all">{video.id}</span>

@@ -71,6 +71,7 @@ export type ModerationActionType =
   | "UNBAN_USER"
   | "TAKEDOWN_VIDEO"
   | "RESTORE_VIDEO"
+  | "PURGE_VIDEO"
   | "REMOVE_COMMENT"
   | "WARN_USER"
   | "DISMISS_REPORT";
@@ -177,10 +178,10 @@ export interface AdminVideoResponse {
   /** When the owner deleted the video. Null for a video that has never been deleted. */
   deletedAt: string | null;
   /**
-   * When the VideoDeletedEvent for this row was acknowledged by the broker. Null both for a
-   * live video and for one deleted so recently the outbox poll (every 5s) hasn't caught up yet.
+   * When the VideoPurgedEvent went out — media-worker erases the media on it, so from here on
+   * nothing plays. Null for a live video and for a deleted one still in the trash.
    */
-  deleteEventPublishedAt: string | null;
+  purgeEventPublishedAt: string | null;
   /** What the classifier scored. Admin reads only — the public API withholds it. */
   moderation: ModerationSummary | null;
 }

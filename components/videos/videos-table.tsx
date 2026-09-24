@@ -316,9 +316,9 @@ function VideoRow({
                 <video> plays it in every browser, no player library. Shown only when
                 the video is transcoded and holdable: the states playable() covers.
                 A deleted video sits in a 30-day trash window with its media intact, so this
-                stays available until deleteEventPublishedAt — media-worker has by then
-                consumed the delete event and erased hlsUrl from MinIO for good. */}
-            {watchable && video.hlsUrl && !video.deleteEventPublishedAt ? (
+                stays available until purgeEventPublishedAt — media-worker has by then
+                consumed the purge event and erased hlsUrl from MinIO for good. */}
+            {watchable && video.hlsUrl && !video.purgeEventPublishedAt ? (
               <Tooltip label="Watch">
                 <button
                   type="button"
@@ -391,15 +391,15 @@ function VideoRow({
                 {owner?.username ? `@${owner.username}` : `#${shortId(video.userId.slice(-8), 8)}`}
                 <span className="text-ink-faint"> · owner (self-delete)</span>
               </Field>
-              {video.deleteEventPublishedAt ? (
-                <Field label="Media purged">{formatDateTime(video.deleteEventPublishedAt)}</Field>
+              {video.purgeEventPublishedAt ? (
+                <Field label="Media purged">{formatDateTime(video.purgeEventPublishedAt)}</Field>
               ) : (
                 <Field label="Purges in">{daysUntilPurge(video.deletedAt)}</Field>
               )}
               <Field label="Media" wide>
                 <span className="text-ink-faint">
-                  {video.deleteEventPublishedAt
-                    ? "Permanently removed from storage — media-worker deleted the raw upload, thumbnail and HLS files once it consumed this video's delete event. The URLs below are what the record still points at; they no longer resolve."
+                  {video.purgeEventPublishedAt
+                    ? "Permanently removed from storage — media-worker deleted the raw upload, thumbnail and HLS files once it consumed this video's purge event. The URLs below are what the record still points at; they no longer resolve."
                     : "Still in trash — the video's owner deleted it, but its media stays in storage and watchable here until the retention window above expires."}
                 </span>
               </Field>

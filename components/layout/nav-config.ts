@@ -5,6 +5,7 @@ import {
   MessageSquare,
   Radio,
   Settings,
+  Trash2,
   TrendingUp,
   Users,
   Video,
@@ -56,6 +57,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Queues & DLQ", href: "/system/queues", icon: Radio },
       { label: "Settings", href: "/settings", icon: Settings, ready: true },
+      { label: "Trash", href: "/trash", icon: Trash2, ready: true },
     ],
   },
 ];
@@ -71,6 +73,7 @@ export const ROUTE_TITLES: Record<string, { section: string; page: string }> = {
   "/comments": { section: "Management", page: "Comments" },
   "/system/queues": { section: "System", page: "Queues & DLQ" },
   "/settings": { section: "System", page: "Settings" },
+  "/trash": { section: "System", page: "Trash" },
 };
 
 /**

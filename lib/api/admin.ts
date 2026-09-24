@@ -554,10 +554,14 @@ export async function listVideos(options: {
    * deleted rows only; false for live rows only.
    */
   deleted?: boolean;
+  /** Same three states, on whether the media is already erased. The trash is deleted && !purged. */
+  purged?: boolean;
+  /** Unset is newest upload first. The trash reads soonest-to-expire first. */
+  sort?: "deletedAt,asc";
   page?: number;
   size?: number;
 } = {}): Promise<Page<AdminVideoResponse>> {
-  const { q, status, ownerIds, deleted, page = 0, size = LIST_PAGE_SIZE } = options;
+  const { q, status, ownerIds, deleted, purged, sort, page = 0, size = LIST_PAGE_SIZE } = options;
 
   if (USE_MOCK) {
     const needle = q?.trim().toLowerCase();
@@ -565,11 +569,13 @@ export async function listVideos(options: {
     const filtered = mockVideos.filter((video) => {
       if (status && video.status !== status) return false;
       if (deleted != null && Boolean(video.deletedAt) !== deleted) return false;
+      if (purged != null && Boolean(video.purgeEventPublishedAt) !== purged) return false;
       if (!needle && owners.size === 0) return true;
       return (
         (!!needle && video.title.toLowerCase().includes(needle)) || owners.has(video.userId)
       );
     });
+    if (sort) filtered.sort((a, b) => (a.deletedAt ?? "").localeCompare(b.deletedAt ?? ""));
     return mockPage(filtered, page, size);
   }
 
@@ -577,6 +583,8 @@ export async function listVideos(options: {
   if (q) params.set("q", q);
   if (status) params.set("status", status);
   if (deleted != null) params.set("deleted", String(deleted));
+  if (purged != null) params.set("purged", String(purged));
+  if (sort) params.set("sort", sort);
   for (const ownerId of ownerIds ?? []) params.append("ownerId", ownerId);
 
   return apiGet<Page<AdminVideoResponse>>(`/api/v1/videos/admin?${params}`);
@@ -607,7 +615,7 @@ export async function resolveOwners(q: string, limit = 25): Promise<string[]> {
  */
 export async function moderateVideo(
   videoId: string,
-  action: "takedown" | "restore",
+  action: "takedown" | "restore" | "purge",
   reason: string,
 ): Promise<ModerationActionResponse> {
   if (USE_MOCK) {

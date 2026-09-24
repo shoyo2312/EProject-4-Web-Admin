@@ -20,7 +20,7 @@ export function playable(status: VideoStatus): boolean {
 
 /**
  * Action types with a live downstream consumer today:
- * video-service (takedown/restore), auth-service (ban/unban),
+ * video-service (takedown/restore/purge), auth-service (ban/unban),
  * interaction-service (comment removal). The rest are recorded in
  * moderation_actions and published to admin.moderation-events with no
  * subscriber, so the log says so rather than implying the action landed.
@@ -31,6 +31,7 @@ export function playable(status: VideoStatus): boolean {
 export const ENFORCED: ModerationActionType[] = [
   "TAKEDOWN_VIDEO",
   "RESTORE_VIDEO",
+  "PURGE_VIDEO",
   "BAN_USER",
   "UNBAN_USER",
   "REMOVE_COMMENT",
@@ -92,7 +93,16 @@ export function banDaysOf(duration: BanDuration): number | null {
  * rather than from a directory row, and has no undo — but its reasons land in the same audit
  * log and so belong in the same vocabulary.
  */
-export const PRESET_REASONS: Record<EnforcementAction | "removeComment", readonly string[]> = {
+export const PRESET_REASONS: Record<
+  EnforcementAction | "removeComment" | "purge",
+  readonly string[]
+> = {
+  purge: [
+    "Reviewed — nothing left to keep",
+    "Owner asked for permanent erasure",
+    "Contains personal data — erase now",
+    "Illegal content — erase now",
+  ],
   ban: [
     "Repeated policy violations",
     "Spam or bot activity",

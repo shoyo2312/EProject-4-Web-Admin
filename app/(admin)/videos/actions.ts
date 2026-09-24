@@ -40,7 +40,7 @@ export async function videoModerationDetailAction(
  */
 export async function moderateVideoAction(
   videoId: string,
-  action: "takedown" | "restore",
+  action: "takedown" | "restore" | "purge",
   reason: string,
 ): Promise<ModerationResult> {
   if (!reason.trim()) {
@@ -54,11 +54,15 @@ export async function moderateVideoAction(
   }
 
   revalidatePath("/videos");
+  revalidatePath("/trash");
   return {
     ok: true,
-    message:
-      action === "takedown"
-        ? "Takedown recorded. The video leaves the feed once video-service consumes the event."
-        : "Restore recorded. The video returns to whatever state it was in before the takedown, not necessarily PUBLISHED.",
+    message: {
+      takedown: "Takedown recorded. The video leaves the feed once video-service consumes the event.",
+      restore:
+        "Restore recorded. The video returns to whatever state it was in before the takedown, not necessarily PUBLISHED.",
+      purge:
+        "Permanent deletion recorded. The media is erased within seconds, once video-service and media-worker consume the event.",
+    }[action],
   };
 }
