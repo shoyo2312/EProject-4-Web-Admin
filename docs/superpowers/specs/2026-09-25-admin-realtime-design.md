@@ -62,6 +62,11 @@ consumers of `admin.moderation-events` are untouched. The topic is auto-created
 (`KAFKA_AUTO_CREATE_TOPICS_ENABLE=true`). The `eventType` header is set as for every other outbox
 event.
 
+**Outbox poll:** `OutboxPublisher` polled every 5000 ms, which alone could delay a report by 5s.
+It becomes `@Scheduled(fixedDelayString = "${admin.outbox.poll-millis}")` with `poll-millis: 500`.
+Cheap: unpublished rows sit in the partial index `idx_outbox_events_unpublished`. video-service's
+own outbox still polls every 5s, so trash/purge/publish signals can lag up to ~5s; unchanged here.
+
 **Not covered:** `StaleReportSweep`'s automatic closures emit nothing. Those rows drop out of the
 bell on the next event, navigation or tab return.
 
