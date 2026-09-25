@@ -71,8 +71,11 @@ bell on the next event, navigation or tab return.
 `media.video-moderation-events`, `video.video-events`. For every record it sends
 `AdminFrame(type)` to `/topic/admin`, where `type` is the `eventType` header, or the topic name when
 the producer set no header. No payload parsing, no filtering, no server-side batching (the browser
-coalesces). chat-service's consumer group is already `realtime-${random.uuid}`, so every instance
-sees every event and serves its own sockets.
+coalesces). It uses its **own** consumer group, `admin-realtime-${random.uuid}`: the service-wide
+`realtime-${random.uuid}` group is shared by every listener, and `VideoStateFanout` already
+consumes three of these topics — two listeners in one group split a topic's partitions, so each
+would silently miss part of the stream. A per-instance group still means every instance sees every
+event and serves its own sockets.
 
 **Admin-only destination:**
 
@@ -89,7 +92,8 @@ sees every event and serves its own sockets.
 - **`lib/api/client.ts`** gains `gatewaySocketUrl(): Promise<string | null>` — the gateway's
   `/ws` URL (`ws:`/`wss:` from `GATEWAY_URL`) with `?token=<session token>`, or `null` without a
   session. Reading the token stays inside the one client module.
-- **`lib/api/live.ts`** — `subscribeAdminLive({ onFrame, onClose }): Promise<() => void>`. Opens an
+- **`lib/api/live.ts`** — `subscribeAdminLive(brokerURL, { onFrame, onClose }): () => void`. The
+  route calls `gatewaySocketUrl()` first so it can answer 401 before streaming. Opens an
   `@stomp/stompjs` `Client` on that URL (Node 26's global `WebSocket`; no `ws` package) with
   `reconnectDelay: 0`, subscribes to `/topic/admin`, calls `onFrame` per message and `onClose` once
   when the socket closes or STOMP reports an error. Returns a function that deactivates the client.
