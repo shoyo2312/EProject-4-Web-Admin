@@ -11,6 +11,11 @@ import { cn } from "@/lib/utils";
  * purpose: the decision carries the target's own targetType, so offering BAN_USER against a
  * VIDEO would write an audit row no consumer can apply. RESTORE_VIDEO and UNBAN_USER are absent
  * for the same reason — a report is never the thing that undoes an action.
+ *
+ * WARN_USER is the one every target offers: the warning carries the reported target and
+ * notification-service finds the person behind it — the account itself, the video's owner, the
+ * comment's author. It leaves the target up and still closes every report standing against it,
+ * so it is instead of a takedown or a removal, not on top of one.
  */
 export const ACTIONS_BY_TARGET: Record<
   ReportTargetType,
@@ -18,10 +23,12 @@ export const ACTIONS_BY_TARGET: Record<
 > = {
   VIDEO: [
     { value: "TAKEDOWN_VIDEO", label: "Take down video" },
+    { value: "WARN_USER", label: "Warn owner" },
     { value: "DISMISS_REPORT", label: "Dismiss report" },
   ],
   COMMENT: [
     { value: "REMOVE_COMMENT", label: "Remove comment" },
+    { value: "WARN_USER", label: "Warn author" },
     { value: "DISMISS_REPORT", label: "Dismiss report" },
   ],
   USER: [
