@@ -8,7 +8,7 @@ const PING_MS = 25_000;
 const encoder = new TextEncoder();
 
 export async function GET(request: Request) {
-  // 204 is the one answer that makes EventSource stop retrying.
+  // 204 No Content is the documented way to tell EventSource to stop reconnecting.
   if (USE_MOCK) return new Response(null, { status: 204 });
 
   const brokerURL = await gatewaySocketUrl();
@@ -37,6 +37,7 @@ export async function GET(request: Request) {
         unsubscribe();
       };
       request.signal.addEventListener("abort", stop);
+      if (request.signal.aborted) stop();
       write("retry: 3000\n\n");
     },
     cancel() {
