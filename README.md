@@ -53,11 +53,11 @@ server-side. `DELETE /api/session` revokes the refresh token and clears the cook
 Still mock even in live mode: **Inventory** — inventory-service exposes
 `GET /api/v1/inventory/{productId}` only, with no list endpoint to page through.
 
-One backend caveat the UI states itself: **most moderation actions have no consumer.**
-Only `TAKEDOWN_VIDEO` / `RESTORE_VIDEO` are consumed (video-service). `BAN_USER`,
-`WARN_USER`, `SUSPEND_PRODUCT` and friends are written to `moderation_actions` and
-published to `admin.moderation-events` with nothing subscribed, so the action has no
-effect. The Audit Log marks these `no consumer`.
+Every moderation action admin-service publishes has a consumer: video-service
+(takedown/restore/purge), auth-service (ban/unban), interaction-service (comment
+removal) and notification-service (warnings, which reach the account, the video's owner
+or the comment's author). `DISMISS_REPORT` is recorded and never published, so the
+Audit Log marks it `no consumer`.
 
 ## Design notes
 

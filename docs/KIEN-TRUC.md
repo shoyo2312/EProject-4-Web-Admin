@@ -141,7 +141,9 @@ thông báo thay vì chờ vô hạn.
 
 **Không phải hành động nào cũng có hiệu lực thật** — mảng `ENFORCED` trong `lib/moderation.ts`
 liệt kê các loại action có consumer thực sự ở downstream (`TAKEDOWN_VIDEO`, `RESTORE_VIDEO`,
-`BAN_USER`, `UNBAN_USER`, `REMOVE_COMMENT`). Các loại khác chỉ được ghi log, chưa có ai lắng nghe.
+`PURGE_VIDEO`, `BAN_USER`, `UNBAN_USER`, `REMOVE_COMMENT`, `WARN_USER` — cảnh cáo do
+notification-service gửi tới tài khoản, chủ video hoặc tác giả comment). Còn lại duy nhất
+`DISMISS_REPORT`: admin-service chỉ ghi log, không publish sự kiện nào.
 
 ## 7. Mock mode hoạt động thế nào
 

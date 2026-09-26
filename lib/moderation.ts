@@ -19,14 +19,11 @@ export function playable(status: VideoStatus): boolean {
 }
 
 /**
- * Action types with a live downstream consumer today:
- * video-service (takedown/restore/purge), auth-service (ban/unban),
- * interaction-service (comment removal). The rest are recorded in
- * moderation_actions and published to admin.moderation-events with no
- * subscriber, so the log says so rather than implying the action landed.
- *
- * Lives outside the client component so server components can read the
- * array itself instead of a client reference proxy.
+ * Action types with a live downstream consumer: video-service
+ * (takedown/restore/purge), auth-service (ban/unban), interaction-service
+ * (comment removal) and notification-service (warnings, delivered to the
+ * account, the video's owner or the comment's author). The one left out is
+ * DISMISS_REPORT, which admin-service records and never publishes.
  */
 export const ENFORCED: ModerationActionType[] = [
   "TAKEDOWN_VIDEO",
@@ -35,6 +32,7 @@ export const ENFORCED: ModerationActionType[] = [
   "BAN_USER",
   "UNBAN_USER",
   "REMOVE_COMMENT",
+  "WARN_USER",
 ];
 
 /**
