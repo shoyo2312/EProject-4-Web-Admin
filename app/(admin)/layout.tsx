@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { AutoRefresh } from "@/components/layout/auto-refresh";
+import { LiveRefresh } from "@/components/layout/live-refresh";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { getNotifications, referenceNow } from "@/lib/api/admin";
@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
           now={referenceNow()}
         />
         {/* Live data only: mock pages have nothing to re-fetch. */}
-        {USE_MOCK ? null : <AutoRefresh />}
+        {USE_MOCK ? null : <LiveRefresh />}
         <main className="min-w-0 flex-1 px-4 py-5 md:px-6 md:py-6">{children}</main>
       </div>
     </div>

@@ -30,9 +30,9 @@ type Tokens = {
  * grace), so exactly one of several concurrent requests wins the rotation and the
  * rest are rejected. That is routine here, not an attack: the access cookie's
  * maxAge is the token's own lifetime, so it lapses from every in-flight request at
- * the same instant, and the sidebar's <Link> prefetches plus AutoRefresh's poll
- * mean several are usually in flight. The losers must therefore be treated as
- * "try again", never as a dead session — see the redirect below.
+ * the same instant, and the sidebar's <Link> prefetches plus the /api/live stream
+ * reconnecting mean several can be in flight. The losers must therefore be treated
+ * as "try again", never as a dead session — see the redirect below.
  *
  * ponytail: no cross-request single-flight, which this layer cannot hold. The cost
  * is a few wasted rotate() calls every 15 minutes and, when the loser is the
