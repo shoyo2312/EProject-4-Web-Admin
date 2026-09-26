@@ -96,3 +96,13 @@ export function apiPostAnonymous<T>(path: string, payload: unknown) {
     body: JSON.stringify(payload),
   });
 }
+
+/** The gateway's STOMP endpoint. A socket handshake cannot carry a header, so the token goes in the URL. */
+export async function gatewaySocketUrl(): Promise<string | null> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const url = new URL(`${GATEWAY_URL}/ws`);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.searchParams.set("token", token);
+  return url.toString();
+}
