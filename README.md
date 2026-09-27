@@ -39,11 +39,15 @@ make infra-up
 make run-gateway    # :8080 — the only host this app talks to
 make run-admin      # :8096
 make run-analytics  # :8097
+make run-chat       # :8088 — live updates; without it pages refresh only on navigation
 ```
 
 Services must be started via `make`; launched another way they miss `JWT_SECRET` and
 401 at the gateway. Sign in at `/login` with an account whose role is `ADMIN` —
 anything else is rejected by this app before a session cookie is issued.
+
+Live updates reach the browser through `/api/live`, which relays chat-service's socket using
+Node's built-in `WebSocket`, so they need Node 22 or newer.
 
 Session handling: `POST /api/session` calls auth-service through the gateway, checks
 `role === "ADMIN"` via `/api/v1/auth/me`, then stores the access and refresh tokens in

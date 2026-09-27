@@ -52,7 +52,7 @@ app/                    → Next.js App Router: routing + page component
     dashboard/, analytics/, users/, videos/, comments/,
     moderation/reports/, moderation/actions/, system/queues/, settings/
   login/, forgot-password/  → trang public (không cần đăng nhập)
-  api/                   → route handler nội bộ (session, password-reset)
+  api/                   → route handler nội bộ (session, password-reset, live — SSE báo trang admin tải lại khi dữ liệu đổi)
 middleware.ts            → gác cổng auth, refresh token, redirect /login
 
 lib/
