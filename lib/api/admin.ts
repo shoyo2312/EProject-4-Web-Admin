@@ -26,6 +26,7 @@ import type {
   StatsSummaryResponse,
   UserProfileResponse,
   UserStatus,
+  VideoEngagementSummaryResponse,
   VideoStatus,
 } from "./types";
 import {
@@ -418,6 +419,18 @@ export async function getDailyActiveUsers(days = 7): Promise<DailyActiveUsersRes
 export async function getTopVideos(days = 7, limit = 20): Promise<TopVideoResponse[]> {
   if (USE_MOCK) return mockTopVideos(limit);
   return apiGet<TopVideoResponse[]>(`/api/v1/analytics/videos/top?days=${days}&limit=${limit}`);
+}
+
+/** One video's all-time likes, comments and shares, from analytics-service's event store. */
+export async function getVideoEngagement(videoId: string): Promise<VideoEngagementSummaryResponse> {
+  if (USE_MOCK) {
+    // Derived from the mock video rather than random, so the Likes figure and the engagement
+    // rate on the same page agree with each other.
+    const video = mockVideos.find((v) => v.id === videoId);
+    const likes = video?.likeCount ?? 0;
+    return { videoId, likes, comments: video?.commentCount ?? 0, shares: Math.round(likes / 20) };
+  }
+  return apiGet<VideoEngagementSummaryResponse>(`/api/v1/analytics/engagement/videos/${videoId}`);
 }
 
 /**

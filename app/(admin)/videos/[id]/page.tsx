@@ -10,14 +10,23 @@ import {
   getReportCount,
   getUserProfiles,
   getVideo,
+  getVideoEngagement,
   listTargetActions,
 } from "@/lib/api/admin";
 import { playable } from "@/lib/moderation";
-import { daysUntilPurge, formatCompact, formatCount, formatDateTime, formatDuration } from "@/lib/format";
+import {
+  daysUntilPurge,
+  formatCompact,
+  formatCount,
+  formatDateTime,
+  formatDuration,
+  formatPercent,
+} from "@/lib/format";
 import type {
   AdminVideoResponse,
   ModerationActionResponse,
   UserProfileResponse,
+  VideoEngagementSummaryResponse,
 } from "@/lib/api/types";
 
 /**
@@ -39,13 +48,20 @@ export default async function VideoDetailPage({
   let video: AdminVideoResponse | null;
   let reportCount: number;
   let actions: ModerationActionResponse[];
+  let engagement: VideoEngagementSummaryResponse | null;
   try {
     video = await getVideo(id);
-    // Sequential on purpose: the count and the history are about this video, and asking for
-    // them before knowing there is one would be two calls thrown away on every bad id.
-    [reportCount, actions] = video
-      ? await Promise.all([getReportCount("VIDEO", id), listTargetActions("VIDEO", id)])
-      : [0, []];
+    // Sequential on purpose: these are all about this video, and asking for them before knowing
+    // there is one would be three calls thrown away on every bad id.
+    [reportCount, actions, engagement] = video
+      ? await Promise.all([
+          getReportCount("VIDEO", id),
+          listTargetActions("VIDEO", id),
+          // Non-fatal, like the owner lookup below: analytics being down costs two figures, not
+          // the page. Skipped for a video with no media, which nobody can have engaged with.
+          playable(video.status) ? getVideoEngagement(id).catch(() => null) : null,
+        ])
+      : [0, [], null];
   } catch (error) {
     return (
       <>
@@ -128,7 +144,10 @@ export default async function VideoDetailPage({
         </Card>
 
         <Card>
-          <CardHeader title="Upload" />
+          <CardHeader
+            title="Upload"
+            hint="Shares and engagement rate: GET /api/v1/analytics/engagement/videos/{id} — all-time, from the event stream"
+          />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
             <Field label="Owner">
               <Link
@@ -159,6 +178,15 @@ export default async function VideoDetailPage({
                 : video.commentCount != null
                   ? formatCount(video.commentCount)
                   : "—"}
+            </Field>
+            <Field label="Shares">{engagement ? formatCount(engagement.shares) : "—"}</Field>
+            <Field label="Engagement rate">
+              {engagement
+                ? formatPercent(
+                    engagement.likes + engagement.comments + engagement.shares,
+                    video.viewCount,
+                  )
+                : "—"}
             </Field>
             <Field label="Reports">{reportCount}</Field>
             <Field label="Uploaded">{formatDateTime(video.createdAt)}</Field>

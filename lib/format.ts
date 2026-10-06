@@ -39,6 +39,14 @@ export function formatCount(n: number): string {
   return String(n);
 }
 
+/** 33%, 4.5%, 0.4% — a decimal only under 10%, where a whole percent would round a real rate to 0%. */
+export function formatPercent(part: number, whole: number): string {
+  // An em dash, not 0%: with nothing to divide by there is no rate, and 0% would claim one.
+  if (whole <= 0) return "—";
+  const p = (part / whole) * 100;
+  return `${p >= 10 ? Math.round(p) : p.toFixed(1).replace(/\.0$/, "")}%`;
+}
+
 /** Snowflake ids are long; the table only needs enough to eyeball-match a row. */
 export function shortId(id: string, keep = 6) {
   return id.length <= keep ? id : `${id.slice(0, keep)}…`;

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/card";
 import type { TopVideoResponse } from "@/lib/api/types";
-import { formatCompact, formatNumber } from "@/lib/format";
+import { formatCompact, formatNumber, formatPercent } from "@/lib/format";
 
 /**
  * The most-watched videos of the window.
@@ -66,7 +66,7 @@ export function TopVideos({ rows, days }: { rows: TopVideoResponse[]; days: numb
                     {formatCompact(row.viewers)}
                   </td>
                   <td className="figure px-5 py-2.5 text-right text-ink-soft">
-                    {percent(row.completions, row.views)}
+                    {formatPercent(row.completions, row.views)}
                   </td>
                 </tr>
               ))}
@@ -82,9 +82,4 @@ export function TopVideos({ rows, days }: { rows: TopVideoResponse[]; days: numb
 function hours(ms: number): string {
   const minutes = ms / 60_000;
   return minutes < 90 ? `${Math.round(minutes)}m` : `${(minutes / 60).toFixed(1)}h`;
-}
-
-function percent(part: number, whole: number): string {
-  // An em dash, not 0%: no views is no answer about how many of them finished.
-  return whole === 0 ? "—" : `${Math.round((part / whole) * 100)}%`;
 }

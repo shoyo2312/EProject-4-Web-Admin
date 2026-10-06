@@ -353,6 +353,17 @@ export interface TopVideoResponse {
 }
 
 /**
+ * GET /api/v1/analytics/engagement/videos/{videoId} — VideoEngagementSummaryResponse. All-time,
+ * counted from the event stream: likes net of unlikes, comments net of deleted ones.
+ */
+export interface VideoEngagementSummaryResponse {
+  videoId: string;
+  likes: number;
+  comments: number;
+  shares: number;
+}
+
+/**
  * GET /api/v1/admin/settings/moderation — admin-service proxying moderation-service's /config.
  *
  * `values` is passed through untyped on purpose: admin-service does not read it either, so a
