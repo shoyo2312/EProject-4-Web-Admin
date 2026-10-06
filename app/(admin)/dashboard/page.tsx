@@ -74,11 +74,10 @@ export default async function DashboardPage({
 
   // Daily and uncut, so each delta compares the period against the period before it —
   // the bucketed series above is only the chart's window, with nothing behind it.
-  const signupCounts = historyUpTo(signups, window).map((d) => d.signups);
-  const dailyStats = historyUpTo(adminStats, window);
-  const reportsCreatedCounts = dailyStats.map((d) => d.reportsCreated);
-  const actionsTakenCounts = dailyStats.map((d) => d.actionsTaken);
-  const takedownCounts = dailyStats.map((d) => d.videosTakenDown);
+  const signupCounts = historyUpTo(signups, window, (d) => d.signups);
+  const reportsCreatedCounts = historyUpTo(adminStats, window, (d) => d.reportsCreated);
+  const actionsTakenCounts = historyUpTo(adminStats, window, (d) => d.actionsTaken);
+  const takedownCounts = historyUpTo(adminStats, window, (d) => d.videosTakenDown);
 
   const cards: KpiCard[] = [
     {

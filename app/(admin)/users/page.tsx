@@ -71,8 +71,8 @@ export default async function UsersPage({
   const unverified = users.filter((u) => !u.emailVerified).length;
 
   // Daily and uncut, so a delta compares the period against the period before it.
-  const signupCounts = historyUpTo(signups, window).map((d) => d.signups);
-  const banCounts = historyUpTo(adminStats, window).map((d) => d.usersBanned);
+  const signupCounts = historyUpTo(signups, window, (d) => d.signups);
+  const banCounts = historyUpTo(adminStats, window, (d) => d.usersBanned);
 
   const newUsers = sumLast(signupCounts, periodDays);
   // A directory total is cumulative, so it has no series to compare against — what it grew by

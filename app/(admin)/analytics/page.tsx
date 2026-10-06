@@ -62,14 +62,14 @@ export default async function AnalyticsPage({
 
   // Everything up to the picked date, uncut. The KPI helpers below read the last two periods
   // of this, so the comparison moves with the picker instead of always being today.
-  const signupHistory = historyUpTo(signups, window);
-  const signupCounts = signupHistory.map((d) => d.signups);
+  const signupCounts = historyUpTo(signups, window, (d) => d.signups);
 
   // Average over the period rather than the latest day: one day's figure is a weekday or a
   // weekend, and the card sits next to a percentage that compares two whole periods.
-  const dauCounts = historyUpTo(activeUsers, window).map((d) => d.activeUsers);
-  const dauAverage =
-    dauCounts.length === 0 ? 0 : Math.round(sumLast(dauCounts, periodDays) / periodDays);
+  const dauCounts = historyUpTo(activeUsers, window, (d) => d.activeUsers);
+  const dauAverage = Math.round(sumLast(dauCounts, periodDays) / periodDays);
+  // The series is zero-filled, so its length no longer says whether anything was recorded.
+  const noDau = !activeUsers.some((d) => d.day <= window.asOf);
 
   const engagementCounts = engagement.series.daily.map((b) => b.primary + b.secondary);
   const engagementTotal = engagement.mix.reduce((sum, row) => sum + row.total, 0);
@@ -85,7 +85,7 @@ export default async function AnalyticsPage({
     },
     {
       label: "Daily Active Users",
-      value: dauCounts.length === 0 ? "—" : formatNumber(dauAverage),
+      value: noDau ? "—" : formatNumber(dauAverage),
       unit: `Average, ${periodLabel.toLowerCase()}`,
       delta: deltaPercent(dauCounts, periodDays),
       deltaLabel: compareLabel,
@@ -105,7 +105,7 @@ export default async function AnalyticsPage({
   ];
 
   const signupBuckets = bucketByGranularity(
-    sliceToWindow(signupHistory, window),
+    sliceToWindow(signups, window),
     window.bucket,
     (a, b) => ({ day: a.day, signups: a.signups + b.signups }),
   );

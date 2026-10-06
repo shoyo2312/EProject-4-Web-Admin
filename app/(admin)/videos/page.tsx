@@ -106,11 +106,10 @@ export default async function VideosPage({
   const views = videos.reduce((sum, v) => sum + v.viewCount, 0);
 
   // Daily and uncut, so a delta compares the period against the period before it.
-  const daily = historyUpTo(videoStats, window);
-  const uploadCounts = daily.map((d) => d.uploads);
-  const reviewCohort = daily.map((d) => d.pendingReview);
-  const stuckCohort = daily.map((d) => d.notPlayable);
-  const takedownCounts = historyUpTo(adminStats, window).map((d) => d.videosTakenDown);
+  const uploadCounts = historyUpTo(videoStats, window, (d) => d.uploads);
+  const reviewCohort = historyUpTo(videoStats, window, (d) => d.pendingReview);
+  const stuckCohort = historyUpTo(videoStats, window, (d) => d.notPlayable);
+  const takedownCounts = historyUpTo(adminStats, window, (d) => d.videosTakenDown);
 
   // The percentages below pair a library-wide total with a library-wide series, so a search or
   // a status filter — which narrows the total but not the series — has to drop them.

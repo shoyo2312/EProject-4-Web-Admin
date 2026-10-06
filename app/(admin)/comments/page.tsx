@@ -70,7 +70,7 @@ export default async function CommentsPage({
   const selected = videos.find((v) => v.id === videoId && comments !== null) ?? null;
 
   // Daily and uncut, so the delta compares the period against the period before it.
-  const removalCounts = historyUpTo(adminStats, window).map((d) => d.commentsRemoved);
+  const removalCounts = historyUpTo(adminStats, window, (d) => d.commentsRemoved);
 
   const cards: KpiCard[] = [
     {

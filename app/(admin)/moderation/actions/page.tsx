@@ -50,12 +50,11 @@ export default async function AuditLogPage({
   // Daily and uncut, so a delta compares the period against the period before it. Every
   // figure here is a flow — the log records decisions, and a decision is an event, not a
   // standing total — so all four compare period against period rather than against a stock.
-  const daily = historyUpTo(adminStats, window);
   const series = {
-    taken: daily.map((d) => d.actionsTaken),
-    bans: daily.map((d) => d.usersBanned),
-    takedowns: daily.map((d) => d.videosTakenDown),
-    removals: daily.map((d) => d.commentsRemoved),
+    taken: historyUpTo(adminStats, window, (d) => d.actionsTaken),
+    bans: historyUpTo(adminStats, window, (d) => d.usersBanned),
+    takedowns: historyUpTo(adminStats, window, (d) => d.videosTakenDown),
+    removals: historyUpTo(adminStats, window, (d) => d.commentsRemoved),
   };
 
   const card = (label: string, values: number[]): KpiCard => ({

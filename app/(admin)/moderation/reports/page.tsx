@@ -98,11 +98,10 @@ export default async function ReportsQueuePage({
 
   // Daily and uncut, so a delta compares the period against the period before it. Closures
   // are dated by when the report was closed, not when it was filed — see the API type.
-  const daily = historyUpTo(adminStats, window);
-  const createdCounts = daily.map((d) => d.reportsCreated);
-  const resolvedCounts = daily.map((d) => d.reportsResolved);
-  const dismissedCounts = daily.map((d) => d.reportsDismissed);
-  const actionCounts = daily.map((d) => d.actionsTaken);
+  const createdCounts = historyUpTo(adminStats, window, (d) => d.reportsCreated);
+  const resolvedCounts = historyUpTo(adminStats, window, (d) => d.reportsResolved);
+  const dismissedCounts = historyUpTo(adminStats, window, (d) => d.reportsDismissed);
+  const actionCounts = historyUpTo(adminStats, window, (d) => d.actionsTaken);
 
   const cards: KpiCard[] = [
     {
