@@ -1,6 +1,7 @@
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Sparkbars } from "@/components/charts/sparkbars";
 import { Card } from "@/components/ui/card";
+import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export interface KpiCard {
@@ -16,6 +17,8 @@ export interface KpiCard {
    * colour are a claim about a trend, and there is no trend to claim.
    */
   delta?: number | null;
+  /** "count" draws the delta as an amount added ("+4") — for a period that started from zero. */
+  deltaUnit?: "percent" | "count";
   deltaLabel?: string;
   /** Omitted when nothing measures this figure over time, for the same reason as `delta`. */
   spark?: number[];
@@ -67,7 +70,7 @@ export function KpiCards({ cards }: { cards: KpiCard[] }) {
                 <span className="text-[11px] text-ink-faint">
                   <span className={good ? "text-success" : "text-danger"}>
                     {rising ? "+" : ""}
-                    {delta}%
+                    {card.deltaUnit === "count" ? formatNumber(delta) : `${delta}%`}
                   </span>{" "}
                   {card.deltaLabel}
                 </span>

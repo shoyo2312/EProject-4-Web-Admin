@@ -13,7 +13,7 @@ import {
   resolveOwners,
 } from "@/lib/api/admin";
 import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
-import { deltaPercent, growthPercent, spark, sumLast } from "@/lib/series";
+import { deltaPercent, growthChange, spark, sumLast } from "@/lib/series";
 import { formatCompact, formatNumber } from "@/lib/format";
 import type { VideoStatus } from "@/lib/api/types";
 
@@ -115,6 +115,10 @@ export default async function VideosPage({
   // a status filter — which narrows the total but not the series — has to drop them.
   const filtered = Boolean(q || filter);
   const uploads = sumLast(uploadCounts, periodDays);
+  const libraryGrowth = filtered ? null : growthChange(page.totalElements, uploads);
+  const takedownGrowth = filtered
+    ? null
+    : growthChange(counts.takenDown, sumLast(takedownCounts, periodDays));
 
   const cards: KpiCard[] = [
     {
@@ -122,8 +126,10 @@ export default async function VideosPage({
       value: formatNumber(page.totalElements),
       unit: "Videos",
       // Cumulative, so the growth is this period's uploads over the size the library had
-      // when the period began — not one period's uploads against another's.
-      delta: filtered ? null : growthPercent(page.totalElements, uploads),
+      // when the period began — not one period's uploads against another's. A library that
+      // was empty when the period began shows the count it gained instead.
+      delta: libraryGrowth?.value,
+      deltaUnit: libraryGrowth?.unit,
       deltaLabel: compareLabel,
       spark: spark(uploadCounts, window.chartDays),
     },
@@ -153,7 +159,8 @@ export default async function VideosPage({
       // matters is that the video is off the platform. The percentage is on the admin half
       // alone — the audit log is the only thing that dates a removal — so it understates a
       // period in which the classifier did most of the removing.
-      delta: filtered ? null : growthPercent(counts.takenDown, sumLast(takedownCounts, periodDays)),
+      delta: takedownGrowth?.value,
+      deltaUnit: takedownGrowth?.unit,
       deltaLabel: `by admins, ${compareLabel}`,
       spark: spark(takedownCounts, window.chartDays),
     },
