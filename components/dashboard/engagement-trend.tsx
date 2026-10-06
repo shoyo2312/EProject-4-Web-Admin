@@ -1,4 +1,4 @@
-import { MosaicChart } from "@/components/charts/mosaic-chart";
+import { LineChart } from "@/components/charts/line-chart";
 import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
 import type { MosaicRange, MosaicSeries } from "@/lib/api/rollup";
 import { formatNumber } from "@/lib/format";
@@ -44,7 +44,7 @@ export function EngagementTrend({
           </p>
         </div>
 
-        <MosaicChart
+        <LineChart
           buckets={buckets}
           primaryLabel="Likes"
           secondaryLabel="Comments & Shares"
