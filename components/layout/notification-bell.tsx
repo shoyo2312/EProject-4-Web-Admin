@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Bell, Flag, Trash2, Video, type LucideIcon } from "lucide-react";
+import { Bell, Flag, Trash2, Upload, UserPlus, Video, type LucideIcon } from "lucide-react";
 import { NOTIFICATIONS_SEEN_COOKIE } from "@/lib/api/config";
 import { relativeTime } from "@/lib/format";
 import {
@@ -17,6 +17,8 @@ const ICONS: Record<NotificationKind, LucideIcon> = {
   report: Flag,
   review: Video,
   trash: Trash2,
+  signup: UserPlus,
+  upload: Upload,
 };
 
 export function NotificationBell({

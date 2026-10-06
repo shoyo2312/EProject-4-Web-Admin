@@ -630,19 +630,24 @@ export async function listVideos(options: {
 /**
  * The bell's feed. Only the first page of each source — the bell is a nudge that links to the
  * full listing, not a second copy of it. The trash reads soonest-to-expire first, so its first
- * page holds every video close enough to the purge to mention.
+ * page holds every video close enough to the purge to mention. Sign-ups and uploads are counted
+ * rather than listed, so they read a longer page, newest first; past 50 in a day the bell says 50+.
  */
 export async function getNotifications(): Promise<AdminNotification[]> {
   const size = 10;
-  const [queue, review, trash] = await Promise.all([
+  const [queue, review, trash, signups, uploads] = await Promise.all([
     listReportQueue({ size }),
     listVideos({ status: "PENDING_REVIEW", deleted: false, size }),
     listVideos({ deleted: true, purged: false, sort: "deletedAt,asc", size }),
+    listUsers({ size: 50 }),
+    listVideos({ deleted: false, size: 50 }),
   ]);
   return buildNotifications({
     queue: queue.content,
     review: review.content,
     trash: trash.content,
+    signups,
+    uploads,
     now: referenceNow(),
   });
 }

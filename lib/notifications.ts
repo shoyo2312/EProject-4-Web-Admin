@@ -1,14 +1,20 @@
-import type { AdminVideoResponse, ReportGroupResponse } from "@/lib/api/types";
+import type {
+  AdminUserResponse,
+  AdminVideoResponse,
+  Page,
+  ReportGroupResponse,
+} from "@/lib/api/types";
 
 /**
- * The topbar bell's feed: the things waiting on an admin, derived from listings the console
- * already reads rather than from a notification store — nothing on the backend records "an admin
- * has been told". ponytail: derived, so a report group that gets resolved simply drops out; add a
- * stored feed (admin-service consuming events) only when something must be announced that no
- * listing can show, e.g. an automatic purge — see docs/KIEN-TRUC.md, "Thùng rác".
+ * The topbar bell's feed: the things waiting on an admin, plus the last day's sign-ups and
+ * uploads, derived from listings the console already reads rather than from a notification
+ * store — nothing on the backend records "an admin has been told". ponytail: derived, so a report
+ * group that gets resolved simply drops out; add a stored feed (admin-service consuming events)
+ * only when something must be announced that no listing can show, e.g. an automatic purge — see
+ * docs/KIEN-TRUC.md, "Thùng rác".
  */
 
-export type NotificationKind = "report" | "review" | "trash";
+export type NotificationKind = "report" | "review" | "trash" | "signup" | "upload";
 
 export interface AdminNotification {
   id: string;
@@ -32,14 +38,28 @@ function reportHref(group: ReportGroupResponse): string {
   return "/moderation/reports";
 }
 
+/**
+ * What a newest-first page holds from after `since`: the newest row and how many, as "N+" when
+ * the page ran out before the window did.
+ */
+function arrivals<T extends { createdAt: string }>(page: Page<T>, since: number) {
+  const fresh = page.content.filter((row) => Date.parse(row.createdAt) > since);
+  if (fresh.length === 0) return [];
+  const more = fresh.length === page.content.length && page.totalElements > fresh.length;
+  return [{ newest: fresh[0], count: `${fresh.length}${more ? "+" : ""}` }];
+}
+
 export function buildNotifications(input: {
   queue: ReportGroupResponse[];
   review: AdminVideoResponse[];
   trash: AdminVideoResponse[];
+  /** Newest first, as the user directory and the video listing both sort by default. */
+  signups: Page<AdminUserResponse>;
+  uploads: Page<AdminVideoResponse>;
   now: number;
   limit?: number;
 }): AdminNotification[] {
-  const { queue, review, trash, now, limit = 20 } = input;
+  const { queue, review, trash, signups, uploads, now, limit = 20 } = input;
 
   const reports = queue.map<AdminNotification>((group) => ({
     id: `report:${group.targetType}:${group.targetId}`,
@@ -74,7 +94,26 @@ export function buildNotifications(input: {
     }];
   });
 
-  return [...reports, ...reviews, ...expiring]
+  const since = now - DAY_MS;
+  const joined = arrivals(signups, since).map<AdminNotification>(({ newest, count }) => ({
+    id: "signups",
+    at: newest.createdAt,
+    kind: "signup",
+    title: `${count} new ${count === "1" ? "user" : "users"} in the last 24 hours`,
+    detail: `Newest: @${newest.username}`,
+    href: "/users",
+  }));
+
+  const uploaded = arrivals(uploads, since).map<AdminNotification>(({ newest, count }) => ({
+    id: "uploads",
+    at: newest.createdAt,
+    kind: "upload",
+    title: `${count} new ${count === "1" ? "video" : "videos"} in the last 24 hours`,
+    detail: `Newest: ${newest.title}`,
+    href: "/videos",
+  }));
+
+  return [...reports, ...reviews, ...expiring, ...joined, ...uploaded]
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .slice(0, limit);
 }
