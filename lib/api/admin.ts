@@ -247,18 +247,37 @@ export async function resolveQueueRow(
   });
 }
 
+/** The audit log, newest first. Every filter is optional; `from` is inclusive, `to` exclusive. */
 export async function listModerationActions(options: {
   page?: number;
   size?: number;
+  adminId?: string;
+  actionType?: ModerationActionType;
+  /** ISO instants. */
+  from?: string;
+  to?: string;
 } = {}): Promise<Page<ModerationActionResponse>> {
-  const { page = 0, size = LIST_PAGE_SIZE } = options;
-  if (USE_MOCK) return mockPage(mockModerationActions, page, size);
+  const { page = 0, size = LIST_PAGE_SIZE, adminId, actionType, from, to } = options;
+  if (USE_MOCK) {
+    const matches = mockModerationActions.filter(
+      (a) =>
+        (!adminId || a.adminId === adminId)
+        && (!actionType || a.actionType === actionType)
+        && (!from || Date.parse(a.createdAt) >= Date.parse(from))
+        && (!to || Date.parse(a.createdAt) < Date.parse(to)),
+    );
+    return mockPage(matches, page, size);
+  }
 
   const params = new URLSearchParams({
     page: String(page),
     size: String(size),
     sort: "createdAt,desc",
   });
+  if (adminId) params.set("adminId", adminId);
+  if (actionType) params.set("actionType", actionType);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
   return apiGet<Page<ModerationActionResponse>>(`/api/v1/admin/actions?${params}`);
 }
 

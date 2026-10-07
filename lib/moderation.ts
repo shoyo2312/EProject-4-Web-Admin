@@ -36,6 +36,22 @@ export const ENFORCED: ModerationActionType[] = [
 ];
 
 /**
+ * Every decision admin-service records — the audit log's type filter. Whitelisted for the same
+ * reason as the sort fields below: the value arrives from the query string, and Spring answers an
+ * enum it does not know with a 400 rather than the unfiltered log.
+ */
+export const ACTION_TYPES: readonly ModerationActionType[] = [
+  "BAN_USER",
+  "UNBAN_USER",
+  "WARN_USER",
+  "TAKEDOWN_VIDEO",
+  "RESTORE_VIDEO",
+  "PURGE_VIDEO",
+  "REMOVE_COMMENT",
+  "DISMISS_REPORT",
+];
+
+/**
  * The columns admin-service will order the report ledger by — the Report entity's own fields.
  *
  * Whitelisted rather than passed through: the value reaches the API from the query string,

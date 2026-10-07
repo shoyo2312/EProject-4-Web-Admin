@@ -1,8 +1,9 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { ChevronsUpDown, Search } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ChevronsUpDown, Search, X } from "lucide-react";
 import { actionRowDetailAction, type ActionRowDetail } from "@/app/(admin)/moderation/actions/actions";
 import { TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -10,7 +11,8 @@ import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import type { ModerationActionResponse, ModerationActionType } from "@/lib/api/types";
 import { formatDateTime, relativeTime, shortId } from "@/lib/format";
-import { ENFORCED } from "@/lib/moderation";
+import { ACTION_TYPES, ENFORCED } from "@/lib/moderation";
+import { hrefWith } from "@/lib/url";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
 
@@ -30,27 +32,36 @@ const ENFORCEMENT_FILTERS = [
 type EnforcementFilter = (typeof ENFORCEMENT_FILTERS)[number]["value"];
 type SortKey = "admin" | "action" | "target" | "createdAt";
 
-export function ActionsTable({ actions }: { actions: ModerationActionResponse[] }) {
+export function ActionsTable({
+  actions,
+  adminId,
+  actionType,
+}: {
+  actions: ModerationActionResponse[];
+  /** The server-side filters the page was fetched with, so the controls show them. */
+  adminId?: string;
+  actionType?: ModerationActionType;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const [, startNavigation] = useTransition();
   const [query, setQuery] = useState("");
-  const [actionType, setActionType] = useState<ModerationActionType | "ALL">("ALL");
   const [enforcement, setEnforcement] = useState<EnforcementFilter>("ALL");
   const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({
     key: "createdAt",
     asc: false,
   });
 
-  // Only the types actually present — an empty filter option is a dead control.
-  const types = useMemo(
-    () => [...new Set(actions.map((a) => a.actionType))].sort(),
-    [actions],
-  );
+  // Back to the first page: page 3 of everything is not page 3 of one admin's actions.
+  const filterHref = (patch: Record<string, string | null>) =>
+    hrefWith(pathname, params, { ...patch, page: null });
 
   const belowXl = useBelowXl();
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const filtered = actions.filter((action) => {
-      if (actionType !== "ALL" && action.actionType !== actionType) return false;
       if (enforcement !== "ALL") {
         const enforced = ENFORCED.includes(action.actionType);
         if (enforcement === "ENFORCED" ? !enforced : enforced) return false;
@@ -79,7 +90,7 @@ export function ActionsTable({ actions }: { actions: ModerationActionResponse[] 
           return a.createdAt.localeCompare(b.createdAt) * direction;
       }
     });
-  }, [actions, query, actionType, enforcement, sort]);
+  }, [actions, query, enforcement, sort]);
 
   return (
     <Card>
@@ -97,16 +108,29 @@ export function ActionsTable({ actions }: { actions: ModerationActionResponse[] 
                 className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
               />
             </label>
+            {adminId ? (
+              <Link
+                href={filterHref({ admin: null }) as never}
+                title="Show every admin's actions"
+                className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[11px] text-ink-soft hover:text-ink"
+              >
+                Admin #{shortId(adminId.slice(-8), 8)}
+                <X className="h-3 w-3" />
+              </Link>
+            ) : null}
             <select
-              value={actionType}
-              onChange={(e) =>
-                setActionType(e.target.value as ModerationActionType | "ALL")
-              }
+              value={actionType ?? "ALL"}
+              onChange={(e) => {
+                const next = e.target.value;
+                startNavigation(() =>
+                  router.replace(filterHref({ type: next === "ALL" ? null : next }) as never),
+                );
+              }}
               aria-label="Filter by action type"
               className="rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[11px] text-ink-soft outline-none"
             >
               <option value="ALL">All actions</option>
-              {types.map((type) => (
+              {ACTION_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {type}
                 </option>
@@ -142,7 +166,12 @@ export function ActionsTable({ actions }: { actions: ModerationActionResponse[] 
           </thead>
           <tbody>
             {rows.map((action) => (
-              <ActionRow key={action.id} action={action} belowXl={belowXl} />
+              <ActionRow
+                key={action.id}
+                action={action}
+                belowXl={belowXl}
+                adminHref={adminId ? null : filterHref({ admin: action.adminId })}
+              />
             ))}
 
             {rows.length === 0 ? (
@@ -162,10 +191,13 @@ export function ActionsTable({ actions }: { actions: ModerationActionResponse[] 
 function ActionRow({
   action,
   belowXl,
+  adminHref,
 }: {
   action: ModerationActionResponse;
   /** Below xl the secondary columns are dropped, so the expand row carries them instead. */
   belowXl: boolean;
+  /** The log narrowed to this row's admin; null when it already is. */
+  adminHref: string | null;
 }) {
   const [detail, setDetail] = useState(false);
   const [target, setTarget] = useState<ActionRowDetail | null>(null);
@@ -244,9 +276,22 @@ function ActionRow({
           ) : null}
 
           <Field label="Admin">
-            {loading && !target
-              ? `#${shortId(action.adminId.slice(-8), 8)}`
-              : (target?.adminHandle ?? `#${shortId(action.adminId.slice(-8), 8)}`)}
+            <span className="flex flex-wrap items-baseline gap-x-2">
+              <span>
+                {loading && !target
+                  ? `#${shortId(action.adminId.slice(-8), 8)}`
+                  : (target?.adminHandle ?? `#${shortId(action.adminId.slice(-8), 8)}`)}
+              </span>
+              {adminHref ? (
+                <Link
+                  href={adminHref as never}
+                  className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  only this admin →
+                </Link>
+              ) : null}
+            </span>
           </Field>
           <Field label="When">{formatDateTime(action.createdAt)}</Field>
 

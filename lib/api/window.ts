@@ -150,6 +150,19 @@ export function resolveWindow(
   };
 }
 
+/**
+ * The period as instants, for an endpoint that filters by time: from the start of its first day
+ * to the start of the day after `asOf`, end exclusive. UTC days, like the daily series — so the
+ * rows it returns are exactly the days the period's KPI figures sum.
+ */
+export function windowRange(window: TimeWindow): { from: string; to: string } {
+  const end = Date.parse(`${window.asOf}T00:00:00Z`) + DAY_MS;
+  return {
+    from: new Date(end - window.periodDays * DAY_MS).toISOString(),
+    to: new Date(end).toISOString(),
+  };
+}
+
 /** Trims a daily series to the chart window: everything up to `asOf`, at most `chartDays` of it. */
 export function sliceToWindow<T extends { day: string }>(
   rows: T[],

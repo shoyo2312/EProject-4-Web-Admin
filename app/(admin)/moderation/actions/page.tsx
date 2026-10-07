@@ -9,26 +9,34 @@ import {
   listModerationActions,
   referenceNow,
 } from "@/lib/api/admin";
-import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
+import { historyUpTo, isoDay, parsePage, resolveWindow, windowRange } from "@/lib/api/window";
+import { ACTION_TYPES } from "@/lib/moderation";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
 
 export default async function AuditLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ p?: string; asOf?: string; page?: string }>;
+  searchParams: Promise<{ p?: string; asOf?: string; page?: string; admin?: string; type?: string }>;
 }) {
   const params = await searchParams;
   const latest = isoDay(referenceNow());
   const window = resolveWindow(params, latest);
   const { asOf, periodDays, periodLabel, compareLabel } = window;
   const pageIndex = parsePage(params.page);
+  // Both come from the query string, where anything can be typed. Dropped rather than passed
+  // on: admin-service answers a non-numeric id or an unknown type with a 400 for the whole page.
+  const adminId = /^\d+$/.test(params.admin ?? "") ? params.admin : undefined;
+  const actionType = ACTION_TYPES.find((type) => type === params.type);
+  // The log covers the same days as the figures above it, so its total is the "Actions Taken"
+  // card's value — and "what did this admin do yesterday" is the Day period on yesterday.
+  const { from, to } = windowRange(window);
 
   let page;
   let adminStats;
   try {
     [page, adminStats] = await Promise.all([
-      listModerationActions({ page: pageIndex }),
+      listModerationActions({ page: pageIndex, adminId, actionType, from, to }),
       // The page itself is one slice of the log; the counts above it are the whole of it,
       // which is the only way a percentage over a year means anything.
       getDailyAdminStats(window.fetchDays),
@@ -42,10 +50,7 @@ export default async function AuditLogPage({
     );
   }
 
-  // Append-only, so cutting at the picked date really is the log as it stood then.
-  // ponytail: the cut runs over the page rather than the query — admin-service takes no date
-  // parameter, so a page of newer entries comes back short instead of being skipped.
-  const actions = page.content.filter((a) => a.createdAt.slice(0, 10) <= asOf);
+  const actions = page.content;
 
   // Daily and uncut, so a delta compares the period against the period before it. Every
   // figure here is a flow — the log records decisions, and a decision is an event, not a
@@ -86,9 +91,9 @@ export default async function AuditLogPage({
         <KpiCards cards={cards} />
       </div>
 
-      {/* The table's own search, type tabs and sort work over the rows on this page —
-          they are client-side, and the page is what the server sent. */}
-      <ActionsTable actions={actions} />
+      {/* The type and admin filters go to the server with the period. The search box, the
+          enforcement tabs and the sort work over the rows on this page only. */}
+      <ActionsTable actions={actions} adminId={adminId} actionType={actionType} />
 
       <Pager
         page={page.number}
