@@ -513,28 +513,17 @@ export async function listUsers(options: {
  * One account by id — what a report resolves to, since a report carries the reported user's id
  * and nothing else.
  *
- * Two calls, because auth-service's directory has no by-id route and its `q` matches the handle
- * and the email only: the handle comes from user-service first and is then used as the search
- * term. The row is picked out by id rather than by handle, since `like '%…%'` matches every
- * account whose handle merely contains that string.
- *
- * Null when the account cannot be reached this way — nothing at that id, or no user-service
- * profile to take a handle from. The caller shows "not found" rather than the wrong account.
- *
- * ponytail: `OR CAST(u.id AS string) LIKE :term` in auth-service's `searchForAdmin` collapses
- * this to one call and makes pasting an id into the console's own search box work. Worth doing
- * the first time a profile-less account has to be opened — those are what this returns null for.
+ * Null when nothing is registered at that id or the account was deleted (404), and for an id
+ * that is not a number at all (400) — a hand-edited URL is "not found", not a failure.
  */
 export async function getAdminUser(userId: string): Promise<AdminUserResponse | null> {
   if (USE_MOCK) return mockUsers.find((user) => user.id === userId) ?? null;
-
-  const handle = (await getUserProfiles([userId]))[userId]?.username;
-  if (!handle) return null;
-
-  // Wider than a page: the term is a substring match, so a short handle can pull in every
-  // account that contains it and push the exact one past row twenty-five.
-  const page = await listUsers({ q: handle, size: 100 });
-  return page.content.find((user) => user.id === userId) ?? null;
+  try {
+    return await apiGet<AdminUserResponse>(`/api/v1/auth/admin/users/${userId}`);
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 400)) return null;
+    throw error;
+  }
 }
 
 /**

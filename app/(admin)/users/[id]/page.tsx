@@ -78,9 +78,8 @@ export default async function UserDetailPage({
       <>
         <DetailHeader title="Account" />
         <Card className="px-5 py-10 text-center text-[12px] text-ink-faint">
-          No account reachable at id <span className="figure">{id}</span>. Either nothing is
-          registered there, or the account has no user-service profile — the directory is
-          searched by handle, so an account without one cannot be opened by id yet.
+          No account at id <span className="figure">{id}</span>. Either nothing is registered
+          there, or the account has been deleted.
         </Card>
       </>
     );
@@ -126,7 +125,7 @@ export default async function UserDetailPage({
         <Card>
           <CardHeader
             title="Account"
-            hint="GET /api/v1/auth/admin/users — served by auth-service, which owns status and role"
+            hint="GET /api/v1/auth/admin/users/{id} — served by auth-service, which owns status and role"
           />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
             <Field label="Handle">@{user.username}</Field>
