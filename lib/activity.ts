@@ -212,6 +212,7 @@ const ACTION_SUMMARY: Record<string, string> = {
   PURGE_VIDEO: "Video permanently deleted from trash",
   REMOVE_COMMENT: "Comment removed",
   WARN_USER: "Warning issued",
+  REVOKE_SESSIONS: "Signed out of every session",
 };
 
 function actionEvent(action: ModerationActionResponse): ActivityEvent {

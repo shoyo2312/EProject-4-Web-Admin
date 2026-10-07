@@ -74,6 +74,7 @@ export type ModerationActionType =
   | "PURGE_VIDEO"
   | "REMOVE_COMMENT"
   | "WARN_USER"
+  | "REVOKE_SESSIONS"
   | "DISMISS_REPORT";
 
 /** auth-service — entity/UserRole.java */

@@ -39,7 +39,7 @@ export async function userModerationDetailAction(
  */
 export async function moderateUserAction(
   userId: string,
-  action: "ban" | "unban",
+  action: "ban" | "unban" | "warn" | "revokeSessions",
   reason: string,
   /** Days until the ban lapses; null is permanent. auth-service lifts it on a sweep. */
   banDays: number | null = null,
@@ -55,13 +55,23 @@ export async function moderateUserAction(
   }
 
   revalidatePath("/users");
-  return {
-    ok: true,
-    message:
-      action === "ban"
-        ? banDays === null
-          ? "Ban recorded. Sessions are revoked once auth-service consumes the event."
-          : `Ban recorded for ${banDays} day${banDays === 1 ? "" : "s"}. It lifts on its own once the deadline passes.`
-        : "Unban recorded. The account can sign in again once the event is consumed.",
-  };
+  return { ok: true, message: recordedMessage(action, banDays) };
+}
+
+function recordedMessage(
+  action: "ban" | "unban" | "warn" | "revokeSessions",
+  banDays: number | null,
+): string {
+  switch (action) {
+    case "ban":
+      return banDays === null
+        ? "Ban recorded. Sessions are revoked once auth-service consumes the event."
+        : `Ban recorded for ${banDays} day${banDays === 1 ? "" : "s"}. It lifts on its own once the deadline passes.`;
+    case "unban":
+      return "Unban recorded. The account can sign in again once the event is consumed.";
+    case "warn":
+      return "Warning recorded. The account is notified once notification-service consumes the event.";
+    case "revokeSessions":
+      return "Sign-out recorded. Every session ends once auth-service consumes the event; the account stays active.";
+  }
 }

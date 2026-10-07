@@ -265,7 +265,7 @@ export default async function VideoDetailPage({
             <EnforcePanel
               kind="video"
               targetId={video.id}
-              action={action}
+              actions={[action]}
               subject={`"${video.title || video.id}"`}
             />
           </div>

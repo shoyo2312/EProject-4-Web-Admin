@@ -224,19 +224,22 @@ export default async function UserDetailPage({
         <Card>
           <CardHeader
             title="Decision"
-            hint="Writes a moderation action and publishes it; auth-service applies it and revokes live sessions"
+            hint="Writes a moderation action and publishes it — auth-service applies bans and sign-outs, notification-service delivers warnings"
           />
           <div className="px-5 py-4">
             <EnforcePanel
               kind="user"
               targetId={user.id}
-              action={action}
+              actions={[action, "warn", "revokeSessions"]}
               subject={`@${user.username}`}
               // An admin banning an admin account can lock the console: the bootstrap account
-              // is provisioned at startup and there may be no second one to undo it.
-              blockedReason={
-                user.role === "ADMIN" && action === "ban"
-                  ? "Banning an admin account would lock the console — there may be no second admin to undo it."
+              // is provisioned at startup and there may be no second one to undo it. Signing one
+              // out cannot — an admin who is signed out signs back in.
+              blocked={
+                user.role === "ADMIN"
+                  ? {
+                      ban: "Banning an admin account would lock the console — there may be no second admin to undo it.",
+                    }
                   : undefined
               }
             />

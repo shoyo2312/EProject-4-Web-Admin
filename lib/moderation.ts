@@ -20,10 +20,10 @@ export function playable(status: VideoStatus): boolean {
 
 /**
  * Action types with a live downstream consumer: video-service
- * (takedown/restore/purge), auth-service (ban/unban), interaction-service
- * (comment removal) and notification-service (warnings, delivered to the
- * account, the video's owner or the comment's author). The one left out is
- * DISMISS_REPORT, which admin-service records and never publishes.
+ * (takedown/restore/purge), auth-service (ban/unban, signing an account out),
+ * interaction-service (comment removal) and notification-service (warnings,
+ * delivered to the account, the video's owner or the comment's author). The one
+ * left out is DISMISS_REPORT, which admin-service records and never publishes.
  */
 export const ENFORCED: ModerationActionType[] = [
   "TAKEDOWN_VIDEO",
@@ -33,6 +33,7 @@ export const ENFORCED: ModerationActionType[] = [
   "UNBAN_USER",
   "REMOVE_COMMENT",
   "WARN_USER",
+  "REVOKE_SESSIONS",
 ];
 
 /**
@@ -44,6 +45,7 @@ export const ACTION_TYPES: readonly ModerationActionType[] = [
   "BAN_USER",
   "UNBAN_USER",
   "WARN_USER",
+  "REVOKE_SESSIONS",
   "TAKEDOWN_VIDEO",
   "RESTORE_VIDEO",
   "PURGE_VIDEO",
@@ -64,8 +66,14 @@ export const REPORT_SORT_FIELDS = ["id", "targetType", "status", "createdAt"] as
 
 export type ReportSortField = (typeof REPORT_SORT_FIELDS)[number];
 
-/** The four enforcements an admin can start from a directory row or a target's own page. */
-export type EnforcementAction = "ban" | "unban" | "takedown" | "restore";
+/** The decisions an admin can start from a directory row or a target's own page. */
+export type EnforcementAction =
+  | "ban"
+  | "unban"
+  | "warn"
+  | "revokeSessions"
+  | "takedown"
+  | "restore";
 
 /**
  * How long a ban lasts. "Permanent" is first and is the default: a ban with no end is what every
@@ -132,6 +140,18 @@ export const PRESET_REASONS: Record<
     "Banned in error",
     "Reviewed again, within policy",
     "Account recovered by its owner",
+  ],
+  warn: [
+    "Repeated rule-breaking comments",
+    "Harassing another account",
+    "Spammy or misleading posts",
+    "Last warning before a ban",
+  ],
+  revokeSessions: [
+    "Account reported as taken over",
+    "Owner reported a lost or stolen device",
+    "Sign-ins the owner does not recognise",
+    "Signed in from a shared or public device",
   ],
   takedown: [
     "Sexual or nude content",

@@ -566,25 +566,26 @@ export async function listSecurityEvents(
 }
 
 /**
- * Ban and unban go through admin-service, not auth-service, even though auth-service is what
- * ends up changing the row: the call writes a moderation_actions record and an outbox event,
- * and auth-service applies it from the topic. Calling auth-service directly would flip the
- * status with nothing in the audit log.
+ * Ban, unban, warn and sign-out all go through admin-service, not auth-service, even though
+ * auth-service is what ends up changing the account: the call writes a moderation_actions record
+ * and an outbox event, and auth-service (or notification-service, for a warning) applies it from
+ * the topic. Calling auth-service directly would act with nothing in the audit log.
  */
 export async function moderateUser(
   userId: string,
-  action: "ban" | "unban",
+  action: "ban" | "unban" | "warn" | "revokeSessions",
   reason: string,
-  /** Days until the ban lapses, or null for one that does not. Ignored on an unban. */
+  /** Days until the ban lapses, or null for one that does not. Ignored by everything but a ban. */
   banDays: number | null = null,
 ): Promise<ModerationActionResponse> {
   if (USE_MOCK) {
     throw new Error(
-      "Banning requires the live backend (ADMIN_USE_MOCK=false) — it writes an audit row and a Kafka event.",
+      "Account actions require the live backend (ADMIN_USE_MOCK=false) — each writes an audit row and a Kafka event.",
     );
   }
+  const path = action === "revokeSessions" ? "revoke-sessions" : action;
   return apiPost<ModerationActionResponse>(
-    `/api/v1/admin/users/${userId}/${action}`,
+    `/api/v1/admin/users/${userId}/${path}`,
     { reason, banDays },
   );
 }
