@@ -20,7 +20,7 @@ import {
 } from "@/lib/api/window";
 import { getSessionProfile } from "@/lib/api/session";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, plural } from "@/lib/format";
 
 export default async function DashboardPage({
   searchParams,
@@ -125,7 +125,11 @@ export default async function DashboardPage({
     <>
       <PageHeader
         title={`Welcome back, ${session.username}`}
-        subtitle={`${stats.pendingReports} reports are waiting for review.`}
+        subtitle={
+          stats.pendingReports === 0
+            ? "Nothing is waiting for review."
+            : `${formatNumber(stats.pendingReports)} ${plural(stats.pendingReports, "report")} waiting for review.`
+        }
         filters={filters}
         csv={{ name: "dashboard-reports", rows: reports }}
       />

@@ -23,6 +23,7 @@ import {
   formatDateTime,
   formatDuration,
   formatPercent,
+  plural,
 } from "@/lib/format";
 import type {
   AdminVideoResponse,
@@ -164,7 +165,7 @@ export default async function VideoDetailPage({
               {owner ? (
                 <span className="text-ink-faint">
                   {" "}
-                  · {formatCompact(owner.followerCount)} followers
+                  · {formatCompact(owner.followerCount)} {plural(owner.followerCount, "follower")}
                 </span>
               ) : null}
             </Field>

@@ -15,6 +15,14 @@ export function formatCompact(value: number) {
   return String(value);
 }
 
+/**
+ * The noun for a count — "report" for 1, "reports" for anything else, zero included. Only the
+ * word, so each call site keeps its own number formatting: "1.2k comments", "1 follower".
+ */
+export function plural(count: number, noun: string, pluralNoun = `${noun}s`): string {
+  return count === 1 ? noun : pluralNoun;
+}
+
 /** "03 minutes 07 seconds" — uploads are capped under 10 minutes, so minutes always fits in 2 digits. */
 export function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -59,7 +67,9 @@ export function shortId(id: string, keep = 6) {
  */
 export function daysUntilPurge(deletedAtIso: string, retentionDays: number, now: number) {
   const daysLeft = retentionDays - (now - new Date(deletedAtIso).getTime()) / 86_400_000;
-  return daysLeft < 1 ? "less than a day" : `${Math.ceil(daysLeft)} days`;
+  if (daysLeft < 1) return "less than a day";
+  const days = Math.ceil(daysLeft);
+  return `${days} ${plural(days, "day")}`;
 }
 
 export function relativeTime(iso: string, now = Date.now()) {

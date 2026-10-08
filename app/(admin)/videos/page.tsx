@@ -14,7 +14,7 @@ import {
 } from "@/lib/api/admin";
 import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, growthChange, spark, sumLast } from "@/lib/series";
-import { formatCompact, formatNumber } from "@/lib/format";
+import { formatCompact, formatNumber, plural } from "@/lib/format";
 import type { VideoStatus } from "@/lib/api/types";
 
 const STATUSES: VideoStatus[] = [
@@ -169,7 +169,7 @@ export default async function VideosPage({
       value: formatNumber(counts.stuck),
       // Processing and failed together: both mean nobody can watch it, and a queue that
       // stops draining shows up here before anywhere else. Same cohort caveat as To Review.
-      unit: `${formatCompact(views)} views on this page`,
+      unit: `${formatCompact(views)} ${plural(views, "view")} on this page`,
       delta: filtered ? null : deltaPercent(stuckCohort, periodDays),
       deltaLabel: `still stuck, ${compareLabel}`,
       invertDelta: true,

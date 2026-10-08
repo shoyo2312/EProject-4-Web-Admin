@@ -259,8 +259,9 @@ function QueueRow({
         <tr className="border-b border-line bg-surface-muted">
           <td colSpan={COLUMNS} className="px-5 py-3">
             <p className="mb-2 text-[11px] text-ink-faint">
-              Closes all {group.reportCount}{" "}
-              {group.reportCount === 1 ? "report" : "reports"} against this target.
+              {group.reportCount === 1
+                ? "Closes the one report against this target."
+                : `Closes all ${group.reportCount} reports against this target.`}
             </p>
             <ResolveForm
               targetType={group.targetType}

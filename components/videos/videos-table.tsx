@@ -31,6 +31,7 @@ import {
   formatCount,
   formatDateTime,
   formatDuration,
+  plural,
   relativeTime,
   shortId,
 } from "@/lib/format";
@@ -145,18 +146,21 @@ export function VideosTable({
         }
       />
 
-      <div className={cn("overflow-x-auto transition-opacity", navigating && "opacity-50")}>
-        <table className="w-full border-collapse text-[12px] xl:min-w-[960px]">
+      {/* Columns come and go with the width of this box, not of the window: at 1280px the
+          expanded sidebar leaves the table about 970px, and every column it held at "xl" pushed
+          the actions off the right edge. What a narrow box drops is still in the expand row. */}
+      <div className={cn("@container overflow-x-auto transition-opacity", navigating && "opacity-50")}>
+        <table className="w-full border-collapse text-[12px]">
           <thead>
             <tr className="border-b border-line text-left">
               <th className="label-caps px-5 py-3 text-ink-soft">Title</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Owner</th>
+              <th className="label-caps hidden px-3 py-3 text-ink-soft @4xl:table-cell">Owner</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Status</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Visibility</th>
+              <th className="label-caps hidden px-3 py-3 text-ink-soft @6xl:table-cell">Visibility</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Reason</th>
-              <th className="label-caps hidden px-3 py-3 text-right text-ink-soft xl:table-cell">Views</th>
-              <th className="label-caps hidden px-3 py-3 text-right text-ink-soft xl:table-cell">Likes</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Uploaded</th>
+              <th className="label-caps hidden px-3 py-3 text-right text-ink-soft @4xl:table-cell">Views</th>
+              <th className="label-caps hidden px-3 py-3 text-right text-ink-soft @6xl:table-cell">Likes</th>
+              <th className="label-caps hidden px-3 py-3 text-ink-soft @5xl:table-cell">Uploaded</th>
               <th className="label-caps px-5 py-3 text-right text-ink-soft">Actions</th>
             </tr>
           </thead>
@@ -255,7 +259,7 @@ function VideoRow({
             </span>
           ) : null}
         </td>
-        <td className="hidden px-3 py-3 whitespace-nowrap xl:table-cell">
+        <td className="hidden px-3 py-3 whitespace-nowrap @4xl:table-cell">
           {owner?.username ? (
             <span className="text-ink-soft">@{owner.username}</span>
           ) : (
@@ -276,7 +280,7 @@ function VideoRow({
             <span className="ml-2 text-[10px] text-ink-faint">applying…</span>
           ) : null}
         </td>
-        <td className="hidden px-3 py-3 xl:table-cell">
+        <td className="hidden px-3 py-3 @6xl:table-cell">
           <span className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[10px] tracking-wider text-ink-soft">
             {video.visibility}
           </span>
@@ -307,13 +311,13 @@ function VideoRow({
         </td>
         {/* An em dash rather than 0: a video still transcoding has no view count, and
             printing zero would read as one nobody watched. */}
-        <td className="figure hidden px-3 py-3 text-right xl:table-cell">
+        <td className="figure hidden px-3 py-3 text-right @4xl:table-cell">
           {watchable ? formatCount(video.viewCount) : <span className="text-ink-faint">—</span>}
         </td>
-        <td className="figure hidden px-3 py-3 text-right text-ink-soft xl:table-cell">
+        <td className="figure hidden px-3 py-3 text-right text-ink-soft @6xl:table-cell">
           {watchable ? formatCount(video.likeCount) : <span className="text-ink-faint">—</span>}
         </td>
-        <td className="hidden px-3 py-3 whitespace-nowrap text-ink-faint xl:table-cell">
+        <td className="hidden px-3 py-3 whitespace-nowrap text-ink-faint @5xl:table-cell">
           {relativeTime(video.createdAt)}
         </td>
         <td className="px-3 py-3 pr-5 text-right" onClick={(e) => e.stopPropagation()}>
@@ -345,7 +349,7 @@ function VideoRow({
               disabled={pending || Boolean(video.deletedAt)}
               onClick={() => setReason(reason === null ? "" : null)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
+                "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] whitespace-nowrap transition-colors",
                 pending || video.deletedAt ? "cursor-not-allowed text-ink-faint" : "hover:bg-surface",
                 action === "takedown" && !pending && !video.deletedAt && "text-danger",
               )}
@@ -368,7 +372,7 @@ function VideoRow({
             {owner ? (
               <span className="text-ink-faint">
                 {" "}
-                · {formatCompact(owner.followerCount)} followers
+                · {formatCompact(owner.followerCount)} {plural(owner.followerCount, "follower")}
               </span>
             ) : null}
           </Field>

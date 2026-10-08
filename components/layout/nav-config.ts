@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import type { Route } from "next";
 import type { LucideIcon } from "lucide-react";
+import { ancestors } from "@/lib/url";
 
 export interface NavItem {
   label: string;
@@ -77,15 +78,16 @@ export const ROUTE_TITLES: Record<string, { section: string; page: string }> = {
 };
 
 /**
- * The breadcrumb for a path, falling back to its parent's.
+ * The breadcrumb for a path, falling back to the nearest named page above it.
  *
- * A detail route — /users/123, /videos/abc — has no entry of its own and never will: the id is
- * a row, not a page worth naming here. Without the fallback it hits the default and the
- * breadcrumb reads "Dashboard / Overview" while the screen is showing an account.
+ * A detail route — /users/123, /videos/abc, /users/123/activity — has no entry of its own and
+ * never will: the id is a row, not a page worth naming here. Without the fallback it hits the
+ * default and the breadcrumb reads "Dashboard / Overview" while the screen is showing an account.
  */
 export function resolveCrumb(pathname: string): { section: string; page: string } {
-  const exact = ROUTE_TITLES[pathname];
-  if (exact) return exact;
-  const parent = pathname.slice(0, pathname.lastIndexOf("/"));
-  return ROUTE_TITLES[parent] ?? { section: "Dashboard", page: "Overview" };
+  for (const path of ancestors(pathname)) {
+    const crumb = ROUTE_TITLES[path];
+    if (crumb) return crumb;
+  }
+  return { section: "Dashboard", page: "Overview" };
 }

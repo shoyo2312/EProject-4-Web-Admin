@@ -25,6 +25,15 @@ export function hrefWith(
 }
 
 /**
+ * A path and every path above it, deepest first: "/users/1/activity", "/users/1", "/users".
+ * The root is left out — nothing is named after it.
+ */
+export function ancestors(pathname: string): string[] {
+  const segments = pathname.split("/").filter(Boolean);
+  return segments.map((_, i) => `/${segments.slice(0, segments.length - i).join("/")}`);
+}
+
+/**
  * A `?next=` value as a path on this origin, or null when it is not one.
  *
  * Resolved against a placeholder origin rather than checked for a leading "/", because the URL

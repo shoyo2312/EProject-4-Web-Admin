@@ -40,14 +40,14 @@ export function KpiCards({ cards }: { cards: KpiCard[] }) {
             <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3">
               <div className="min-w-0">
                 <p className="label-caps text-ink-soft">{card.label}</p>
-                <p className="mt-2 flex items-baseline gap-1.5">
+                {/* The unit wraps under the figure rather than truncating: "Average, last 3…"
+                    drops exactly the part that says what the number covers. */}
+                <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
                   <span className="figure text-[26px] leading-none font-bold">
                     {card.value}
                   </span>
                   {card.unit ? (
-                    <span className="truncate text-[11px] text-ink-faint">
-                      {card.unit}
-                    </span>
+                    <span className="text-[11px] text-ink-faint">{card.unit}</span>
                   ) : null}
                 </p>
               </div>

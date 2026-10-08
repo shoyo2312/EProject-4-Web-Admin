@@ -10,6 +10,7 @@ import {
   resolveQueueRow,
   resolveReport,
 } from "@/lib/api/admin";
+import { formatCompact, plural } from "@/lib/format";
 import { targetHref } from "@/lib/moderation";
 import type {
   ModerationActionResponse,
@@ -63,7 +64,7 @@ export async function loadPreview(
     if (!profile) return null;
     return {
       title: profile.username ? `@${profile.username}` : `#${targetId.slice(-8)}`,
-      detail: `${profile.followerCount} followers`,
+      detail: `${formatCompact(profile.followerCount)} ${plural(profile.followerCount, "follower")}`,
       // The account's own page, by id. A search link lands on a result set instead — several
       // rows for a handle that is a common substring, and none at all for an account that has
       // no handle yet.

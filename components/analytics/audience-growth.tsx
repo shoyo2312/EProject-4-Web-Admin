@@ -1,6 +1,6 @@
 import { Card, CardHeader } from "@/components/ui/card";
 import type { DailySignupResponse } from "@/lib/api/types";
-import { formatDate, formatNumber } from "@/lib/format";
+import { formatDate, formatNumber, plural } from "@/lib/format";
 
 export function AudienceGrowth({
   days,
@@ -46,7 +46,7 @@ export function AudienceGrowth({
           {days.map((day) => (
             <span
               key={day.day}
-              title={`${formatDate(day.day)} · ${formatNumber(day.signups)} signups`}
+              title={`${formatDate(day.day)} · ${formatNumber(day.signups)} ${plural(day.signups, "signup")}`}
               className="min-w-0 flex-1 rounded-t-[1px] bg-ink transition-opacity hover:opacity-60"
               // A zero-signup day still needs a visible baseline tick, otherwise a gap
               // in the series is indistinguishable from a day that never loaded.
