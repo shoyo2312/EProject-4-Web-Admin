@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ReasonForm } from "@/components/moderation/reason-form";
 import { Segmented } from "@/components/ui/segmented";
 import type { ModerationActionType, ReportTargetType } from "@/lib/api/types";
 import { BAN_DURATIONS, banDaysOf, type BanDuration } from "@/lib/moderation";
@@ -59,9 +60,10 @@ const DISMISS_PRESETS = [
 ] as const;
 
 /**
- * The decision form shared by the queue and the report ledger: pick an action, pick or write the
- * reason, confirm. Both surfaces write the same audit row from it, so it lives here rather than
- * being typed out twice and drifting — the presets are the wording that ends up in the log.
+ * The decision form shared by the queue and the report ledger: pick an action, then the reason
+ * strip every enforcement uses. Both surfaces write the same audit row from it, so it lives here
+ * rather than being typed out twice and drifting — the presets are the wording that ends up in
+ * the log.
  */
 export function ResolveForm({
   targetType,
@@ -121,64 +123,22 @@ export function ResolveForm({
         </div>
       ) : null}
 
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        {presets.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            aria-pressed={reason === preset}
-            // Clicking the highlighted chip is how an admin says "not that one", so it clears
-            // the box rather than putting back what they just rejected.
-            onClick={() => setReason((current) => (current === preset ? "" : preset))}
-            className={cn(
-              "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
-              reason === preset
-                ? "border-ink bg-ink text-surface"
-                : "border-line bg-surface text-ink-soft hover:bg-canvas",
-            )}
-          >
-            {preset}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setReason("")}
-          className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] text-ink-faint transition-colors hover:bg-canvas"
-        >
-          Other…
-        </button>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          autoFocus
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason — the audit row is this string and nothing else, so write what you saw"
-          className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-[11px] outline-none placeholder:text-ink-faint"
-        />
-        <button
-          type="button"
-          onClick={() => onSubmit(action, reason, banning ? banDaysOf(duration) : null)}
-          disabled={submitting || !reason.trim()}
-          className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
-        >
-          {submitting
-            ? "Submitting..."
-            : dismissing
-              ? "Confirm dismissal"
-              : banning && duration !== "permanent"
-                ? `Ban for ${duration}d`
-                : "Confirm action"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
-        >
-          Cancel
-        </button>
-      </div>
+      <ReasonForm
+        presets={presets}
+        reason={reason}
+        onReason={setReason}
+        onSubmit={() => onSubmit(action, reason, banning ? banDaysOf(duration) : null)}
+        onCancel={onCancel}
+        submitting={submitting}
+        placeholder="Reason — the audit row is this string and nothing else, so write what you saw"
+        confirmLabel={
+          dismissing
+            ? "Confirm dismissal"
+            : banning && duration !== "permanent"
+              ? `Ban for ${duration}d`
+              : "Confirm action"
+        }
+      />
     </>
   );
 }

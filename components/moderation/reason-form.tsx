@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
  * Presentational: the parent owns the reason string (null while the form is closed) and the
  * submit, because the parent is what knows which target this is and what to do afterwards.
  *
- * Distinct from `ResolveForm`, which also picks an *action* — that form closes a report and so
- * has to offer DISMISS_REPORT beside the enforcement. Here the action is already settled by
- * which button was pressed, and the only question left is why.
+ * Here the action is already settled by which button was pressed, and the only question left is
+ * why. `ResolveForm` puts a choice of action above it, because closing a report has to offer
+ * DISMISS_REPORT beside the enforcement.
  */
 export function ReasonForm({
   presets,
