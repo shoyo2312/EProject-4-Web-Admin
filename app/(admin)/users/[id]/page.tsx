@@ -157,8 +157,10 @@ export default async function UserDetailPage({
                 : "email / password"}
             </Field>
             {/* The one field that says whether a banned account is still being reached for, and
-                whether a quiet account was ever really in use at all. */}
-            <Field label="Last login">
+                whether a quiet account was ever really in use at all. "Active" rather than
+                "login": lastLoginAt moves on every token refresh, so it tracks use of the app,
+                not sign-ins. */}
+            <Field label="Last active">
               {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "never"}
             </Field>
             <Field label="Joined">{formatDateTime(user.createdAt)}</Field>

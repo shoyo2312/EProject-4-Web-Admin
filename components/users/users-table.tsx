@@ -237,7 +237,8 @@ function UserRow({
               : "email / password"}
           </Field>
           <Field label="Joined">{formatDateTime(user.createdAt)}</Field>
-          <Field label="Last login">
+          {/* lastLoginAt moves on every token refresh too, so it is use of the app, not sign-ins. */}
+          <Field label="Last active">
             {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "never"}
           </Field>
           <Field label="Updated">{formatDateTime(user.updatedAt)}</Field>
