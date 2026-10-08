@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  getAdminHandles,
   getReportCount,
   getUserProfiles,
   getVideo,
@@ -41,6 +42,8 @@ export interface TargetPreview {
 export interface ReportTargetDetail {
   reportCount: number;
   actions: ModerationActionResponse[];
+  /** adminId → @handle, for the admins named in `actions`. */
+  handles: Record<string, string>;
   preview: TargetPreview | null;
 }
 
@@ -112,7 +115,12 @@ export async function reportTargetDetailAction(
     // cannot be read does not fail the whole row.
     loadPreview(targetType, targetId).catch(() => null),
   ]);
-  return { reportCount, actions, preview };
+  return {
+    reportCount,
+    actions,
+    handles: await getAdminHandles(actions.map((a) => a.adminId)),
+    preview,
+  };
 }
 
 /**

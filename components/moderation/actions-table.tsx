@@ -11,7 +11,9 @@ import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import type { ModerationActionResponse, ModerationActionType } from "@/lib/api/types";
 import { formatDateTime, relativeTime, shortId } from "@/lib/format";
+import { ACTION_LABELS } from "@/lib/labels";
 import { ACTION_TYPES, ENFORCED } from "@/lib/moderation";
+import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { hrefWith } from "@/lib/url";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
@@ -30,14 +32,22 @@ const ENFORCEMENT_FILTERS = [
 ];
 
 type EnforcementFilter = (typeof ENFORCEMENT_FILTERS)[number]["value"];
+
+/** The admin's @handle, or the tail of their id when user-service could not name them. */
+function adminName(names: RowNames, adminId: string): string {
+  return names.handles[adminId] ?? `#${shortId(adminId.slice(-8), 8)}`;
+}
 type SortKey = "admin" | "action" | "target" | "createdAt";
 
 export function ActionsTable({
   actions,
+  names = NO_NAMES,
   adminId,
   actionType,
 }: {
   actions: ModerationActionResponse[];
+  /** Admins and targets by name, resolved by the page in one batch each. */
+  names?: RowNames;
   /** The server-side filters the page was fetched with, so the controls show them. */
   adminId?: string;
   actionType?: ModerationActionType;
@@ -67,36 +77,38 @@ export function ActionsTable({
         if (enforcement === "ENFORCED" ? !enforced : enforced) return false;
       }
       if (!needle) return true;
-      return (
-        action.adminId.toLowerCase().includes(needle) ||
-        action.actionType.toLowerCase().includes(needle) ||
-        action.targetId.toLowerCase().includes(needle) ||
-        action.targetType.toLowerCase().includes(needle) ||
-        action.reason.toLowerCase().includes(needle) ||
-        (action.reportId ?? "").toLowerCase().includes(needle)
-      );
+      return [
+        action.adminId,
+        names.handles[action.adminId] ?? "",
+        ACTION_LABELS[action.actionType],
+        action.targetId,
+        action.targetType,
+        targetName(names, action.targetType, action.targetId) ?? "",
+        action.reason,
+        action.reportId ?? "",
+      ].some((field) => field.toLowerCase().includes(needle));
     });
 
     const direction = sort.asc ? 1 : -1;
     return [...filtered].sort((a, b) => {
       switch (sort.key) {
         case "admin":
-          return a.adminId.localeCompare(b.adminId) * direction;
+          return adminName(names, a.adminId).localeCompare(adminName(names, b.adminId)) * direction;
         case "action":
-          return a.actionType.localeCompare(b.actionType) * direction;
+          return ACTION_LABELS[a.actionType].localeCompare(ACTION_LABELS[b.actionType]) * direction;
         case "target":
           return a.targetType.localeCompare(b.targetType) * direction;
         default:
           return a.createdAt.localeCompare(b.createdAt) * direction;
       }
     });
-  }, [actions, query, enforcement, sort]);
+  }, [actions, names, query, enforcement, sort]);
 
   return (
     <Card>
       <CardHeader
         title="Recent Actions"
-        hint="GET /api/v1/admin/actions"
+        hint="Every moderation decision in the selected period. The action-type and admin filters cover the whole log; the search box, the tabs and sorting cover this page."
         actions={
           <>
             <label className="flex w-[180px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 lg:w-[240px]">
@@ -114,7 +126,7 @@ export function ActionsTable({
                 title="Show every admin's actions"
                 className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[11px] text-ink-soft hover:text-ink"
               >
-                Admin #{shortId(adminId.slice(-8), 8)}
+                {adminName(names, adminId)}
                 <X className="h-3 w-3" />
               </Link>
             ) : null}
@@ -132,7 +144,7 @@ export function ActionsTable({
               <option value="ALL">All actions</option>
               {ACTION_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {ACTION_LABELS[type]}
                 </option>
               ))}
             </select>
@@ -154,7 +166,7 @@ export function ActionsTable({
               <SortableHeader label="Target" sortKey="target" sort={sort} onSort={setSort} />
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reason</th>
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Report</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Enforced</th>
+              <th className="label-caps px-3 py-3 text-ink-soft">Effect</th>
               <SortableHeader
                 label="When"
                 sortKey="createdAt"
@@ -169,6 +181,8 @@ export function ActionsTable({
               <ActionRow
                 key={action.id}
                 action={action}
+                admin={adminName(names, action.adminId)}
+                target={targetName(names, action.targetType, action.targetId)}
                 belowXl={belowXl}
                 adminHref={adminId ? null : filterHref({ admin: action.adminId })}
               />
@@ -190,10 +204,16 @@ export function ActionsTable({
 
 function ActionRow({
   action,
+  admin,
+  target: targetLabel,
   belowXl,
   adminHref,
 }: {
   action: ModerationActionResponse;
+  /** The admin's @handle, or the tail of their id when it could not be resolved. */
+  admin: string;
+  /** The target's @handle or video title; null shows the tail of its id. */
+  target: string | null;
   /** Below xl the secondary columns are dropped, so the expand row carries them instead. */
   belowXl: boolean;
   /** The log narrowed to this row's admin; null when it already is. */
@@ -210,7 +230,7 @@ function ActionRow({
     // scans the log, and re-fetching on every toggle would be two calls per click.
     if (opening && !target && !loading) {
       setLoading(true);
-      actionRowDetailAction(action.adminId, action.targetType, action.targetId)
+      actionRowDetailAction(action.targetType, action.targetId)
         .then(setTarget)
         .finally(() => setLoading(false));
     }
@@ -222,23 +242,21 @@ function ActionRow({
         {...expandableRowProps(toggleDetail, detail)}
         className="cursor-pointer border-b border-line last:border-b-0 transition-colors hover:bg-surface-muted"
       >
-        <td className="figure hidden px-5 py-3 whitespace-nowrap xl:table-cell">
-          #{shortId(action.adminId.slice(-8), 8)}
-        </td>
+        <td className="hidden px-5 py-3 whitespace-nowrap xl:table-cell">{admin}</td>
         <td className="px-5 py-3 whitespace-nowrap xl:px-3">
           <span
             className={cn(
-              "rounded border px-1.5 py-0.5 text-[10px] tracking-wider",
+              "rounded border px-1.5 py-0.5 text-[11px]",
               DESTRUCTIVE.includes(action.actionType)
                 ? "border-danger/25 bg-danger-bg text-danger"
                 : "border-line bg-surface-muted text-ink-soft",
             )}
           >
-            {action.actionType}
+            {ACTION_LABELS[action.actionType]}
           </span>
         </td>
-        <td className="px-3 py-3 whitespace-nowrap">
-          <TargetBadge type={action.targetType} id={action.targetId} />
+        <td className="px-3 py-3">
+          <TargetBadge type={action.targetType} id={action.targetId} name={targetLabel} />
         </td>
         <td className="hidden max-w-[240px] truncate px-3 py-3 xl:table-cell" title={action.reason}>
           {action.reason}
@@ -247,10 +265,12 @@ function ActionRow({
           {action.reportId ? `#${action.reportId.slice(-8)}` : "—"}
         </td>
         <td className="px-3 py-3 whitespace-nowrap">
+          {/* A dismissal is only a record — nothing downstream acts on it — which is not a
+              warning sign, so it reads plain rather than amber. */}
           {ENFORCED.includes(action.actionType) ? (
-            <span className="text-success">yes</span>
+            <span className="text-success">Enforced</span>
           ) : (
-            <span className="text-pending">no consumer</span>
+            <span className="text-ink-faint">Recorded only</span>
           )}
         </td>
         <td className="px-5 py-3 text-right whitespace-nowrap text-ink-faint">
@@ -262,26 +282,22 @@ function ActionRow({
         <RowDetail colSpan={7}>
           {belowXl ? (
             <>
-              <Field label="Action">{action.actionType}</Field>
+              <Field label="Action">{ACTION_LABELS[action.actionType]}</Field>
               <Field label="Report">
                 {action.reportId ? `#${action.reportId.slice(-8)}` : "—"}
               </Field>
               <Field label="Reason" wide>
                 {action.reason}
               </Field>
-              <Field label="Enforced">
-                {ENFORCED.includes(action.actionType) ? "yes" : "no consumer"}
+              <Field label="Effect">
+                {ENFORCED.includes(action.actionType) ? "Enforced" : "Recorded only"}
               </Field>
             </>
           ) : null}
 
           <Field label="Admin">
             <span className="flex flex-wrap items-baseline gap-x-2">
-              <span>
-                {loading && !target
-                  ? `#${shortId(action.adminId.slice(-8), 8)}`
-                  : (target?.adminHandle ?? `#${shortId(action.adminId.slice(-8), 8)}`)}
-              </span>
+              <span>{admin}</span>
               {adminHref ? (
                 <Link
                   href={adminHref as never}

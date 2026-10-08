@@ -14,8 +14,10 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ResolveForm } from "@/components/moderation/resolve-form";
+import { VideoThumb } from "@/components/videos/video-thumb";
 import type { ModerationActionType, ReportGroupResponse } from "@/lib/api/types";
 import { formatDateTime, relativeTime } from "@/lib/format";
+import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
 
@@ -43,10 +45,13 @@ function severityBand(severity: number) {
 export function ReportQueueTable({
   groups,
   total,
+  names = NO_NAMES,
 }: {
   groups: ReportGroupResponse[];
   /** Every target waiting, not just the ones on this page. */
   total: number;
+  /** Reported accounts and videos by name, resolved by the page in one batch each. */
+  names?: RowNames;
 }) {
   const belowXl = useBelowXl();
 
@@ -57,7 +62,7 @@ export function ReportQueueTable({
         hint={
           total > groups.length
             ? `Top ${groups.length} of ${total} targets waiting — ranked by report count × severity`
-            : "GET /api/v1/admin/reports/queue — one row per target, ranked by report count × severity"
+            : "One row per reported target, ranked by report count × severity. Deciding a row closes every report against it."
         }
       />
 
@@ -80,6 +85,7 @@ export function ReportQueueTable({
               <QueueRow
                 key={`${group.targetType}:${group.targetId}`}
                 group={group}
+                names={names}
                 belowXl={belowXl}
               />
             ))}
@@ -100,9 +106,11 @@ export function ReportQueueTable({
 
 function QueueRow({
   group,
+  names,
   belowXl,
 }: {
   group: ReportGroupResponse;
+  names: RowNames;
   /** Below xl the reason column is dropped, so the expand row carries it instead. */
   belowXl: boolean;
 }) {
@@ -155,8 +163,21 @@ function QueueRow({
         {...expandableRowProps(toggleDetail, detail)}
         className="cursor-pointer border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted"
       >
-        <td className="py-3 pl-5 pr-3 whitespace-nowrap">
-          <TargetBadge type={group.targetType} id={group.targetId} />
+        <td className="py-3 pl-5 pr-3">
+          {/* A poster frame for a reported video: the worklist is scanned, not read. */}
+          <span className="inline-flex items-center gap-2.5">
+            {group.targetType === "VIDEO" ? (
+              <VideoThumb
+                src={names.videos[group.targetId]?.thumbnailUrl ?? null}
+                className="h-9 w-6"
+              />
+            ) : null}
+            <TargetBadge
+              type={group.targetType}
+              id={group.targetId}
+              name={targetName(names, group.targetType, group.targetId)}
+            />
+          </span>
         </td>
         <td className="figure px-3 py-3 whitespace-nowrap">
           {group.reportCount}
@@ -249,6 +270,7 @@ function QueueRow({
             <ModerationHistory
               reportCount={target?.reportCount ?? null}
               actions={target?.actions ?? null}
+              handles={target?.handles}
               loading={targetLoading && !target}
             />
           </Field>

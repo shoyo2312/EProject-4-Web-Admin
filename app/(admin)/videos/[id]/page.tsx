@@ -7,6 +7,7 @@ import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
 import {
+  getAdminHandles,
   getReportCount,
   getUserProfiles,
   getVideo,
@@ -14,6 +15,7 @@ import {
   listTargetActions,
   referenceNow,
 } from "@/lib/api/admin";
+import { VIDEO_STATUS_LABELS } from "@/lib/labels";
 import { playable } from "@/lib/moderation";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import {
@@ -87,9 +89,10 @@ export default async function VideoDetailPage({
   }
 
   // Non-fatal: the page falls back to the raw id if user-service cannot be reached.
-  const owners = await getUserProfiles([video.userId]).catch(
-    () => ({}) as Record<string, UserProfileResponse>,
-  );
+  const [owners, adminHandles] = await Promise.all([
+    getUserProfiles([video.userId]).catch(() => ({}) as Record<string, UserProfileResponse>),
+    getAdminHandles(actions.map((a) => a.adminId)),
+  ]);
   const owner = owners[video.userId];
   const watchable = playable(video.status);
 
@@ -114,7 +117,7 @@ export default async function VideoDetailPage({
             ? video.purgeEventPublishedAt
               ? `Deleted by its owner on ${formatDateTime(video.deletedAt)} — media permanently purged.`
               : `Deleted by its owner on ${formatDateTime(video.deletedAt)} — in trash, ${purgesIn} left before permanent deletion.`
-            : `${video.status} · ${video.visibility} · uploaded ${formatDateTime(video.createdAt)}`
+            : `${VIDEO_STATUS_LABELS[video.status]} · ${video.visibility} · uploaded ${formatDateTime(video.createdAt)}`
         }
       />
 
@@ -122,7 +125,7 @@ export default async function VideoDetailPage({
         <Card>
           <CardHeader
             title="Preview"
-            hint="GET /api/v1/videos/admin/{id} — no visibility rule applied, so a taken-down or trashed video still plays here"
+            hint="Plays in whatever state the video is in — taken down, private or in the trash — so it can be reviewed before deciding."
           />
           <div className="px-5 py-4">
             {/* A deleted video keeps its media for a 30-day trash window before permanent
@@ -143,7 +146,7 @@ export default async function VideoDetailPage({
                   ? "Media permanently removed from storage — nothing left to play."
                   : watchable
                     ? "No playable file on the record — the transcode produced no output."
-                    : `Nothing to play: the video is ${video.status}, so no transcoded file exists yet.`}
+                    : `Nothing to play: the video is ${VIDEO_STATUS_LABELS[video.status].toLowerCase()}, so no transcoded file exists yet.`}
               </p>
             )}
           </div>
@@ -152,7 +155,7 @@ export default async function VideoDetailPage({
         <Card>
           <CardHeader
             title="Upload"
-            hint="Shares and engagement rate: GET /api/v1/analytics/engagement/videos/{id} — all-time, from the event stream"
+            hint="Shares and engagement rate are all-time totals from the analytics event stream; views and likes are the video's own counters."
           />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
             <Field label="Owner">
@@ -169,7 +172,7 @@ export default async function VideoDetailPage({
                 </span>
               ) : null}
             </Field>
-            <Field label="Status">{video.status}</Field>
+            <Field label="Status">{VIDEO_STATUS_LABELS[video.status]}</Field>
             <Field label="Visibility">{video.visibility}</Field>
             <Field label="Duration">
               {video.durationSeconds != null ? formatDuration(video.durationSeconds) : "—"}
@@ -258,14 +261,19 @@ export default async function VideoDetailPage({
         <Card>
           <CardHeader title="Moderation history" />
           <div className="px-5 py-4">
-            <ModerationHistory reportCount={reportCount} actions={actions} loading={false} />
+            <ModerationHistory
+              reportCount={reportCount}
+              actions={actions}
+              handles={adminHandles}
+              loading={false}
+            />
           </div>
         </Card>
 
         <Card>
           <CardHeader
             title="Decision"
-            hint="Writes a moderation action and publishes it; video-service applies it from the topic"
+            hint="Recorded in the audit log straight away. The video itself changes a few seconds later, once the video service applies the decision."
           />
           <div className="px-5 py-4">
             <EnforcePanel

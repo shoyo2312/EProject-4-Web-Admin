@@ -9,7 +9,9 @@ import {
   getDailyActiveUsers,
   getDailySignups,
   getEngagementOverview,
+  getHandles,
   getTopVideos,
+  getVideoSummaries,
   referenceNow,
 } from "@/lib/api/admin";
 import {
@@ -57,6 +59,12 @@ export default async function AnalyticsPage({
   }
 
   const { signups, engagement, activeUsers, topVideos } = data;
+  // Most watched carries ids only: one lookup names the videos, a second their owners.
+  const topSummaries = await getVideoSummaries(topVideos.map((row) => row.videoId));
+  const topNames = {
+    videos: topSummaries,
+    handles: await getHandles(Object.values(topSummaries).map((video) => video.userId)),
+  };
   const { periodDays, periodLabel, compareLabel, chartDays } = window;
   const unit = BUCKET_UNIT[window.bucket];
 
@@ -134,7 +142,7 @@ export default async function AnalyticsPage({
 
         <AudienceGrowth days={signupBuckets} unit={unit} />
 
-        <TopVideos rows={topVideos} days={periodDays} />
+        <TopVideos rows={topVideos} days={periodDays} names={topNames} />
       </div>
     </>
   );

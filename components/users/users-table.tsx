@@ -16,6 +16,7 @@ import { UserStatusBadge } from "@/components/ui/status-badge";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
+import { USER_STATUS_LABELS } from "@/lib/labels";
 import { PRESET_REASONS } from "@/lib/moderation";
 import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
 import { formatDateTime, relativeTime } from "@/lib/format";
@@ -59,7 +60,7 @@ export function UsersTable({
     <Card>
       <CardHeader
         title="User Directory"
-        hint="GET /api/v1/auth/admin/users — served by auth-service, which owns status and role"
+        hint="Every account. Click a row for its details; a ban is recorded in the audit log and signs the account out."
         actions={
           <>
             <SearchBox
@@ -229,7 +230,7 @@ function UserRow({
               : ""}
           </Field>
           <Field label="Role">{user.role}</Field>
-          <Field label="Status">{user.status}</Field>
+          <Field label="Status">{USER_STATUS_LABELS[user.status]}</Field>
           <Field label="Sign-in">
             {user.provider
               ? user.linkedProviders.join(", ")
@@ -254,6 +255,7 @@ function UserRow({
             <ModerationHistory
               reportCount={modHistory?.reportCount ?? null}
               actions={modHistory?.actions ?? null}
+              handles={modHistory?.handles}
               loading={modLoading}
             />
           </Field>

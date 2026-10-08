@@ -12,7 +12,7 @@ export function EngagementMix({ rows }: { rows: EngagementMixRow[] }) {
     <Card className="flex min-w-0 flex-col">
       <CardHeader
         title="Engagement Mix"
-        hint="GET /api/v1/analytics/engagement/daily?days=365, totalled by event type"
+        hint="Every event type over the last 365 days — including unlikes and uploads, which the trend leaves out."
       />
 
       <div className="flex flex-1 flex-col justify-center gap-4 p-5">

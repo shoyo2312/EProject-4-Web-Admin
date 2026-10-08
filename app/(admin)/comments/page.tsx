@@ -128,8 +128,8 @@ export default async function CommentsPage({
             <MessageSquare className="h-5 w-5 text-ink-faint" />
             <p className="text-[12px] text-ink-soft">Pick a video to read its thread.</p>
             <p className="max-w-sm text-[11px] text-ink-faint">
-              There is no platform-wide comment feed: interaction-service stores comments
-              partitioned by video, so a thread is only reachable through the video it is on.
+              Comments are read one video at a time — there is no feed of every comment on the
+              platform. Reported comments open straight from the Reports Queue.
             </p>
           </Card>
         )}

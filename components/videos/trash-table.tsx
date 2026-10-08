@@ -43,7 +43,7 @@ export function TrashTable({
     <Card>
       <CardHeader
         title="Deleted by their owners"
-        hint={`GET /api/v1/videos/admin?deleted=true&purged=false — the media stays in storage, and playable, until its ${TRASH_RETENTION_DAYS} days run out`}
+        hint={`The media stays in storage, and playable here, until its ${TRASH_RETENTION_DAYS} days run out — then it is erased for good.`}
         actions={
           <SearchBox query={query} onCommit={search} placeholder="Search title or owner..." />
         }

@@ -18,7 +18,7 @@ export function AudienceGrowth({
     <Card className="flex min-w-0 flex-col">
       <CardHeader
         title="Audience Growth"
-        hint="GET /api/v1/analytics/signups/daily — one row per day a user registered"
+        hint="Accounts registered in each bar's day, week or month."
       />
 
       <div className="flex flex-1 flex-col p-5">

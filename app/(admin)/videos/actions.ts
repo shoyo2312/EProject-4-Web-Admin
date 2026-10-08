@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  getAdminHandles,
   getReportCount,
   listTargetActions,
   moderateVideo,
@@ -16,6 +17,8 @@ export interface ModerationResult {
 export interface ModerationDetail {
   reportCount: number;
   actions: ModerationActionResponse[];
+  /** adminId → @handle, for the admins named in `actions`. */
+  handles: Record<string, string>;
 }
 
 /**
@@ -30,7 +33,7 @@ export async function videoModerationDetailAction(
     getReportCount("VIDEO", videoId),
     listTargetActions("VIDEO", videoId),
   ]);
-  return { reportCount, actions };
+  return { reportCount, actions, handles: await getAdminHandles(actions.map((a) => a.adminId)) };
 }
 
 /**

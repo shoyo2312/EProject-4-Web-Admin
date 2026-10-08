@@ -37,6 +37,7 @@ import {
 } from "./rollup";
 import type { ReportSortField } from "@/lib/moderation";
 import { memoizeFor } from "@/lib/memo";
+import type { RowNames, VideoSummary } from "@/lib/names";
 import { buildNotifications, type AdminNotification } from "@/lib/notifications";
 import {
   mockDailyEngagement,
@@ -388,6 +389,75 @@ export async function getHandles(ids: string[]): Promise<Record<string, string>>
     if (profile.username) handles[id] = `@${profile.username}`;
   }
   return handles;
+}
+
+/**
+ * Titles and poster frames for a batch of video ids, to name the rows of a list that otherwise
+ * carry a bare id — the report queue, the audit log, the most-watched table.
+ *
+ * Best effort, by construction. The public batch route is the only one that takes a list of ids,
+ * and it applies the viewer visibility rule: a video that is taken down, private, still
+ * processing or deleted comes back absent, and its row keeps showing the id. The alternative —
+ * the admin route, one call per row — would spend the gateway's per-address rate limit, which
+ * every server-side call this console makes shares, on labels. A video's own page still reads it
+ * through the admin route, with no rule applied.
+ */
+export async function getVideoSummaries(ids: string[]): Promise<Record<string, VideoSummary>> {
+  const unique = [...new Set(ids)].filter(Boolean);
+  if (unique.length === 0) return {};
+  const summarise = (video: Pick<AdminVideoResponse, "title" | "thumbnailUrl" | "userId">) => ({
+    title: video.title,
+    thumbnailUrl: video.thumbnailUrl,
+    userId: video.userId,
+  });
+  if (USE_MOCK) {
+    return Object.fromEntries(
+      mockVideos
+        .filter((v) => unique.includes(v.id) && v.status === "PUBLISHED" && !v.deletedAt)
+        .map((v) => [v.id, summarise(v)]),
+    );
+  }
+  const params = new URLSearchParams({ ids: unique.join(",") });
+  const videos = await apiGet<AdminVideoResponse[]>(`/api/v1/videos/batch?${params}`).catch(
+    (): AdminVideoResponse[] => [],
+  );
+  return Object.fromEntries(videos.map((video) => [video.id, summarise(video)]));
+}
+
+/**
+ * @handles for admins — the people the audit log and every moderation history name.
+ *
+ * From auth-service's directory, one call per admin, rather than {@link getHandles}' batch: the
+ * bootstrap admin is created straight in auth-service and never gets a user-service profile, so
+ * the batch cannot name the account that takes most of the actions. A page names a handful of
+ * admins; the cap keeps a page of unknown ids from spending the gateway's rate limit.
+ */
+export async function getAdminHandles(adminIds: (string | null)[]): Promise<Record<string, string>> {
+  const unique = [...new Set(adminIds)].filter((id): id is string => Boolean(id)).slice(0, 10);
+  const accounts = await Promise.all(unique.map((id) => getAdminUser(id).catch(() => null)));
+  return Object.fromEntries(
+    accounts
+      .filter((account): account is AdminUserResponse => account !== null)
+      .map((account) => [account.id, `@${account.username}`]),
+  );
+}
+
+/**
+ * Everything one page of a moderation list needs to name its rows: accounts through
+ * {@link getHandles}, admins through {@link getAdminHandles}, videos through
+ * {@link getVideoSummaries}. Three lookups side by side, whatever the page size.
+ */
+export async function getRowNames(
+  userIds: string[],
+  videoIds: string[],
+  adminIds: (string | null)[] = [],
+): Promise<RowNames> {
+  const [users, admins, videos] = await Promise.all([
+    getHandles(userIds),
+    getAdminHandles(adminIds),
+    getVideoSummaries(videoIds),
+  ]);
+  return { handles: { ...users, ...admins }, videos };
 }
 
 /**

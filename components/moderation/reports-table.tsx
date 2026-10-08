@@ -22,8 +22,8 @@ import type {
   ReportStatus,
   ReportTargetType,
 } from "@/lib/api/types";
-import { MOCK_REPORTER_HANDLES } from "@/lib/mock/moderation";
 import { formatDateTime, relativeTime, shortId } from "@/lib/format";
+import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { hrefWith } from "@/lib/url";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { cn } from "@/lib/utils";
@@ -61,12 +61,15 @@ const TARGET_FILTERS = [
 
 export function ReportsTable({
   reports,
+  names = NO_NAMES,
   title = "Reports Queue",
   limit,
   footerHref,
   filter,
 }: {
   reports: ReportResponse[];
+  /** Reporters, resolvers and targets by name, resolved by the page in one batch each. */
+  names?: RowNames;
   /** The ledger sits under the real queue on the Reports page, where both titles would read alike. */
   title?: string;
   /** Dashboard shows a slice; the Reports Queue page shows everything. */
@@ -96,24 +99,26 @@ export function ReportsTable({
     const needle = query.trim().toLowerCase();
     const matching = needle
       ? reports.filter((report) => {
-          const handle = MOCK_REPORTER_HANDLES[report.reporterId] ?? "";
+          const handle = names.handles[report.reporterId] ?? "";
+          const target = targetName(names, report.targetType, report.targetId) ?? "";
           return (
             report.id.includes(needle)
             || report.targetId.includes(needle)
             || report.targetType.toLowerCase().includes(needle)
             || report.reason.toLowerCase().includes(needle)
             || handle.toLowerCase().includes(needle)
+            || target.toLowerCase().includes(needle)
           );
         })
       : reports;
     return limit ? matching.slice(0, limit) : matching;
-  }, [reports, query, limit]);
+  }, [reports, names, query, limit]);
 
   return (
     <Card>
       <CardHeader
         title={title}
-        hint="GET /api/v1/admin/reports — resolve writes a moderation action and emits a Kafka event"
+        hint="Every report ever filed. Resolving one records the decision in the audit log and closes that report."
         actions={
           filter ? (
             <>
@@ -159,7 +164,7 @@ export function ReportsTable({
           </thead>
           <tbody>
             {rows.map((report) => (
-              <ReportRow key={report.id} report={report} belowXl={belowXl} />
+              <ReportRow key={report.id} report={report} names={names} belowXl={belowXl} />
             ))}
 
             {rows.length === 0 ? (
@@ -189,9 +194,11 @@ export function ReportsTable({
 
 function ReportRow({
   report,
+  names,
   belowXl,
 }: {
   report: ReportResponse;
+  names: RowNames;
   /** Below xl the secondary columns are dropped, so the expand row carries them instead. */
   belowXl: boolean;
 }) {
@@ -204,9 +211,7 @@ function ReportRow({
   const [submitting, startSubmit] = useTransition();
 
   const pending = report.status === "PENDING";
-  const reporter = MOCK_REPORTER_HANDLES[report.reporterId]
-    ? `@${MOCK_REPORTER_HANDLES[report.reporterId]}`
-    : `#${report.reporterId.slice(-6)}`;
+  const reporter = names.handles[report.reporterId] ?? `#${report.reporterId.slice(-6)}`;
 
   function toggleDetail() {
     const opening = !detail;
@@ -248,13 +253,13 @@ function ReportRow({
         <td className="figure hidden py-3 pl-5 pr-3 whitespace-nowrap xl:table-cell">
           #{shortId(report.id.slice(-8), 8)}
         </td>
-        <td className="hidden px-3 py-3 whitespace-nowrap xl:table-cell">
-          {/* Live data carries only a reporterId — user-service has no batch
-              handle lookup yet, so fall back to the id tail. */}
-          {reporter}
-        </td>
-        <td className="py-3 pl-5 pr-3 whitespace-nowrap xl:pl-3">
-          <TargetBadge type={report.targetType} id={report.targetId} />
+        <td className="hidden px-3 py-3 whitespace-nowrap xl:table-cell">{reporter}</td>
+        <td className="py-3 pl-5 pr-3 xl:pl-3">
+          <TargetBadge
+            type={report.targetType}
+            id={report.targetId}
+            name={targetName(names, report.targetType, report.targetId)}
+          />
         </td>
         <td className="hidden max-w-[260px] truncate px-3 py-3 xl:table-cell" title={report.reason}>
           {report.reason}
@@ -303,7 +308,9 @@ function ReportRow({
           </Field>
           <Field label="Created">{formatDateTime(report.createdAt)}</Field>
           {report.resolvedBy ? (
-            <Field label="Resolved by">#{report.resolvedBy.slice(-8)}</Field>
+            <Field label="Resolved by">
+              {names.handles[report.resolvedBy] ?? `#${report.resolvedBy.slice(-8)}`}
+            </Field>
           ) : null}
           {report.resolvedAt ? (
             <Field label="Resolved at">{formatDateTime(report.resolvedAt)}</Field>
@@ -342,6 +349,7 @@ function ReportRow({
             <ModerationHistory
               reportCount={target?.reportCount ?? null}
               actions={target?.actions ?? null}
+              handles={target?.handles}
               loading={targetLoading && !target}
             />
           </Field>

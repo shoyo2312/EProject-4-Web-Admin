@@ -16,6 +16,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { VideoStatusBadge } from "@/components/ui/status-badge";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { Tooltip } from "@/components/ui/tooltip";
+import { VideoThumb } from "@/components/videos/video-thumb";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
 import { PRESET_REASONS, playable } from "@/lib/moderation";
@@ -129,7 +130,7 @@ export function VideosTable({
     <Card>
       <CardHeader
         title="Uploads"
-        hint="GET /api/v1/videos/admin — served by video-service, which owns status and visibility"
+        hint="Every upload, in every state. Click a row for its details; a takedown is recorded in the audit log."
         actions={
           <>
             <SearchBox
@@ -249,15 +250,24 @@ function VideoRow({
           "cursor-pointer",
         )}
       >
-        <td className="max-w-[280px] px-5 py-3">
-          <span className="block truncate font-medium" title={video.title}>
-            {video.title}
-          </span>
-          {video.failureReason ? (
-            <span className="block truncate text-[10px] text-danger" title={video.failureReason}>
-              {video.failureReason}
-            </span>
-          ) : null}
+        <td className="max-w-[260px] px-5 py-3 @4xl:max-w-[320px]">
+          <div className="flex items-center gap-3">
+            {/* Purged media leaves the thumbnail url pointing at nothing. */}
+            <VideoThumb
+              src={video.purgeEventPublishedAt ? null : video.thumbnailUrl}
+              className="h-10 w-7"
+            />
+            <div className="min-w-0">
+              <span className="block truncate font-medium" title={video.title}>
+                {video.title || "(untitled upload)"}
+              </span>
+              {video.failureReason ? (
+                <span className="block truncate text-[10px] text-danger" title={video.failureReason}>
+                  {video.failureReason}
+                </span>
+              ) : null}
+            </div>
+          </div>
         </td>
         <td className="hidden px-3 py-3 whitespace-nowrap @4xl:table-cell">
           {owner?.username ? (
@@ -270,7 +280,7 @@ function VideoRow({
           {/* A deleted video's pipeline status (PUBLISHED, TAKEN_DOWN, ...) stopped mattering
               the moment its owner removed it — showing both reads as "which one is it". */}
           {video.deletedAt ? (
-            <span className="inline-flex items-center rounded-md border border-danger/25 bg-danger-bg px-2 py-1 text-[11px] font-medium text-danger uppercase">
+            <span className="inline-flex items-center rounded-md border border-danger/25 bg-danger-bg px-2 py-1 text-[11px] font-medium text-danger">
               Deleted
             </span>
           ) : (
@@ -445,6 +455,7 @@ function VideoRow({
             <ModerationHistory
               reportCount={modHistory?.reportCount ?? null}
               actions={modHistory?.actions ?? null}
+              handles={modHistory?.handles}
               loading={modLoading}
             />
           </Field>

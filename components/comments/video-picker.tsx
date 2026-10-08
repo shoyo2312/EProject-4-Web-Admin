@@ -45,7 +45,7 @@ export function VideoPicker({
     <Card className="flex h-full flex-col">
       <CardHeader
         title="Pick a video"
-        hint="Threads are read per video — Cassandra partitions comments by video id"
+        hint="Comments are read one video at a time. Search a title, or open one from a report."
       />
 
       <div className="border-b border-line px-4 py-3">

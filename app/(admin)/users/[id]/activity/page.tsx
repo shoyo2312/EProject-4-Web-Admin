@@ -119,7 +119,7 @@ export default async function UserActivityPage({
       <Card>
         <CardHeader
           title="History"
-          hint="Merged from auth-service's security log and account record, admin-service's actions and report ledger, and video-service's uploads"
+          hint="Sign-ins and other security events, uploads, reports and moderation decisions, merged into one timeline."
           actions={
             <div className="flex items-center gap-0.5 rounded-lg border border-line bg-surface-muted p-0.5">
               <FilterTab

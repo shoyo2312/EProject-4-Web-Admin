@@ -10,6 +10,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
 import { UserStatusBadge } from "@/components/ui/status-badge";
 import {
+  getAdminHandles,
   getAdminUser,
   getReportCount,
   getStrikeCount,
@@ -85,6 +86,8 @@ export default async function UserDetailPage({
     );
   }
 
+  // Who took each action, by @handle. Non-fatal: the history falls back to id tails.
+  const adminHandles = await getAdminHandles(actions.map((a) => a.adminId));
   const action = user.status === "BANNED" ? "unban" : "ban";
   const totalLikes = (uploads?.content ?? []).reduce((sum, v) => sum + v.likeCount, 0);
 
@@ -125,7 +128,7 @@ export default async function UserDetailPage({
         <Card>
           <CardHeader
             title="Account"
-            hint="GET /api/v1/auth/admin/users/{id} — served by auth-service, which owns status and role"
+            hint="The account record: status, role, how it signs in, and when it last did."
           />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
             <Field label="Handle">@{user.username}</Field>
@@ -189,7 +192,7 @@ export default async function UserDetailPage({
         <Card>
           <CardHeader
             title={`Uploads by @${user.username}`}
-            hint="GET /api/v1/videos/admin?ownerId= — served by video-service"
+            hint="Everything this account uploaded, taken-down and deleted videos included."
             actions={
               uploads && uploads.totalElements > INLINE_UPLOADS ? (
                 <Link
@@ -217,14 +220,19 @@ export default async function UserDetailPage({
             }
           />
           <div className="px-5 py-4">
-            <ModerationHistory reportCount={reportCount} actions={actions} loading={false} />
+            <ModerationHistory
+              reportCount={reportCount}
+              actions={actions}
+              handles={adminHandles}
+              loading={false}
+            />
           </div>
         </Card>
 
         <Card>
           <CardHeader
             title="Decision"
-            hint="Writes a moderation action and publishes it — auth-service applies bans and sign-outs, notification-service delivers warnings"
+            hint="Recorded in the audit log straight away. Bans and sign-outs take effect within seconds; a warning arrives as a notification."
           />
           <div className="px-5 py-4">
             <EnforcePanel

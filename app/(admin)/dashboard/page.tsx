@@ -7,6 +7,7 @@ import {
   getDailyAdminStats,
   getDailySignups,
   getEngagementSeries,
+  getRowNames,
   getStatsSummary,
   listReports,
   referenceNow,
@@ -21,6 +22,7 @@ import {
 import { getSessionProfile } from "@/lib/api/session";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber, plural } from "@/lib/format";
+import { idsToName } from "@/lib/names";
 
 export default async function DashboardPage({
   searchParams,
@@ -65,6 +67,12 @@ export default async function DashboardPage({
   const reports = data.reports
     .filter((r) => r.createdAt.slice(0, 10) <= window.asOf)
     .slice(0, 8);
+  const wanted = idsToName(reports, reports.map((r) => r.reporterId));
+  const names = await getRowNames(
+    wanted.userIds,
+    wanted.videoIds,
+    reports.map((r) => r.resolvedBy),
+  );
 
   const signupBuckets = bucketByGranularity(
     sliceToWindow(signups, window, (day) => ({ day, signups: 0 })),
@@ -139,7 +147,7 @@ export default async function DashboardPage({
 
         <EngagementTrend series={series} range={window.bucket} />
 
-        <ReportsTable reports={reports} footerHref="/moderation/reports" />
+        <ReportsTable reports={reports} names={names} footerHref="/moderation/reports" />
       </div>
     </>
   );

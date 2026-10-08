@@ -37,15 +37,14 @@ export default async function SettingsPage() {
         <Card>
           <CardHeader
             title="Automatic moderation"
-            hint="GET /api/v1/admin/settings/moderation — admin-service reading moderation-service's /config"
+            hint="Read live from the classifier's own configuration. Changing a value means redeploying that service, not editing it here."
           />
           {moderation.reachable ? (
             <Thresholds values={moderation.values} />
           ) : (
             <p className="px-5 py-8 text-center text-[12px] text-ink-faint">
-              moderation-service did not answer. Nothing is broken on this screen — uploads are
-              still being screened by whatever that container was started with; this is only the
-              page that reads it back.
+              The moderation classifier did not answer. Uploads are still being screened with
+              whatever it was started with — only reading the values back failed.
             </p>
           )}
         </Card>
@@ -54,14 +53,14 @@ export default async function SettingsPage() {
           <CardHeader title="Not configurable from here yet" />
           <ul className="list-disc space-y-1.5 py-4 pr-5 pl-10 text-[12px] text-ink-soft">
             <li>
-              Admin accounts — auth-service has one ROLE_ADMIN and no endpoint to grant or revoke
-              it.
+              Admin accounts — there is a single admin role, and no way yet to grant or revoke
+              it from the console.
             </li>
             <li>
-              Forcing an admin&apos;s sessions to end (auth:blacklist:user:&#123;userId&#125; is
-              written by the ban path only).
+              Signing an admin out of every device — only a ban ends all of an account&apos;s
+              sessions today.
             </li>
-            <li>Audit retention: fixed at admin-service&apos;s nightly cron.</li>
+            <li>How long the audit log is kept — fixed by a nightly cleanup job.</li>
           </ul>
         </Card>
       </div>

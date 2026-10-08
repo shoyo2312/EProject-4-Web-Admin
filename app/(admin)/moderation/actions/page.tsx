@@ -6,6 +6,7 @@ import { Pager } from "@/components/ui/pager";
 import {
   LIST_PAGE_SIZE,
   getDailyAdminStats,
+  getRowNames,
   listModerationActions,
   referenceNow,
 } from "@/lib/api/admin";
@@ -13,6 +14,7 @@ import { historyUpTo, isoDay, parsePage, resolveWindow, windowRange } from "@/li
 import { ACTION_TYPES } from "@/lib/moderation";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
+import { idsToName } from "@/lib/names";
 
 export default async function AuditLogPage({
   searchParams,
@@ -51,6 +53,12 @@ export default async function AuditLogPage({
   }
 
   const actions = page.content;
+  // The admin filter is named too, so its chip says who rather than which id.
+  const wanted = idsToName(actions);
+  const names = await getRowNames(wanted.userIds, wanted.videoIds, [
+    ...actions.map((a) => a.adminId),
+    adminId ?? null,
+  ]);
 
   // Daily and uncut, so a delta compares the period against the period before it. Every
   // figure here is a flow — the log records decisions, and a decision is an event, not a
@@ -93,7 +101,7 @@ export default async function AuditLogPage({
 
       {/* The type and admin filters go to the server with the period. The search box, the
           enforcement tabs and the sort work over the rows on this page only. */}
-      <ActionsTable actions={actions} adminId={adminId} actionType={actionType} />
+      <ActionsTable actions={actions} names={names} adminId={adminId} actionType={actionType} />
 
       <Pager
         page={page.number}

@@ -1,5 +1,6 @@
 import type { ModerationActionResponse } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/format";
+import { ACTION_LABELS } from "@/lib/labels";
 
 /**
  * The moderation trail for one user or video, shown inside an expanded table row: how many
@@ -9,10 +10,13 @@ import { formatDateTime } from "@/lib/format";
 export function ModerationHistory({
   reportCount,
   actions,
+  handles = {},
   loading,
 }: {
   reportCount: number | null;
   actions: ModerationActionResponse[] | null;
+  /** adminId → @handle. An admin missing from it is shown by the tail of their id. */
+  handles?: Record<string, string>;
   loading: boolean;
 }) {
   if (loading) {
@@ -33,12 +37,13 @@ export function ModerationHistory({
               key={action.id}
               className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px]"
             >
-              <span className="rounded border border-line bg-surface px-1.5 py-0.5 font-medium tracking-wide">
-                {action.actionType}
+              <span className="rounded border border-line bg-surface px-1.5 py-0.5 font-medium">
+                {ACTION_LABELS[action.actionType]}
               </span>
               <span className="text-ink-soft">{action.reason}</span>
               <span className="text-ink-faint">
-                · admin #{action.adminId.slice(-6)} · {formatDateTime(action.createdAt)}
+                · by {handles[action.adminId] ?? `admin #${action.adminId.slice(-6)}`} ·{" "}
+                {formatDateTime(action.createdAt)}
                 {action.reportId ? ` · report #${action.reportId.slice(-6)}` : ""}
               </span>
             </li>

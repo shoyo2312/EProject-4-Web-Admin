@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Eye, Heart, Play } from "lucide-react";
 import { VIDEO_STATUS_STYLES } from "@/components/ui/status-badge";
+import { VIDEO_STATUS_LABELS } from "@/lib/labels";
 import type { AdminVideoResponse } from "@/lib/api/types";
 import { formatCount } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -50,7 +51,7 @@ export function UserUploads({ videos }: { videos: AdminVideoResponse[] }) {
                   : VIDEO_STATUS_STYLES[video.status],
               )}
             >
-              {video.deletedAt ? "DELETED" : video.status}
+              {video.deletedAt ? "Deleted" : VIDEO_STATUS_LABELS[video.status]}
             </span>
           </div>
           <div className="px-1.5 py-1">

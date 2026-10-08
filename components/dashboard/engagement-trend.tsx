@@ -27,7 +27,7 @@ export function EngagementTrend({
     <Card className="min-w-0">
       <CardHeader
         title="Engagement Trend"
-        hint="Rolled up from GET /api/v1/analytics/engagement/daily?days=365"
+        hint="Likes (net of unlikes), and comments and shares together, per bar."
       />
       <div className="p-5">
         <div className="mb-4 flex items-center justify-between gap-4">

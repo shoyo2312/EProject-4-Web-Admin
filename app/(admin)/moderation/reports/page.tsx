@@ -7,6 +7,7 @@ import { Pager } from "@/components/ui/pager";
 import {
   LIST_PAGE_SIZE,
   getDailyAdminStats,
+  getRowNames,
   getStatsSummary,
   listReportQueue,
   listReports,
@@ -16,6 +17,7 @@ import { REPORT_SORT_FIELDS, type ReportSortField } from "@/lib/moderation";
 import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, growthPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
+import { idsToName } from "@/lib/names";
 import type { ReportStatus, ReportTargetType } from "@/lib/api/types";
 
 const STATUSES: ReportStatus[] = ["PENDING", "RESOLVED", "DISMISSED"];
@@ -96,6 +98,18 @@ export default async function ReportsQueuePage({
     );
   }
 
+  // Both tables name what they list — reporters, resolvers, reported accounts and videos — from
+  // one batch per kind for the whole page.
+  const wanted = idsToName(
+    [...queue.content, ...ledger.content],
+    ledger.content.map((r) => r.reporterId),
+  );
+  const names = await getRowNames(
+    wanted.userIds,
+    wanted.videoIds,
+    ledger.content.map((r) => r.resolvedBy),
+  );
+
   // Daily and uncut, so a delta compares the period against the period before it. Closures
   // are dated by when the report was closed, not when it was filed — see the API type.
   const createdCounts = historyUpTo(adminStats, window, (d) => d.reportsCreated);
@@ -155,13 +169,14 @@ export default async function ReportsQueuePage({
       <div className="space-y-4">
         <KpiCards cards={cards} />
 
-        <ReportQueueTable groups={queue.content} total={queue.totalElements} />
+        <ReportQueueTable groups={queue.content} total={queue.totalElements} names={names} />
 
         {/* Passing `filter` is what makes the table's controls write to the URL and come back
             through listReports, rather than sifting the twenty-five rows already on screen. */}
         <ReportsTable
           title="All reports"
           reports={ledger.content}
+          names={names}
           filter={{
             status: status ?? "ALL",
             targetType: targetType ?? "ALL",
