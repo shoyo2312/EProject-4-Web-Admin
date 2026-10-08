@@ -719,8 +719,11 @@ export async function listVideos(options: {
   deleted?: boolean;
   /** Same three states, on whether the media is already erased. The trash is deleted && !purged. */
   purged?: boolean;
-  /** Unset is newest upload first. The trash reads soonest-to-expire first. */
-  sort?: "deletedAt,asc";
+  /**
+   * Unset is newest upload first. The trash reads soonest-to-expire first, and the review queue
+   * oldest upload first — the one that has waited longest.
+   */
+  sort?: "deletedAt,asc" | "createdAt,asc";
   page?: number;
   size?: number;
 } = {}): Promise<Page<AdminVideoResponse>> {
@@ -738,7 +741,11 @@ export async function listVideos(options: {
         (!!needle && video.title.toLowerCase().includes(needle)) || owners.has(video.userId)
       );
     });
-    if (sort) filtered.sort((a, b) => (a.deletedAt ?? "").localeCompare(b.deletedAt ?? ""));
+    if (sort === "deletedAt,asc") {
+      filtered.sort((a, b) => (a.deletedAt ?? "").localeCompare(b.deletedAt ?? ""));
+    } else if (sort === "createdAt,asc") {
+      filtered.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    }
     return mockPage(filtered, page, size);
   }
 

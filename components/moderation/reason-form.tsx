@@ -23,6 +23,7 @@ export function ReasonForm({
   submitting,
   placeholder,
   confirmLabel,
+  submitOnEnter,
 }: {
   presets: readonly string[];
   reason: string;
@@ -32,6 +33,11 @@ export function ReasonForm({
   submitting: boolean;
   placeholder: string;
   confirmLabel: string;
+  /**
+   * Enter in the reason box confirms. Opt-in, for the review screen, where every other step is a
+   * key too; the directory forms leave Enter inert, so a stray one cannot ban an account.
+   */
+  submitOnEnter?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -76,6 +82,13 @@ export function ReasonForm({
           autoFocus
           value={reason}
           onChange={(e) => onReason(e.target.value)}
+          onKeyDown={(e) => {
+            // isComposing: Enter also commits a word in an input method (Vietnamese Telex among
+            // them), and that Enter is not a confirmation.
+            if (!submitOnEnter || e.key !== "Enter" || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            if (reason.trim() && !submitting) onSubmit();
+          }}
           placeholder={placeholder}
           className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-[11px] outline-none placeholder:text-ink-faint"
         />

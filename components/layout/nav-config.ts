@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Radio,
+  ScanEye,
   Settings,
   Trash2,
   TrendingUp,
@@ -42,6 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Moderation",
     items: [
       { label: "Reports Queue", href: "/moderation/reports", icon: Flag, ready: true },
+      { label: "Video Review", href: "/moderation/review", icon: ScanEye, ready: true },
       { label: "Audit Log", href: "/moderation/actions", icon: FileClock, ready: true },
     ],
   },
@@ -68,6 +70,7 @@ export const ROUTE_TITLES: Record<string, { section: string; page: string }> = {
   "/dashboard": { section: "Dashboard", page: "Overview" },
   "/analytics": { section: "Dashboard", page: "Analytics" },
   "/moderation/reports": { section: "Moderation", page: "Reports Queue" },
+  "/moderation/review": { section: "Moderation", page: "Video Review" },
   "/moderation/actions": { section: "Moderation", page: "Audit Log" },
   "/users": { section: "Management", page: "Users" },
   "/videos": { section: "Management", page: "Videos" },

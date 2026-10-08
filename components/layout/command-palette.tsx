@@ -10,6 +10,7 @@ import {
   type SearchResults,
 } from "@/app/(admin)/actions";
 import { VideoThumb } from "@/components/videos/video-thumb";
+import { isTypingTarget } from "@/lib/keyboard";
 import { matchPages, moveSelection } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { NAV_GROUPS } from "./nav-config";
@@ -39,12 +40,6 @@ const DEBOUNCE_MS = 250;
 
 function focusedElement(): HTMLElement | null {
   return document.activeElement instanceof HTMLElement ? document.activeElement : null;
-}
-
-/** "/" opens the palette, except while it is being typed into a field. */
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 
 /**
