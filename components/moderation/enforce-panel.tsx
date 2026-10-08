@@ -2,7 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, EyeOff, LogOut, RotateCcw, ShieldCheck, TriangleAlert } from "lucide-react";
+import {
+  Ban,
+  CheckCircle2,
+  EyeOff,
+  LogOut,
+  RotateCcw,
+  ShieldCheck,
+  TriangleAlert,
+} from "lucide-react";
 import { moderateUserAction } from "@/app/(admin)/users/actions";
 import { moderateVideoAction } from "@/app/(admin)/videos/actions";
 import { ReasonForm } from "@/components/moderation/reason-form";
@@ -23,6 +31,7 @@ const ICONS = {
   revokeSessions: LogOut,
   takedown: EyeOff,
   restore: RotateCcw,
+  approve: CheckCircle2,
 } as const;
 
 const BUTTON_LABELS: Record<EnforcementAction, string> = {
@@ -32,6 +41,7 @@ const BUTTON_LABELS: Record<EnforcementAction, string> = {
   revokeSessions: "Sign out everywhere",
   takedown: "Take down",
   restore: "Restore",
+  approve: "Approve",
 };
 
 const CONFIRM_LABELS: Record<EnforcementAction, string> = {
@@ -41,6 +51,7 @@ const CONFIRM_LABELS: Record<EnforcementAction, string> = {
   revokeSessions: "Confirm sign-out",
   takedown: "Confirm takedown",
   restore: "Confirm restore",
+  approve: "Confirm approval",
 };
 
 /**
@@ -88,7 +99,7 @@ export function EnforcePanel({
               reason,
               action === "ban" ? banDaysOf(duration) : null,
             )
-          : await moderateVideoAction(targetId, action as "takedown" | "restore", reason);
+          : await moderateVideoAction(targetId, action as "takedown" | "restore" | "approve", reason);
       setResult(outcome.message);
       if (outcome.ok) {
         setOpen(null);
@@ -127,6 +138,7 @@ export function EnforcePanel({
                     : cn(
                         "hover:bg-surface",
                         (action === "ban" || action === "takedown") && "text-danger",
+                        action === "approve" && "text-success",
                       ),
                 )}
               >

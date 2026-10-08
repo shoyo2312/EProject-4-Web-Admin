@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { EyeOff, Play, RotateCcw, X } from "lucide-react";
+import { CheckCircle2, EyeOff, Play, RotateCcw, X, type LucideIcon } from "lucide-react";
 import {
   moderateVideoAction,
   videoModerationDetailAction,
@@ -19,7 +19,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { VideoThumb } from "@/components/videos/video-thumb";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
-import { PRESET_REASONS, playable } from "@/lib/moderation";
+import { PRESET_REASONS, playable, videoDecision, type VideoDecision } from "@/lib/moderation";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import type {
   AdminVideoResponse,
@@ -41,6 +41,15 @@ import { usePropagation } from "@/lib/use-propagation";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = VideoStatus | "ALL" | "DELETED";
+
+const DECISIONS: Record<
+  VideoDecision,
+  { label: string; verb: string; confirm: string; Icon: LucideIcon }
+> = {
+  takedown: { label: "Take down", verb: "taking down", confirm: "Confirm takedown", Icon: EyeOff },
+  restore: { label: "Restore", verb: "restoring", confirm: "Confirm restore", Icon: RotateCcw },
+  approve: { label: "Approve", verb: "approving", confirm: "Confirm approval", Icon: CheckCircle2 },
+};
 
 const STATUS_FILTERS = [
   { value: "ALL" as const, label: "All" },
@@ -218,15 +227,8 @@ function VideoRow({
   );
   const machineReason = describeModeration(video);
 
-  // Approving what automatic moderation held back is the same write as undoing
-  // an admin's takedown — both put the video back to PUBLISHED through
-  // VideoRestoredEvent — so it is the same action rather than a second one.
-  const action =
-    video.status === "TAKEN_DOWN" ||
-    video.status === "REJECTED" ||
-    video.status === "PENDING_REVIEW"
-      ? "restore"
-      : "takedown";
+  const action = videoDecision(video.status);
+  const decision = DECISIONS[action];
   const watchable = playable(video.status);
   const presets = PRESET_REASONS[action];
 
@@ -361,15 +363,12 @@ function VideoRow({
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] whitespace-nowrap transition-colors",
                 pending || video.deletedAt ? "cursor-not-allowed text-ink-faint" : "hover:bg-surface",
-                action === "takedown" && !pending && !video.deletedAt && "text-danger",
+                !pending && !video.deletedAt && action === "takedown" && "text-danger",
+                !pending && !video.deletedAt && action === "approve" && "text-success",
               )}
             >
-              {action === "takedown" ? (
-                <EyeOff className="h-3.5 w-3.5" />
-              ) : (
-                <RotateCcw className="h-3.5 w-3.5" />
-              )}
-              {action === "takedown" ? "Take down" : "Restore"}
+              <decision.Icon className="h-3.5 w-3.5" />
+              {decision.label}
             </button>
           </div>
         </td>
@@ -480,8 +479,8 @@ function VideoRow({
               onSubmit={submit}
               onCancel={() => setReason(null)}
               submitting={submitting}
-              placeholder={`Reason for ${action === "takedown" ? "taking down" : "restoring"} "${video.title}" — pick one above or write your own`}
-              confirmLabel={`Confirm ${action}`}
+              placeholder={`Reason for ${decision.verb} "${video.title}" — pick one above or write your own`}
+              confirmLabel={decision.confirm}
             />
           </td>
         </tr>

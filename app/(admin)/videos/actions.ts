@@ -43,7 +43,8 @@ export async function videoModerationDetailAction(
  */
 export async function moderateVideoAction(
   videoId: string,
-  action: "takedown" | "restore" | "purge",
+  /** "approve" is a restore on the wire — see `videoDecision` — with its own confirmation. */
+  action: "takedown" | "restore" | "approve" | "purge",
   reason: string,
 ): Promise<ModerationResult> {
   if (!reason.trim()) {
@@ -51,7 +52,7 @@ export async function moderateVideoAction(
   }
 
   try {
-    await moderateVideo(videoId, action, reason.trim());
+    await moderateVideo(videoId, action === "approve" ? "restore" : action, reason.trim());
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
@@ -64,6 +65,7 @@ export async function moderateVideoAction(
       takedown: "Takedown recorded. The video leaves the feed once video-service consumes the event.",
       restore:
         "Restore recorded. The video returns to whatever state it was in before the takedown, not necessarily PUBLISHED.",
+      approve: "Approval recorded. The video goes live once video-service consumes the event.",
       purge:
         "Permanent deletion recorded. The media is erased within seconds, once video-service and media-worker consume the event.",
     }[action],

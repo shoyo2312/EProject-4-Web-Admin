@@ -86,7 +86,23 @@ export type EnforcementAction =
   | "warn"
   | "revokeSessions"
   | "takedown"
-  | "restore";
+  | "restore"
+  | "approve";
+
+/** The decision a video's state offers — what its row and its own page put on the button. */
+export type VideoDecision = Extract<EnforcementAction, "takedown" | "restore" | "approve">;
+
+/**
+ * Approving a video automatic moderation held back and restoring one that was removed are the
+ * same write — both go out as VideoRestoredEvent and put it back up. They are not the same
+ * decision to the person making it, though: "Restore" on a video nobody ever took down reads as
+ * undoing something that never happened.
+ */
+export function videoDecision(status: VideoStatus): VideoDecision {
+  if (status === "PENDING_REVIEW") return "approve";
+  if (status === "TAKEN_DOWN" || status === "REJECTED") return "restore";
+  return "takedown";
+}
 
 /**
  * How long a ban lasts. "Permanent" is first and is the default: a ban with no end is what every
@@ -182,6 +198,12 @@ export const PRESET_REASONS: Record<
     "Taken down in error",
     "Reviewed again, within policy",
     "Rights holder withdrew the claim",
+  ],
+  approve: [
+    "Reviewed — within policy",
+    "Reviewed — automatic flag was wrong",
+    "Acceptable in context (news, education, art)",
+    "Borderline — allowed, account worth watching",
   ],
   removeComment: [
     "Harassment or targeted abuse",

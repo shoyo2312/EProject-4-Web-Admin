@@ -16,7 +16,7 @@ import {
   referenceNow,
 } from "@/lib/api/admin";
 import { VIDEO_STATUS_LABELS } from "@/lib/labels";
-import { playable } from "@/lib/moderation";
+import { playable, videoDecision } from "@/lib/moderation";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import {
   daysUntilPurge,
@@ -96,14 +96,7 @@ export default async function VideoDetailPage({
   const owner = owners[video.userId];
   const watchable = playable(video.status);
 
-  // Approving what automatic moderation held back is the same write as undoing an admin's
-  // takedown — both put the video back through VideoRestoredEvent — so it is the same action.
-  const action =
-    video.status === "TAKEN_DOWN"
-    || video.status === "REJECTED"
-    || video.status === "PENDING_REVIEW"
-      ? "restore"
-      : "takedown";
+  const action = videoDecision(video.status);
   const purgesIn = video.deletedAt
     ? daysUntilPurge(video.deletedAt, TRASH_RETENTION_DAYS, referenceNow())
     : null;
