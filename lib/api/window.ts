@@ -241,6 +241,31 @@ export function bucketByGranularity<T extends { day: string }>(
 }
 
 /**
+ * A daily series bucketed like the charts, averaged instead of summed — for a figure that is a
+ * daily level rather than a daily flow. A week of 100 active users a day is a week of 100, not of
+ * 700. A bucket shorter than the rest (the first, when the window does not divide evenly) is
+ * averaged over the days it has.
+ */
+export function bucketMean<T extends { day: string }>(
+  rows: T[],
+  granularity: Granularity,
+  pick: (row: T) => number,
+): { day: string; value: number }[] {
+  const buckets = bucketByGranularity(
+    rows.map((row) => ({ day: row.day, total: pick(row), days: 1 })),
+    granularity,
+    (a, b) => ({ day: a.day, total: a.total + b.total, days: a.days + b.days }),
+  );
+  return buckets.map((bucket) => ({ day: bucket.day, value: Math.round(bucket.total / bucket.days) }));
+}
+
+/** Whether a day falls inside the period the page's figures cover — the days ending at `asOf`. */
+export function inPeriod(day: string, window: TimeWindow): boolean {
+  const start = isoDay(Date.parse(`${window.asOf}T00:00:00Z`) - (window.periodDays - 1) * DAY_MS);
+  return day >= start && day <= window.asOf;
+}
+
+/**
  * The `?page=` a Pager writes, as a zero-based index. Anything that is not a whole number at
  * or above 1 is page one: a hand-edited or stale value must not reach the backend as a
  * negative offset, and there is nothing useful to show for "page banana".

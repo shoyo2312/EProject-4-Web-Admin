@@ -30,9 +30,7 @@ import type {
   VideoStatus,
 } from "./types";
 import {
-  toEngagementMix,
   toMosaicSeries,
-  type EngagementMixRow,
   type MosaicSeries,
 } from "./rollup";
 import type { ReportSortField } from "@/lib/moderation";
@@ -511,19 +509,17 @@ export async function getEngagementSeries(asOfMs = referenceNow()): Promise<Mosa
 }
 
 /**
- * The analytics page wants the same 365-day pull twice over — bucketed by day for the
- * mosaic, and totalled by event type for the mix. Derived together so it stays one
- * request rather than two identical ones.
+ * The analytics page reads one engagement pull three ways — bucketed for the trend, per day for
+ * the period's figure, totalled by type for the mix — so it gets the trend and the rows, and cuts
+ * the rows to its own period. At least the 365 days the monthly trend needs, and further back when
+ * the period's comparison reaches past that: a year compared with the year before needs two.
  */
-export async function getEngagementOverview(asOfMs = referenceNow()): Promise<{
-  series: MosaicSeries;
-  mix: EngagementMixRow[];
-}> {
-  const rows = await getDailyEngagement(365);
-  return {
-    series: toMosaicSeries(rows, asOfMs),
-    mix: toEngagementMix(rows),
-  };
+export async function getEngagementOverview(
+  asOfMs = referenceNow(),
+  days = 365,
+): Promise<{ series: MosaicSeries; rows: DailyCountResponse[] }> {
+  const rows = await getDailyEngagement(Math.max(days, 365));
+  return { series: toMosaicSeries(rows, asOfMs), rows };
 }
 
 export async function getDailySignups(days = 7): Promise<DailySignupResponse[]> {

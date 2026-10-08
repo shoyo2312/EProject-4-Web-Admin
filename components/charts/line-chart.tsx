@@ -72,11 +72,13 @@ export function LineChart({
               axisLine={{ stroke: "var(--line)", strokeDasharray: "3 3" }}
               tickMargin={8}
             />
+            {/* Counts: a tick at 0.75 of a like is a scale nothing can land on. */}
             <YAxis
               tick={TICK}
               tickLine={false}
               axisLine={false}
               width={40}
+              allowDecimals={false}
               tickFormatter={(v: number) => formatCompact(v)}
             />
             <Tooltip
@@ -84,14 +86,16 @@ export function LineChart({
               cursor={{ stroke: "var(--ink)", strokeDasharray: "3 3" }}
             />
             {series.map((s) => (
+              // Straight segments with a dot per bucket: a smoothed curve through monthly totals
+              // draws a slope of activity across weeks where there was none.
               <Line
                 key={s.key}
-                type="monotone"
+                type="linear"
                 dataKey={s.key}
                 name={s.label}
                 stroke={s.color}
                 strokeWidth={2}
-                dot={false}
+                dot={{ r: 2, fill: s.color, strokeWidth: 0 }}
                 activeDot={{ r: 4, stroke: "var(--surface)", strokeWidth: 2 }}
                 isAnimationActive={false}
               />

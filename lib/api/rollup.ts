@@ -119,6 +119,25 @@ export function toMosaicSeries(
   return { daily, weekly, monthly };
 }
 
+/**
+ * The same quantity the trend charts — likes net of unlikes, plus comments and shares — as one
+ * figure per day, for the cards that sum it over a period and compare it with the period before.
+ * Clamped per day like the chart's daily bars, so a day with more unlikes than likes counts zero.
+ * Only days that sent rows are present; the caller lays them on the calendar.
+ */
+export function engagementByDay(rows: DailyCountResponse[]): { day: string; events: number }[] {
+  const byDay = new Map<string, Totals>();
+  for (const row of rows) {
+    const totals = byDay.get(row.day) ?? emptyTotals();
+    addRow(totals, row);
+    byDay.set(row.day, totals);
+  }
+  return Array.from(byDay, ([day, totals]) => {
+    const clamped = clamp(totals);
+    return { day, events: clamped.primary + clamped.secondary };
+  });
+}
+
 export interface EngagementMixRow {
   eventType: string;
   label: string;

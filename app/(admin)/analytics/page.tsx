@@ -1,6 +1,8 @@
+import { ActiveUsers } from "@/components/analytics/active-users";
 import { AudienceGrowth } from "@/components/analytics/audience-growth";
 import { EngagementMix } from "@/components/analytics/engagement-mix";
 import { TopVideos } from "@/components/analytics/top-videos";
+import { Uploads } from "@/components/analytics/uploads";
 import { EngagementTrend } from "@/components/dashboard/engagement-trend";
 import { KpiCards, type KpiCard } from "@/components/dashboard/kpi-cards";
 import { ErrorState } from "@/components/layout/error-state";
@@ -8,22 +10,26 @@ import { PageHeader } from "@/components/layout/page-header";
 import {
   getDailyActiveUsers,
   getDailySignups,
+  getDailyVideoStats,
   getEngagementOverview,
   getHandles,
   getTopVideos,
   getVideoSummaries,
   referenceNow,
 } from "@/lib/api/admin";
+import { engagementByDay, toEngagementMix } from "@/lib/api/rollup";
 import {
   BUCKET_UNIT,
   bucketByGranularity,
+  bucketMean,
   historyUpTo,
+  inPeriod,
   isoDay,
   resolveWindow,
   sliceToWindow,
 } from "@/lib/api/window";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
-import { formatCompact, formatDate, formatNumber } from "@/lib/format";
+import { formatDate, formatNumber } from "@/lib/format";
 
 export default async function AnalyticsPage({
   searchParams,
@@ -40,15 +46,16 @@ export default async function AnalyticsPage({
   try {
     // fetchDays covers the charts and two periods on top, so every KPI below can be
     // compared against the period before it.
-    const [signups, engagement, activeUsers, topVideos] = await Promise.all([
+    const [signups, engagement, activeUsers, videoStats, topVideos] = await Promise.all([
       getDailySignups(window.fetchDays),
-      getEngagementOverview(asOfMs),
+      getEngagementOverview(asOfMs, window.fetchDays),
       getDailyActiveUsers(window.fetchDays),
+      getDailyVideoStats(window.fetchDays),
       // The period itself, not the doubled window: this list is "what people watched over
       // these days", and there is nothing to compare it against.
       getTopVideos(window.periodDays),
     ]);
-    data = { signups, engagement, activeUsers, topVideos };
+    data = { signups, engagement, activeUsers, videoStats, topVideos };
   } catch (error) {
     return (
       <>
@@ -58,15 +65,16 @@ export default async function AnalyticsPage({
     );
   }
 
-  const { signups, engagement, activeUsers, topVideos } = data;
+  const { signups, engagement, activeUsers, videoStats, topVideos } = data;
+  const { periodDays, periodLabel, compareLabel, chartDays } = window;
+  const unit = BUCKET_UNIT[window.bucket];
+
   // Most watched carries ids only: one lookup names the videos, a second their owners.
   const topSummaries = await getVideoSummaries(topVideos.map((row) => row.videoId));
   const topNames = {
     videos: topSummaries,
     handles: await getHandles(Object.values(topSummaries).map((video) => video.userId)),
   };
-  const { periodDays, periodLabel, compareLabel, chartDays } = window;
-  const unit = BUCKET_UNIT[window.bucket];
 
   // Everything up to the picked date, uncut. The KPI helpers below read the last two periods
   // of this, so the comparison moves with the picker instead of always being today.
@@ -79,8 +87,10 @@ export default async function AnalyticsPage({
   // The series is zero-filled, so its length no longer says whether anything was recorded.
   const noDau = !activeUsers.some((d) => d.day <= window.asOf);
 
-  const engagementCounts = engagement.series.daily.map((b) => b.primary + b.secondary);
-  const engagementTotal = engagement.mix.reduce((sum, row) => sum + row.total, 0);
+  // The trend's own quantity — likes net of unlikes, comments and shares — per day, so the
+  // figure, its spark and its percentage all describe the same thing over the same days.
+  const engagementCounts = historyUpTo(engagementByDay(engagement.rows), window, (d) => d.events);
+  const uploadCounts = historyUpTo(videoStats, window, (d) => d.uploads);
 
   const cards: KpiCard[] = [
     {
@@ -100,15 +110,20 @@ export default async function AnalyticsPage({
       spark: spark(dauCounts, chartDays),
     },
     {
-      label: "Engagement Events",
-      value: formatCompact(engagementTotal),
-      unit: "Last 365d",
-      // The rollup behind this is a fixed 365-day pull, so a year-long period has only one
-      // year of history and no year before it to compare against — deltaPercent answers
-      // null there rather than comparing a year against nothing.
+      label: "Engagement",
+      value: formatNumber(sumLast(engagementCounts, periodDays)),
+      unit: periodLabel,
       delta: deltaPercent(engagementCounts, periodDays),
       deltaLabel: compareLabel,
       spark: spark(engagementCounts, chartDays),
+    },
+    {
+      label: "Uploads",
+      value: formatNumber(sumLast(uploadCounts, periodDays)),
+      unit: periodLabel,
+      delta: deltaPercent(uploadCounts, periodDays),
+      deltaLabel: compareLabel,
+      spark: spark(uploadCounts, chartDays),
     },
   ];
 
@@ -118,18 +133,49 @@ export default async function AnalyticsPage({
     (a, b) => ({ day: a.day, signups: a.signups + b.signups }),
   );
 
-  const dailyRows = signupBuckets.map((d) => ({
+  const dauDays = sliceToWindow(activeUsers, window, (day) => ({ day, activeUsers: 0 }));
+  const dauBars = bucketMean(dauDays, window.bucket, (d) => d.activeUsers);
+
+  const uploadDays = sliceToWindow(videoStats, window, (day) => ({
+    day,
+    uploads: 0,
+    pendingReview: 0,
+    notPlayable: 0,
+  }));
+  const uploadBars = bucketByGranularity(uploadDays, window.bucket, (a, b) => ({
+    day: a.day,
+    uploads: a.uploads + b.uploads,
+    pendingReview: a.pendingReview + b.pendingReview,
+    notPlayable: a.notPlayable + b.notPlayable,
+  })).map((d) => ({ day: d.day, value: d.uploads }));
+
+  // The mix covers the figures' days, not the trend's year: beside "Last 30d" cards, a total
+  // over 365 days reads as this month's.
+  const mix = toEngagementMix(engagement.rows.filter((row) => inPeriod(row.day, window)));
+
+  // One row per chart bar with every series side by side, so the export is the charts' data.
+  const dauByBar = new Map(dauBars.map((bar) => [bar.day, bar.value]));
+  const uploadsByBar = new Map(uploadBars.map((bar) => [bar.day, bar.value]));
+  const csvRows = signupBuckets.map((d) => ({
     day: d.day,
     signups: d.signups,
+    activeUsers: dauByBar.get(d.day) ?? 0,
+    uploads: uploadsByBar.get(d.day) ?? 0,
   }));
+
+  const covered =
+    periodDays === 1
+      ? formatDate(window.asOf)
+      : `the ${periodDays} days up to ${formatDate(window.asOf)}`;
+  const before = periodDays === 1 ? "the day before" : `the ${periodDays} before`;
 
   return (
     <>
       <PageHeader
         title="Analytics"
-        subtitle={`Platform-wide engagement and growth over the ${chartDays} days ending ${formatDate(window.asOf)}.`}
+        subtitle={`Figures cover ${covered}, compared with ${before}. Each chart is labelled with its own range.`}
         filters={filters}
-        csv={{ name: `analytics-${window.period}`, rows: dailyRows }}
+        csv={{ name: `analytics-${window.period}`, rows: csvRows }}
       />
 
       <div className="space-y-4">
@@ -137,10 +183,15 @@ export default async function AnalyticsPage({
 
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
           <EngagementTrend series={engagement.series} range={window.bucket} />
-          <EngagementMix rows={engagement.mix} />
+          <EngagementMix rows={mix} period={periodLabel} />
         </div>
 
         <AudienceGrowth days={signupBuckets} unit={unit} />
+
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <ActiveUsers days={dauDays} bars={dauBars} />
+          <Uploads days={uploadDays} bars={uploadBars} unit={unit} />
+        </div>
 
         <TopVideos rows={topVideos} days={periodDays} names={topNames} />
       </div>
