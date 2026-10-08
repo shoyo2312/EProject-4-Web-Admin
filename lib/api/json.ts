@@ -5,10 +5,16 @@
  * subsequent lookup 404s. Quote long integer values before parsing; the types in
  * types.ts declare all ids as `string` to match.
  *
- * A reviver cannot fix this — by the time it runs, the number is already rounded.
+ * The pattern consumes whole string literals too, and gives them back untouched: digits
+ * inside a title or a comment are text, and a title like "Order: 1234567890123456, thanks"
+ * quoted from the inside broke every listing that showed it. The lookbehind keeps it off
+ * the fraction of a score that prints with seventeen decimals. A reviver reading
+ * `context.source` would need no pattern, but Node 20, which Next still supports, has none.
  */
-const LONG_INTEGER_VALUE = /:\s*(-?\d{16,})(?=\s*[,}\]])/g;
+const STRING_OR_LONG_INTEGER = /"[^"\\]*(?:\\.[^"\\]*)*"|(?<![\d.eE+-])-?\d{16,}(?![\d.eE])/g;
 
 export function parseWithLongIdsAsStrings<T>(text: string): T {
-  return JSON.parse(text.replace(LONG_INTEGER_VALUE, ': "$1"')) as T;
+  return JSON.parse(
+    text.replace(STRING_OR_LONG_INTEGER, (token) => (token.startsWith('"') ? token : `"${token}"`)),
+  ) as T;
 }
