@@ -4,10 +4,10 @@ import { useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CornerDownRight, Heart, MessageSquare, Trash2 } from "lucide-react";
 import {
+  commentRemovedAction,
   loadCommentsAction,
   loadRepliesAction,
   removeCommentAction,
-  type CommentPageView,
 } from "@/app/(admin)/comments/actions";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
@@ -18,6 +18,7 @@ import type {
   AdminCommentResponse,
   UserProfileResponse,
 } from "@/lib/api/types";
+import { appendPage, refreshFirstPage, type CommentPageView } from "@/lib/comments";
 import { formatCompact, relativeTime, shortId } from "@/lib/format";
 import { hrefWith } from "@/lib/url";
 import { usePropagation } from "@/lib/use-propagation";
@@ -40,17 +41,6 @@ const EMPTY_MESSAGE: Record<AdminCommentFilter, string> = {
   REPLIES: "Nobody has replied to a comment on this video.",
   REMOVED: "Nothing has been removed from this video.",
 };
-
-/** Appends a freshly-loaded page to what is already on screen. */
-function merge(current: CommentPageView, next: CommentPageView): CommentPageView {
-  return {
-    items: [...current.items, ...next.items],
-    authors: { ...current.authors, ...next.authors },
-    parents: { ...current.parents, ...next.parents },
-    nextCursor: next.nextCursor,
-    hasMore: next.hasMore,
-  };
-}
 
 function displayName(profile: UserProfileResponse | undefined, userId: string) {
   return profile?.displayName ?? profile?.username ?? `#${shortId(userId.slice(-8), 8)}`;
@@ -75,15 +65,14 @@ export function CommentsTable({
   const [rendered, setRendered] = useState(page);
   const [loading, startLoading] = useTransition();
 
-  // The server sends a fresh first page after a removal lands. Anything paged in beyond it is
-  // dropped on that refresh rather than stitched back on: the list is ordered by id, so a rebuilt
-  // first page and a held-over tail would show the same comment twice.
+  // The server sends a fresh first page on every refresh: after a removal, and on any admin event
+  // the live stream relays. It is laid over what is on screen, so the pages loaded below it stay.
   //
-  // Adjusted during render rather than in an effect — React's own way of resetting state when a
+  // Adjusted during render rather than in an effect — React's own way of updating state when a
   // prop changes, and it repaints once instead of twice.
   if (rendered !== page) {
     setRendered(page);
-    setView(page);
+    setView((current) => refreshFirstPage(current, page));
   }
 
   function selectFilter(next: AdminCommentFilter) {
@@ -97,7 +86,7 @@ export function CommentsTable({
     const cursor = view.nextCursor;
     startLoading(async () => {
       const next = await loadCommentsAction(videoId, filter, cursor);
-      setView((current) => merge(current, next));
+      setView((current) => appendPage(current, next));
     });
   }
 
@@ -234,10 +223,21 @@ function CommentRow({
   const [replies, setReplies] = useState<CommentPageView | null>(null);
   const [loadingReplies, startLoadingReplies] = useTransition();
 
-  const removed = comment.deletedAt !== null;
+  // Set when a lookup by id finds the comment removed. A reply in an opened thread, or a comment
+  // paged in with Load more, is client state that re-rendering the page never updates.
+  const [removedSince, setRemovedSince] = useState(false);
+  const removed = comment.deletedAt !== null || removedSince;
   const { pending, stalled, watch } = usePropagation(
     removed,
     "Still listed — interaction-service has not consumed the event yet. The removal is recorded; reload in a moment.",
+    () => {
+      commentRemovedAction(comment.videoId, comment.commentId)
+        .then((gone) => {
+          if (gone) setRemovedSince(true);
+        })
+        // The next look, or the stalled message after the last, covers a lookup that failed.
+        .catch(() => {});
+    },
   );
 
   const isReply = comment.parentId !== null;
@@ -275,7 +275,7 @@ function CommentRow({
     if (!cursor) return;
     startLoadingReplies(async () => {
       const next = await loadRepliesAction(videoId, comment.commentId, cursor);
-      setReplies((current) => (current ? merge(current, next) : next));
+      setReplies((current) => (current ? appendPage(current, next) : next));
     });
   }
 

@@ -16,7 +16,8 @@ import { historyUpTo, isoDay, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
 import type { AdminCommentFilter } from "@/lib/api/types";
-import { decoratePage, type CommentPageView } from "./actions";
+import type { CommentPageView } from "@/lib/comments";
+import { decoratePage } from "./actions";
 
 const FILTERS: AdminCommentFilter[] = ["THREAD", "REPLIES", "REMOVED"];
 

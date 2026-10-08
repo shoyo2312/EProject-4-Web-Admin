@@ -8,34 +8,12 @@ import {
   listComments,
   removeComment,
 } from "@/lib/api/admin";
-import type {
-  AdminCommentFilter,
-  AdminCommentPage,
-  AdminCommentResponse,
-  UserProfileResponse,
-} from "@/lib/api/types";
+import type { AdminCommentFilter, AdminCommentPage } from "@/lib/api/types";
+import type { CommentPageView } from "@/lib/comments";
 
 export interface ModerationResult {
   ok: boolean;
   message: string;
-}
-
-/**
- * A page of comments with everything needed to read it: interaction-service stores ids only, so
- * without the two lookups beside it a reply renders as "#32383488 replying to #2252800".
- */
-export interface CommentPageView {
-  items: AdminCommentResponse[];
-  /** userId → profile, for the authors on the page and the users their replies point at. */
-  authors: Record<string, UserProfileResponse>;
-  /**
-   * commentId → the comment a reply on this page answers. The Replies and Removed views are flat,
-   * so the parent is usually not on the page beside its reply. May be missing an id: a parent
-   * older than what is loaded still resolves, but one whose row is gone does not.
-   */
-  parents: Record<string, AdminCommentResponse>;
-  nextCursor: string | null;
-  hasMore: boolean;
 }
 
 /**
@@ -85,6 +63,15 @@ export async function loadRepliesAction(
   cursor: string | null,
 ): Promise<CommentPageView> {
   return decoratePage(videoId, await listCommentReplies(videoId, commentId, cursor));
+}
+
+/**
+ * Whether a comment is removed yet, read by id. For the rows a page refresh does not reach: the
+ * comments paged in with Load more and the replies in an opened thread are client state.
+ */
+export async function commentRemovedAction(videoId: string, commentId: string): Promise<boolean> {
+  const [comment] = await getComments(videoId, [commentId]);
+  return Boolean(comment?.deletedAt);
 }
 
 /**
