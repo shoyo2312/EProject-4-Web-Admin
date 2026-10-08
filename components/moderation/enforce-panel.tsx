@@ -86,7 +86,7 @@ export function EnforcePanel({
               targetId,
               action as "ban" | "unban" | "warn" | "revokeSessions",
               reason,
-              banDaysOf(duration),
+              action === "ban" ? banDaysOf(duration) : null,
             )
           : await moderateVideoAction(targetId, action as "takedown" | "restore", reason);
       setResult(outcome.message);
@@ -117,6 +117,7 @@ export function EnforcePanel({
                 onClick={() => {
                   setOpen(action);
                   setReason("");
+                  setDuration("permanent");
                   setResult(null);
                 }}
                 className={cn(

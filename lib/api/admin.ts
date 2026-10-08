@@ -36,6 +36,7 @@ import {
   type MosaicSeries,
 } from "./rollup";
 import type { ReportSortField } from "@/lib/moderation";
+import { memoizeFor } from "@/lib/memo";
 import { buildNotifications, type AdminNotification } from "@/lib/notifications";
 import {
   mockDailyEngagement,
@@ -649,13 +650,22 @@ export async function listVideos(options: {
   return apiGet<Page<AdminVideoResponse>>(`/api/v1/videos/admin?${params}`);
 }
 
+const NOTIFICATIONS_TTL_MS = 30_000;
+
 /**
  * The bell's feed. Only the first page of each source — the bell is a nudge that links to the
  * full listing, not a second copy of it. The trash reads soonest-to-expire first, so its first
  * page holds every video close enough to the purge to mention. Sign-ups and uploads are counted
  * rather than listed, so they read a longer page, newest first; past 50 in a day the bell says 50+.
+ *
+ * Kept for {@link NOTIFICATIONS_TTL_MS} and shared by every admin. The layout renders it, and the
+ * live stream re-renders the layout up to once a second during a burst of events — five gateway
+ * calls each time, two of them 50-row pages. Nothing in the feed is per-admin (unread is, and
+ * that is a cookie), so one copy serves them all; the cost is a bell up to that long behind.
  */
-export async function getNotifications(): Promise<AdminNotification[]> {
+export const getNotifications = memoizeFor(NOTIFICATIONS_TTL_MS, loadNotifications);
+
+async function loadNotifications(): Promise<AdminNotification[]> {
   const size = 10;
   const [queue, review, trash, signups, uploads] = await Promise.all([
     listReportQueue({ size }),
