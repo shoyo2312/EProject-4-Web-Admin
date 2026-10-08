@@ -69,6 +69,7 @@ export const NAV_GROUPS: NavGroup[] = [
 export const ROUTE_TITLES: Record<string, { section: string; page: string }> = {
   "/dashboard": { section: "Dashboard", page: "Overview" },
   "/analytics": { section: "Dashboard", page: "Analytics" },
+  "/notifications": { section: "Dashboard", page: "Notifications" },
   "/moderation/reports": { section: "Moderation", page: "Reports Queue" },
   "/moderation/review": { section: "Moderation", page: "Video Review" },
   "/moderation/actions": { section: "Moderation", page: "Audit Log" },

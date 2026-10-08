@@ -127,3 +127,36 @@ export function countUnread(items: AdminNotification[], seenAt: number): number 
 export function newestAt(items: AdminNotification[]): number {
   return items.reduce((max, item) => Math.max(max, Date.parse(item.at)), 0);
 }
+
+/** How many items of each kind, for the notification centre's filter. Absent kinds are absent. */
+export function countByKind(
+  items: AdminNotification[],
+): Partial<Record<NotificationKind, number>> {
+  const counts: Partial<Record<NotificationKind, number>> = {};
+  for (const item of items) counts[item.kind] = (counts[item.kind] ?? 0) + 1;
+  return counts;
+}
+
+/**
+ * The feed by calendar day, newest day first. UTC days, like every date the console shows, so a
+ * heading and the dates under it agree.
+ */
+export function groupByDay(
+  items: AdminNotification[],
+): { day: string; items: AdminNotification[] }[] {
+  const days: { day: string; items: AdminNotification[] }[] = [];
+  for (const item of [...items].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))) {
+    const day = new Date(Date.parse(item.at)).toISOString().slice(0, 10);
+    const last = days[days.length - 1];
+    if (last?.day === day) last.items.push(item);
+    else days.push({ day, items: [item] });
+  }
+  return days;
+}
+
+/** "Today" and "Yesterday" for the two latest days; null for an older one, which gets its date. */
+export function dayHeading(day: string, now: number): string | null {
+  if (day === new Date(now).toISOString().slice(0, 10)) return "Today";
+  if (day === new Date(now - DAY_MS).toISOString().slice(0, 10)) return "Yesterday";
+  return null;
+}

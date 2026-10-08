@@ -773,10 +773,18 @@ const NOTIFICATIONS_TTL_MS = 30_000;
  * calls each time, two of them 50-row pages. Nothing in the feed is per-admin (unread is, and
  * that is a cookie), so one copy serves them all; the cost is a bell up to that long behind.
  */
-export const getNotifications = memoizeFor(NOTIFICATIONS_TTL_MS, loadNotifications);
+export const getNotifications = memoizeFor(NOTIFICATIONS_TTL_MS, () => loadNotifications(10, 20));
 
-async function loadNotifications(): Promise<AdminNotification[]> {
-  const size = 10;
+/**
+ * The notification centre's feed: the bell's sources read further — fifty of each rather than ten
+ * — and not cut to the bell's twenty. Cached apart from the bell's copy, which every page renders,
+ * so the bell stays the cheap one.
+ */
+export const getNotificationCenter = memoizeFor(NOTIFICATIONS_TTL_MS, () =>
+  loadNotifications(50, 200),
+);
+
+async function loadNotifications(size: number, limit: number): Promise<AdminNotification[]> {
   const [queue, review, trash, signups, uploads] = await Promise.all([
     listReportQueue({ size }),
     listVideos({ status: "PENDING_REVIEW", deleted: false, size }),
@@ -791,6 +799,7 @@ async function loadNotifications(): Promise<AdminNotification[]> {
     signups,
     uploads,
     now: referenceNow(),
+    limit,
   });
 }
 

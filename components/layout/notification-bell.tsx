@@ -2,24 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Bell, Flag, Trash2, Upload, UserPlus, Video, type LucideIcon } from "lucide-react";
-import { NOTIFICATIONS_SEEN_COOKIE } from "@/lib/api/config";
-import { relativeTime } from "@/lib/format";
-import {
-  countUnread,
-  newestAt,
-  type AdminNotification,
-  type NotificationKind,
-} from "@/lib/notifications";
+import { Bell } from "lucide-react";
+import { NotificationRow } from "@/components/notifications/notification-row";
+import { countUnread, newestAt, type AdminNotification } from "@/lib/notifications";
+import { rememberNotificationsSeen } from "@/lib/notifications-seen";
 import { cn } from "@/lib/utils";
-
-const ICONS: Record<NotificationKind, LucideIcon> = {
-  report: Flag,
-  review: Video,
-  trash: Trash2,
-  signup: UserPlus,
-  upload: Upload,
-};
 
 export function NotificationBell({
   items,
@@ -36,6 +23,8 @@ export function NotificationBell({
   // What was unread when the panel opened, so those rows stay marked while it is open.
   const [highlightAfter, setHighlightAfter] = useState(initialSeenAt);
   const ref = useRef<HTMLDivElement>(null);
+  // The notification centre marks the feed seen too, and its reload hands the newer cookie back in.
+  if (initialSeenAt > seenAt) setSeenAt(initialSeenAt);
   const unread = items ? countUnread(items, seenAt) : 0;
 
   useEffect(() => {
@@ -64,8 +53,7 @@ export function NotificationBell({
     const seen = Math.max(seenAt, newestAt(items ?? []));
     if (seen === seenAt) return;
     setSeenAt(seen);
-    // One year, path=/ so every route agrees. Read back by app/(admin)/layout.tsx.
-    document.cookie = `${NOTIFICATIONS_SEEN_COOKIE}=${seen}; path=/; max-age=31536000; samesite=lax`;
+    rememberNotificationsSeen(seen);
   }
 
   return (
@@ -110,42 +98,26 @@ export function NotificationBell({
             </p>
           ) : (
             <ul className="max-h-[420px] divide-y divide-line overflow-y-auto">
-              {items.map((item) => {
-                const Icon = ICONS[item.kind];
-                const fresh = Date.parse(item.at) > highlightAfter;
-                return (
-                  <li key={item.id}>
-                    <Link
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      className={cn(
-                        "flex gap-3 px-4 py-3 transition-colors hover:bg-surface-muted",
-                        fresh && "bg-pending-bg/40",
-                      )}
-                    >
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-line text-ink-soft">
-                        <Icon className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[12px] font-medium">{item.title}</span>
-                        <span className="block truncate text-[12px] text-ink-soft">
-                          {item.detail}
-                        </span>
-                        <span className="block text-[11px] text-ink-faint">
-                          {relativeTime(item.at, now)}
-                        </span>
-                      </span>
-                      {fresh ? (
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-pending">
-                          <span className="sr-only">Unread</span>
-                        </span>
-                      ) : null}
-                    </Link>
-                  </li>
-                );
-              })}
+              {items.map((item) => (
+                <li key={item.id}>
+                  <NotificationRow
+                    item={item}
+                    fresh={Date.parse(item.at) > highlightAfter}
+                    now={now}
+                    onOpen={() => setOpen(false)}
+                  />
+                </li>
+              ))}
             </ul>
           )}
+
+          <Link
+            href="/notifications"
+            onClick={() => setOpen(false)}
+            className="block border-t border-line px-4 py-2.5 text-center text-[11px] text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
+          >
+            See all notifications
+          </Link>
         </div>
       ) : null}
     </div>

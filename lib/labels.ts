@@ -4,6 +4,7 @@ import type {
   UserStatus,
   VideoStatus,
 } from "@/lib/api/types";
+import type { NotificationKind } from "@/lib/notifications";
 
 /**
  * What each state is called on screen. The enum names are the API's vocabulary — TAKEN_DOWN,
@@ -47,4 +48,13 @@ export const ACTION_LABELS: Record<ModerationActionType, string> = {
   PURGE_VIDEO: "Deleted video permanently",
   REMOVE_COMMENT: "Removed comment",
   DISMISS_REPORT: "Dismissed report",
+};
+
+/** The notification centre's filter, one name per kind of thing the feed is built from. */
+export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
+  report: "Reports",
+  review: "Held videos",
+  trash: "Trash",
+  signup: "Sign-ups",
+  upload: "Uploads",
 };
