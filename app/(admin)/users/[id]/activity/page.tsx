@@ -5,14 +5,11 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Pager } from "@/components/ui/pager";
 import { ActivityTimeline } from "@/components/users/activity-timeline";
-import {
-  LIST_PAGE_SIZE,
-  getAdminUser,
-  listReports,
-  listSecurityEvents,
-  listTargetActions,
-  listVideos,
-} from "@/lib/api/admin";
+import { listTargetActions } from "@/lib/api/moderation";
+import { listReports } from "@/lib/api/reports";
+import { LIST_PAGE_SIZE } from "@/lib/api/shared";
+import { getAdminUser, listSecurityEvents } from "@/lib/api/users";
+import { listVideos } from "@/lib/api/videos";
 import { parsePage } from "@/lib/api/window";
 import {
   ACTIVITY_CATEGORIES,

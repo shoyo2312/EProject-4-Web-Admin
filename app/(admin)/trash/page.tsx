@@ -2,13 +2,10 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { TrashTable } from "@/components/videos/trash-table";
 import { Pager } from "@/components/ui/pager";
-import {
-  LIST_PAGE_SIZE,
-  getUserProfiles,
-  listVideos,
-  referenceNow,
-  resolveOwners,
-} from "@/lib/api/admin";
+import { getUserProfiles } from "@/lib/api/names";
+import { LIST_PAGE_SIZE, referenceNow } from "@/lib/api/shared";
+import { resolveOwners } from "@/lib/api/users";
+import { listVideos } from "@/lib/api/videos";
 import { parsePage } from "@/lib/api/window";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 

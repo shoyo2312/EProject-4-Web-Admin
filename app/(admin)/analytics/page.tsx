@@ -12,11 +12,10 @@ import {
   getDailySignups,
   getDailyVideoStats,
   getEngagementOverview,
-  getHandles,
   getTopVideos,
-  getVideoSummaries,
-  referenceNow,
-} from "@/lib/api/admin";
+} from "@/lib/api/analytics";
+import { getHandles, getVideoSummaries } from "@/lib/api/names";
+import { referenceNow } from "@/lib/api/shared";
 import { engagementByDay, toEngagementMix } from "@/lib/api/rollup";
 import {
   BUCKET_UNIT,

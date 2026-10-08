@@ -4,15 +4,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ReportQueueTable } from "@/components/moderation/report-queue-table";
 import { ReportsTable } from "@/components/moderation/reports-table";
 import { Pager } from "@/components/ui/pager";
-import {
-  LIST_PAGE_SIZE,
-  getDailyAdminStats,
-  getRowNames,
-  getStatsSummary,
-  listReportQueue,
-  listReports,
-  referenceNow,
-} from "@/lib/api/admin";
+import { getDailyAdminStats, getStatsSummary } from "@/lib/api/analytics";
+import { getRowNames } from "@/lib/api/names";
+import { listReportQueue, listReports } from "@/lib/api/reports";
+import { LIST_PAGE_SIZE, referenceNow } from "@/lib/api/shared";
 import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, growthPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";

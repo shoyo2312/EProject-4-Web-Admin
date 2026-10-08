@@ -1,13 +1,9 @@
 "use server";
 
-import {
-  getAdminUser,
-  getHandles,
-  getReport,
-  getVideo,
-  listUsers,
-  listVideos,
-} from "@/lib/api/admin";
+import { getHandles } from "@/lib/api/names";
+import { getReport } from "@/lib/api/reports";
+import { getAdminUser, listUsers } from "@/lib/api/users";
+import { getVideo, listVideos } from "@/lib/api/videos";
 import { exportRows } from "@/lib/api/export";
 import type { AdminUserResponse, AdminVideoResponse, ReportResponse } from "@/lib/api/types";
 import {

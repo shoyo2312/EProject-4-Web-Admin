@@ -9,14 +9,11 @@ import {
   type ListParams,
 } from "@/lib/list-filters";
 import { collectPages, type Collected } from "@/lib/paging";
-import {
-  listModerationActions,
-  listReports,
-  listUsers,
-  listVideos,
-  referenceNow,
-  resolveOwners,
-} from "./admin";
+import { listModerationActions } from "./moderation";
+import { listReports } from "./reports";
+import { referenceNow } from "./shared";
+import { listUsers, resolveOwners } from "./users";
+import { listVideos } from "./videos";
 import type { Page } from "./types";
 import { isoDay, resolveWindow, windowRange } from "./window";
 

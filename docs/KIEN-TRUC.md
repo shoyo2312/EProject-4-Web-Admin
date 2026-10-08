@@ -57,7 +57,11 @@ proxy.ts                 → gác cổng auth, refresh token, redirect /login (N
 
 lib/
   api/                   → toàn bộ logic gọi API + kiểu dữ liệu (types.ts)
-    admin.ts             → các hàm nghiệp vụ: listUsers, listVideos, moderateUser, ...
+    users.ts, videos.ts, comments.ts, reports.ts, moderation.ts, analytics.ts
+                          → các hàm nghiệp vụ theo domain: listUsers, listVideos, moderateUser, ...
+    names.ts             → tra handle/tiêu đề cho các id mà danh sách mang theo
+    notifications.ts     → nguồn dữ liệu cho chuông thông báo
+    shared.ts            → LIST_PAGE_SIZE, mockPage, referenceNow — dùng chung cho các domain
     client.ts            → wrapper fetch (apiGet/apiPost) tới gateway
     config.ts             → cờ USE_MOCK, tên cookie, GATEWAY_URL
     rollup.ts             → biến đổi dữ liệu thô thành dữ liệu cho biểu đồ
@@ -74,15 +78,15 @@ components/
                           → component gắn với từng domain nghiệp vụ
 ```
 
-**Quy tắc chọn nơi đặt code:** logic gọi API luôn nằm trong `lib/api/admin.ts`, không gọi
-`fetch` trực tiếp trong component. Hằng số nghiệp vụ dùng ở nhiều nơi (ví dụ preset lý do ban)
+**Quy tắc chọn nơi đặt code:** logic gọi API luôn nằm trong file domain tương ứng ở `lib/api/`
+(`users.ts`, `videos.ts`...), không gọi `fetch` trực tiếp trong component. Hằng số nghiệp vụ dùng ở nhiều nơi (ví dụ preset lý do ban)
 nằm trong `lib/moderation.ts`, không lặp lại trong từng component.
 
 ## 4. Luồng dữ liệu của một trang (ví dụ: `/users`)
 
 1. **`app/(admin)/users/page.tsx`** là **Server Component** (mặc định trong App Router, không
    có `"use client"`). Nó đọc query string (`?q=...&status=...&page=...`) từ `searchParams`.
-2. Nó gọi `listUsers({ q, status, page })` trong `lib/api/admin.ts`.
+2. Nó gọi `listUsers({ q, status, page })` trong `lib/api/users.ts`.
 3. Hàm đó kiểm tra `USE_MOCK`:
    - Nếu `true` → lọc/phân trang trực tiếp trên mảng `mockUsers` trong bộ nhớ.
    - Nếu `false` → gọi `apiGet()` tới gateway (`/api/v1/auth/admin/users?...`).
@@ -148,7 +152,7 @@ notification-service gửi tới tài khoản, chủ video hoặc tác giả com
 ## 7. Mock mode hoạt động thế nào
 
 `lib/api/config.ts` export `USE_MOCK = process.env.ADMIN_USE_MOCK !== "false"` — **mặc định là
-`true`**. Mọi hàm nghiệp vụ trong `lib/api/admin.ts` đều có dạng:
+`true`**. Mọi hàm nghiệp vụ trong các file domain ở `lib/api/` đều có dạng:
 
 ```ts
 export async function listVideos(options) {
@@ -208,7 +212,7 @@ chỉ cần sửa ở đây và TypeScript sẽ báo lỗi mọi chỗ dùng sai
 1. Thêm route trong `app/(admin)/<ten-trang>/page.tsx`.
 2. Thêm mục menu vào `NAV_GROUPS` trong `components/layout/nav-config.ts`, và breadcrumb vào
    `ROUTE_TITLES` cùng file.
-3. Nếu cần gọi API mới: thêm type vào `lib/api/types.ts`, thêm hàm vào `lib/api/admin.ts` theo
+3. Nếu cần gọi API mới: thêm type vào `lib/api/types.ts`, thêm hàm vào file domain ở `lib/api/` theo
    đúng pattern `if (USE_MOCK) {...} else { apiGet/apiPost(...) }`, thêm data giả tương ứng vào
    `lib/mock/`.
 4. Ưu tiên tái sử dụng component trong `components/ui/` trước khi viết mới.

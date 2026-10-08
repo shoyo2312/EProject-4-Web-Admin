@@ -5,13 +5,10 @@ import { KpiCards, type KpiCard } from "@/components/dashboard/kpi-cards";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
-import {
-  getDailyAdminStats,
-  getVideo,
-  listComments,
-  listVideos,
-  referenceNow,
-} from "@/lib/api/admin";
+import { getDailyAdminStats } from "@/lib/api/analytics";
+import { listComments } from "@/lib/api/comments";
+import { referenceNow } from "@/lib/api/shared";
+import { getVideo, listVideos } from "@/lib/api/videos";
 import { historyUpTo, isoDay, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";

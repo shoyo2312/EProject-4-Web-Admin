@@ -3,13 +3,9 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { UsersTable } from "@/components/users/users-table";
 import { Pager } from "@/components/ui/pager";
-import {
-  LIST_PAGE_SIZE,
-  getDailyAdminStats,
-  getDailySignups,
-  listUsers,
-  referenceNow,
-} from "@/lib/api/admin";
+import { getDailyAdminStats, getDailySignups } from "@/lib/api/analytics";
+import { LIST_PAGE_SIZE, referenceNow } from "@/lib/api/shared";
+import { listUsers } from "@/lib/api/users";
 import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, growthPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";

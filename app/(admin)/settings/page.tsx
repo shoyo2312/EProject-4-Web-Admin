@@ -2,7 +2,7 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
-import { getModerationSettings } from "@/lib/api/admin";
+import { getModerationSettings } from "@/lib/api/moderation";
 import type { ModerationSettingsResponse } from "@/lib/api/types";
 
 /**

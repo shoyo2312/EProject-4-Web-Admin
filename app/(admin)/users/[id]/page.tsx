@@ -9,15 +9,11 @@ import { UserUploads } from "@/components/users/user-uploads";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
 import { UserStatusBadge } from "@/components/ui/status-badge";
-import {
-  getAdminHandles,
-  getAdminUser,
-  getReportCount,
-  getStrikeCount,
-  getUserProfiles,
-  listTargetActions,
-  listVideos,
-} from "@/lib/api/admin";
+import { getStrikeCount, listTargetActions } from "@/lib/api/moderation";
+import { getAdminHandles, getUserProfiles } from "@/lib/api/names";
+import { getReportCount } from "@/lib/api/reports";
+import { getAdminUser } from "@/lib/api/users";
+import { listVideos } from "@/lib/api/videos";
 import { formatCount, formatDateTime } from "@/lib/format";
 import type {
   AdminUserResponse,

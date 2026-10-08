@@ -1,16 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  getAdminHandles,
-  getReportCount,
-  getUserProfiles,
-  getVideo,
-  getComments,
-  listTargetActions,
-  resolveQueueRow,
-  resolveReport,
-} from "@/lib/api/admin";
+import { getComments } from "@/lib/api/comments";
+import { listTargetActions } from "@/lib/api/moderation";
+import { getAdminHandles, getUserProfiles } from "@/lib/api/names";
+import { getReportCount, resolveQueueRow, resolveReport } from "@/lib/api/reports";
+import { getVideo } from "@/lib/api/videos";
 import { formatCompact, plural } from "@/lib/format";
 import { targetHref } from "@/lib/moderation";
 import type {

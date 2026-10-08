@@ -1,12 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  getAdminHandles,
-  getReportCount,
-  listTargetActions,
-  moderateUser,
-} from "@/lib/api/admin";
+import { listTargetActions } from "@/lib/api/moderation";
+import { getAdminHandles } from "@/lib/api/names";
+import { getReportCount } from "@/lib/api/reports";
+import { moderateUser } from "@/lib/api/users";
 import type { ModerationActionResponse } from "@/lib/api/types";
 
 export interface ModerationResult {

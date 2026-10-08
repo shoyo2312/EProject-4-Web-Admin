@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { NotificationCenter } from "@/components/notifications/notification-center";
-import { getNotificationCenter, referenceNow } from "@/lib/api/admin";
+import { getNotificationCenter } from "@/lib/api/notifications";
+import { referenceNow } from "@/lib/api/shared";
 import { NOTIFICATIONS_SEEN_COOKIE } from "@/lib/api/config";
 import type { AdminNotification } from "@/lib/notifications";
 

@@ -1,7 +1,9 @@
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReviewQueue } from "@/components/moderation/review-queue";
-import { getHandles, getModerationSettings, listVideos } from "@/lib/api/admin";
+import { getModerationSettings } from "@/lib/api/moderation";
+import { getHandles } from "@/lib/api/names";
+import { listVideos } from "@/lib/api/videos";
 import { formatNumber, plural } from "@/lib/format";
 import { reviewLines } from "@/lib/review";
 

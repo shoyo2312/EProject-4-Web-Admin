@@ -1,15 +1,10 @@
 "use server";
 
-import {
-  getAdminHandles,
-  getAdminUser,
-  getReportCount,
-  getStrikeCount,
-  getUserProfiles,
-  getVideo,
-  listTargetActions,
-  listVideos,
-} from "@/lib/api/admin";
+import { getStrikeCount, listTargetActions } from "@/lib/api/moderation";
+import { getAdminHandles, getUserProfiles } from "@/lib/api/names";
+import { getReportCount } from "@/lib/api/reports";
+import { getAdminUser } from "@/lib/api/users";
+import { getVideo, listVideos } from "@/lib/api/videos";
 import type {
   AdminVideoResponse,
   ModerationActionResponse,

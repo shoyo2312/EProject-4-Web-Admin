@@ -1,13 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  getComments,
-  getUserProfiles,
-  listCommentReplies,
-  listComments,
-  removeComment,
-} from "@/lib/api/admin";
+import { getComments, listCommentReplies, listComments, removeComment } from "@/lib/api/comments";
+import { getUserProfiles } from "@/lib/api/names";
 import type { AdminCommentFilter, AdminCommentPage } from "@/lib/api/types";
 import type { CommentPageView } from "@/lib/comments";
 

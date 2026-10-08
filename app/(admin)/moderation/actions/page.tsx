@@ -3,13 +3,10 @@ import { KpiCards, type KpiCard } from "@/components/dashboard/kpi-cards";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Pager } from "@/components/ui/pager";
-import {
-  LIST_PAGE_SIZE,
-  getDailyAdminStats,
-  getRowNames,
-  listModerationActions,
-  referenceNow,
-} from "@/lib/api/admin";
+import { getDailyAdminStats } from "@/lib/api/analytics";
+import { listModerationActions } from "@/lib/api/moderation";
+import { getRowNames } from "@/lib/api/names";
+import { LIST_PAGE_SIZE, referenceNow } from "@/lib/api/shared";
 import { historyUpTo, isoDay, parsePage, resolveWindow, windowRange } from "@/lib/api/window";
 import { auditFilters } from "@/lib/list-filters";
 import { deltaPercent, spark, sumLast } from "@/lib/series";

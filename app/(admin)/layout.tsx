@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { LiveRefresh } from "@/components/layout/live-refresh";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
-import { getNotifications, referenceNow } from "@/lib/api/admin";
+import { getNotifications } from "@/lib/api/notifications";
+import { referenceNow } from "@/lib/api/shared";
 import { NOTIFICATIONS_SEEN_COOKIE, SIDEBAR_COOKIE, USE_MOCK } from "@/lib/api/config";
 import { getSessionProfile } from "@/lib/api/session";
 

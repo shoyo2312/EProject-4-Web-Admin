@@ -7,11 +7,11 @@ import {
   getDailyAdminStats,
   getDailySignups,
   getEngagementSeries,
-  getRowNames,
   getStatsSummary,
-  listReports,
-  referenceNow,
-} from "@/lib/api/admin";
+} from "@/lib/api/analytics";
+import { getRowNames } from "@/lib/api/names";
+import { listReports } from "@/lib/api/reports";
+import { referenceNow } from "@/lib/api/shared";
 import {
   bucketByGranularity,
   historyUpTo,

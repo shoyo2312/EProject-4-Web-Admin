@@ -6,15 +6,12 @@ import { EnforcePanel } from "@/components/moderation/enforce-panel";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
-import {
-  getAdminHandles,
-  getReportCount,
-  getUserProfiles,
-  getVideo,
-  getVideoEngagement,
-  listTargetActions,
-  referenceNow,
-} from "@/lib/api/admin";
+import { getVideoEngagement } from "@/lib/api/analytics";
+import { listTargetActions } from "@/lib/api/moderation";
+import { getAdminHandles, getUserProfiles } from "@/lib/api/names";
+import { getReportCount } from "@/lib/api/reports";
+import { referenceNow } from "@/lib/api/shared";
+import { getVideo } from "@/lib/api/videos";
 import { MODERATION_VERDICT_LABELS, VIDEO_STATUS_LABELS } from "@/lib/labels";
 import { playable, videoDecisions } from "@/lib/moderation";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
