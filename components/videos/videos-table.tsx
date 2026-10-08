@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, EyeOff, Play, RotateCcw, X, type LucideIcon } from "lucide-react";
+import { CheckCircle2, EyeOff, Play, RotateCcw, type LucideIcon } from "lucide-react";
 import {
   moderateVideoAction,
   videoModerationDetailAction,
@@ -16,10 +15,12 @@ import { VideoStatusBadge } from "@/components/ui/status-badge";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { Tooltip } from "@/components/ui/tooltip";
 import { VideoThumb } from "@/components/videos/video-thumb";
+import { WatchOverlay } from "@/components/videos/videos-table/watch-overlay";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
 import { PRESET_REASONS, playable, videoDecision, type VideoDecision } from "@/lib/moderation";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
+import { describeModeration } from "@/lib/review";
 import type {
   AdminVideoResponse,
   UserProfileResponse,
@@ -65,46 +66,6 @@ const STATUS_FILTERS = [
   // filters on deletedAt instead. The page translates it to listVideos({ deleted: true }).
   { value: "DELETED" as const, label: "Deleted" },
 ];
-
-/**
- * What the classifier said, phrased for the reason column.
- *
- * <p>A video the classifier removed or held carries no takedownReason — that field is only written
- * by an admin acting by hand — so without this the machine's calls are exactly the rows that show
- * no explanation.
- *
- * <p>An APPROVED verdict returns null: it is the outcome of every video on the platform and saying
- * so in a column meant for problems buries the rows that are one.
- *
- * <p>The score is printed raw rather than as a percentage because the thresholds it gets compared
- * against are configured on the same 0–1 scale, and a reviewer deciding whether to move one should
- * not have to convert.
- */
-function describeModeration(
-  video: AdminVideoResponse,
-): { label: string; detail: string } | null {
-  const moderation = video.moderation;
-  if (!moderation || moderation.verdict === "APPROVED") return null;
-
-  // The check itself did not complete, so there are no scores to show — only why not.
-  if (moderation.reason) {
-    return { label: "Check did not complete", detail: moderation.reason };
-  }
-
-  const score = moderation.maxScore.toFixed(3);
-  const frames = `${moderation.suspiciousFrames}/${moderation.totalFrames}`;
-  const verb = moderation.verdict === "REJECTED" ? "Auto-removed" : "Flagged";
-  return {
-    label: `${verb}: ${moderation.label ?? "unknown"} ${score} · ${frames} frames`,
-    detail: [
-      `${verb} by the classifier, not by an admin.`,
-      `Highest frame score: ${score} (${moderation.label ?? "unknown"})`,
-      `Frames over the review threshold: ${frames}`,
-      `Model: ${moderation.model ?? "unknown"} (${moderation.modelVersion ?? "unversioned"})`,
-      `Checked: ${moderation.checkedAt}`,
-    ].join("\n"),
-  };
-}
 
 export function VideosTable({
   videos,
@@ -212,7 +173,7 @@ function VideoRow({
     video.status,
     "Still the old status — video-service has not consumed the event yet. The action is recorded; reload in a moment.",
   );
-  const machineReason = describeModeration(video);
+  const machineReason = describeModeration(video.moderation);
 
   const action = videoDecision(video.status);
   const decision = DECISIONS[action];
@@ -486,65 +447,5 @@ function VideoRow({
         <WatchOverlay video={video} onClose={() => setWatching(false)} />
       ) : null}
     </>
-  );
-}
-
-/**
- * Fills the viewport with the video. Rendered through a portal because a table row is
- * not a place to put a fixed overlay, and closed on Escape or a backdrop click so a
- * reviewer never has to reach for the mouse to get back to the worklist.
- */
-function WatchOverlay({
-  video,
-  onClose,
-}: {
-  video: AdminVideoResponse;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  if (typeof document === "undefined") return null;
-
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Preview of ${video.title}`}
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-3xl"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute -top-9 right-0 inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-black/40 px-2 py-1 text-[11px] text-white transition-colors hover:bg-black/60"
-        >
-          <X className="h-3.5 w-3.5" />
-          Close
-        </button>
-        <video
-          key={video.id}
-          src={video.hlsUrl ?? undefined}
-          poster={video.thumbnailUrl ?? undefined}
-          controls
-          autoPlay
-          className="max-h-[80vh] w-full rounded-lg bg-black"
-        />
-        <p className="mt-2 truncate text-[11px] text-white/70" title={video.title}>
-          {video.title}
-        </p>
-      </div>
-    </div>,
-    document.body,
   );
 }

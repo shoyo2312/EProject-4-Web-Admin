@@ -83,6 +83,43 @@ export function unscoredBecause(moderation: ModerationSummary): string | null {
 }
 
 /**
+ * What the classifier said, phrased for the videos table's reason column: a short label, and the
+ * whole of it for the tooltip.
+ *
+ * A video the classifier removed or held carries no takedownReason — that field is only written by
+ * an admin acting by hand — so without this the machine's calls are exactly the rows that show no
+ * explanation. An APPROVED verdict is null: it is the outcome of every video on the platform, and
+ * saying so in a column meant for problems buries the rows that are one.
+ *
+ * A check that scored no frame says so in the words the video's own page uses. The score is
+ * printed raw rather than as a percentage, because the thresholds it is compared against are on the
+ * same 0–1 scale and whoever is deciding whether to move one should not have to convert.
+ */
+export function describeModeration(
+  moderation: ModerationSummary | null,
+): { label: string; detail: string } | null {
+  if (!moderation || moderation.verdict === "APPROVED") return null;
+
+  const unscored = unscoredBecause(moderation);
+  if (unscored) return { label: "Not scored", detail: unscored };
+  if (moderation.reason) return { label: "Check did not complete", detail: moderation.reason };
+
+  const score = moderation.maxScore.toFixed(3);
+  const frames = `${moderation.suspiciousFrames}/${moderation.totalFrames}`;
+  const verb = moderation.verdict === "REJECTED" ? "Auto-removed" : "Flagged";
+  return {
+    label: `${verb}: ${moderation.label ?? "unknown"} ${score} · ${frames} frames`,
+    detail: [
+      `${verb} by the classifier, not by an admin.`,
+      `Highest frame score: ${score} (${moderation.label ?? "unknown"})`,
+      `Frames over the review threshold: ${frames}`,
+      `Model: ${moderation.model ?? "unknown"} (${moderation.modelVersion ?? "unversioned"})`,
+      `Checked: ${moderation.checkedAt}`,
+    ].join("\n"),
+  };
+}
+
+/**
  * Where to go once a video is decided: the next one not yet decided after it, then the first one
  * skipped before it, and -1 when every video in the batch has an answer. `from` may be -1, to
  * start from the top.
