@@ -128,7 +128,10 @@ function PaletteDialog({
 }) {
   const listId = useId();
   const [query, setQuery] = useState("");
-  const [answer, setAnswer] = useState<{ term: string; results: SearchResults } | null>(null);
+  /** Results for a term; null results when the search itself failed. */
+  const [answer, setAnswer] = useState<{ term: string; results: SearchResults | null } | null>(
+    null,
+  );
   const [searching, startSearch] = useTransition();
   const [active, setActive] = useState(0);
   const typed = useRef("");
@@ -139,7 +142,9 @@ function PaletteDialog({
     if (term.length < 2) return;
     const timer = setTimeout(() => {
       startSearch(async () => {
-        const results = await searchConsoleAction(term);
+        // Caught here: the palette lives in the layout, above every page's error boundary, so a
+        // search that failed would otherwise take the whole console down with it.
+        const results = await searchConsoleAction(term).catch(() => null);
         // Answers come back in order, but the box may say something else by now.
         if (typed.current === term) setAnswer({ term, results });
       });
@@ -161,17 +166,18 @@ function PaletteDialog({
         icon: page.icon,
         thumbnailUrl: null,
       })),
-    ...(found?.results.users ?? []).map((hit) => fromHit("Accounts", hit, UserRound)),
-    ...(found?.results.videos ?? []).map((hit) => fromHit("Videos", hit, null)),
-    ...(found?.results.reports ?? []).map((hit) => fromHit("Reports", hit, Flag)),
+    ...(found?.results?.users ?? []).map((hit) => fromHit("Accounts", hit, UserRound)),
+    ...(found?.results?.videos ?? []).map((hit) => fromHit("Videos", hit, null)),
+    ...(found?.results?.reports ?? []).map((hit) => fromHit("Reports", hit, Flag)),
   ];
   const activeIndex = options.length === 0 ? -1 : Math.min(active, options.length - 1);
   // Last term's results stay up, dimmed, until this term's arrive — rather than flashing empty.
   const stale = found !== null && found.term !== term;
+  const settled = found !== null && !stale && !searching;
+  const failed = settled && found.results === null;
   const nothingFound =
-    found !== null &&
-    !stale &&
-    !searching &&
+    settled &&
+    found.results !== null &&
     found.results.users.length + found.results.videos.length + found.results.reports.length === 0;
 
   const optionId = (index: number) => `${listId}-${index}`;
@@ -290,6 +296,10 @@ function PaletteDialog({
             <p className="px-4 pt-2 pb-2.5 text-[11px] text-ink-faint">
               Type at least two characters to search accounts and videos, or paste a full user,
               video or report id.
+            </p>
+          ) : failed ? (
+            <p className="px-4 pt-2 pb-2.5 text-[11px] text-ink-faint">
+              Couldn&apos;t search — the console server did not answer. Change the text to try again.
             </p>
           ) : nothingFound ? (
             <p className="px-4 pt-2 pb-2.5 text-[11px] text-ink-faint">

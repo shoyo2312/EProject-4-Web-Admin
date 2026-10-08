@@ -50,7 +50,10 @@ export function ExportCsvButton({ name, rows, columns, all }: CsvExport) {
       return;
     }
     startExport(async () => {
-      const result = await exportCsvAction(all.dataset, all.params);
+      const result = await exportCsvAction(all.dataset, all.params).catch(() => ({
+        ok: false as const,
+        message: "The console server did not answer.",
+      }));
       if (result.ok) {
         save(result.csv, result.filename);
         settle({ ok: true });
