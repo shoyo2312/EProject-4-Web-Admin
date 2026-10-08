@@ -21,6 +21,9 @@ export const TRUST_PROXY = process.env.ADMIN_TRUST_PROXY === "true";
 export const SESSION_COOKIE = "admin_session";
 export const REFRESH_COOKIE = "admin_refresh";
 
+/** Who is signed in — name, role and initials for the sidebar — set beside the tokens at sign-in. */
+export const PROFILE_COOKIE = "admin_profile";
+
 /**
  * A "remember this device" token from a past OTP-verified login. Sent back on the next login so
  * auth-service skips the email-OTP step; httpOnly, 30-day lifetime, survives logout (the password

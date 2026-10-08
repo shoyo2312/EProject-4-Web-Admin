@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { DEVICE_COOKIE, REFRESH_COOKIE, SESSION_COOKIE, USE_MOCK } from "./config";
+import { DEVICE_COOKIE, PROFILE_COOKIE, REFRESH_COOKIE, SESSION_COOKIE, USE_MOCK } from "./config";
 import { CURRENT_ADMIN } from "@/lib/mock/session";
 
 export interface AdminSession {
@@ -77,6 +77,7 @@ export async function clearSessionCookies() {
   const jar = await cookies();
   jar.delete(SESSION_COOKIE);
   jar.delete(REFRESH_COOKIE);
+  jar.delete(PROFILE_COOKIE);
 }
 
 export async function getRefreshToken() {
@@ -103,11 +104,9 @@ export async function setDeviceToken(deviceToken: string) {
   });
 }
 
-const SESSION_PROFILE_COOKIE = "admin_profile";
-
 export async function setSessionProfile(session: AdminSession) {
   const jar = await cookies();
-  jar.set(SESSION_PROFILE_COOKIE, JSON.stringify(session), {
+  jar.set(PROFILE_COOKIE, JSON.stringify(session), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -127,7 +126,7 @@ export async function getSessionProfile(): Promise<AdminSession> {
     };
   }
 
-  const raw = (await cookies()).get(SESSION_PROFILE_COOKIE)?.value;
+  const raw = (await cookies()).get(PROFILE_COOKIE)?.value;
   if (!raw) {
     return { userId: "", username: "Unknown", role: "ADMIN", initials: "?" };
   }
