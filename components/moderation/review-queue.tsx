@@ -104,6 +104,11 @@ export function ReviewQueue({
   const gone = context !== null && context.video === null;
   const settled = fresh !== null && (fresh.status !== "PENDING_REVIEW" || fresh.deletedAt !== null);
   const canDecide = listed !== null && !answered && !gone && !settled;
+  // Shown when there is something to say, and when part of it could not be read — hiding the card
+  // then would read as a video nobody has decided on or reported.
+  const showEarlier =
+    context !== null
+    && (context.history === null || context.history.length > 0 || context.reportCount !== 0);
 
   useEffect(() => {
     if (!listed || contexts[listed.id] !== undefined) return;
@@ -352,7 +357,7 @@ export function ReviewQueue({
               onRetry={() => retry(listed.id)}
             />
 
-            {context && (context.history.length > 0 || (context.reportCount ?? 0) > 0) ? (
+            {context && showEarlier ? (
               <Card>
                 <CardHeader title="Earlier on this video" />
                 <div className="px-5 py-4">

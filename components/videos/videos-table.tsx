@@ -8,7 +8,6 @@ import { CheckCircle2, EyeOff, Play, RotateCcw, X, type LucideIcon } from "lucid
 import {
   moderateVideoAction,
   videoModerationDetailAction,
-  type ModerationDetail,
 } from "@/app/(admin)/videos/actions";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
@@ -38,6 +37,7 @@ import {
 } from "@/lib/format";
 import { hrefWith } from "@/lib/url";
 import { usePropagation } from "@/lib/use-propagation";
+import { useRowDetail } from "@/lib/use-row-detail";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = VideoStatus | "ALL" | "DELETED";
@@ -204,23 +204,10 @@ function VideoRow({
 }) {
   const [reason, setReason] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
-  const [detail, setDetail] = useState(false);
-  const [modHistory, setModHistory] = useState<ModerationDetail | null>(null);
-  const [modLoading, setModLoading] = useState(false);
   const [watching, setWatching] = useState(false);
   const [submitting, startSubmit] = useTransition();
-
   // Opening the row is what triggers the fetch — once, lazily. See videoModerationDetailAction.
-  function toggleDetail() {
-    const opening = !detail;
-    setDetail(opening);
-    if (opening && !modHistory && !modLoading) {
-      setModLoading(true);
-      videoModerationDetailAction(video.id)
-        .then(setModHistory)
-        .finally(() => setModLoading(false));
-    }
-  }
+  const detail = useRowDetail(() => videoModerationDetailAction(video.id));
   const { pending, stalled, watch } = usePropagation(
     video.status,
     "Still the old status — video-service has not consumed the event yet. The action is recorded; reload in a moment.",
@@ -246,7 +233,7 @@ function VideoRow({
   return (
     <>
       <tr
-        {...expandableRowProps(toggleDetail, detail)}
+        {...expandableRowProps(detail.toggle, detail.open)}
         className={cn(
           "border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted",
           "cursor-pointer",
@@ -374,7 +361,7 @@ function VideoRow({
         </td>
       </tr>
 
-      {detail ? (
+      {detail.open ? (
         <RowDetail colSpan={9}>
           <Field label="Owner">
             {owner?.username ? `@${owner.username}` : `#${shortId(video.userId.slice(-8), 8)}`}
@@ -452,10 +439,11 @@ function VideoRow({
           ) : null}
           <Field label="Moderation history" wide>
             <ModerationHistory
-              reportCount={modHistory?.reportCount ?? null}
-              actions={modHistory?.actions ?? null}
-              handles={modHistory?.handles}
-              loading={modLoading}
+              reportCount={detail.data?.reportCount ?? null}
+              actions={detail.data?.actions ?? null}
+              handles={detail.data?.handles}
+              loading={detail.loading}
+              onRetry={detail.retry}
             />
           </Field>
           <Field label="" wide>

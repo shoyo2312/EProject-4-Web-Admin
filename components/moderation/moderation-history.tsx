@@ -6,31 +6,60 @@ import { ACTION_LABELS } from "@/lib/labels";
  * The moderation trail for one user or video, shown inside an expanded table row: how many
  * reports stand against the target, then every recorded action newest-first. Purely presentational
  * — the parent row owns the fetch (a server action) and passes the result in.
+ *
+ * Null is "could not be read" and says so. Shown as zero reports and no actions, it read as a
+ * clean record exactly when nothing had been checked.
  */
 export function ModerationHistory({
   reportCount,
   actions,
   handles = {},
   loading,
+  onRetry,
 }: {
   reportCount: number | null;
   actions: ModerationActionResponse[] | null;
   /** adminId → @handle. An admin missing from it is shown by the tail of their id. */
   handles?: Record<string, string>;
   loading: boolean;
+  /** Offered when neither half could be read. */
+  onRetry?: () => void;
 }) {
   if (loading) {
     return <p className="text-[11px] text-ink-faint">Loading moderation history…</p>;
   }
 
+  if (reportCount === null && actions === null) {
+    return (
+      <p className="text-[11px] text-ink-faint">
+        Couldn&apos;t load the moderation history.{" "}
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="underline underline-offset-4 hover:text-ink"
+          >
+            Try again
+          </button>
+        ) : null}
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-2">
-      <p className="text-[11px] text-ink-soft">
-        <span className="font-medium">{reportCount ?? 0}</span> report
-        {reportCount === 1 ? "" : "s"} filed against this target
-      </p>
+      {reportCount === null ? (
+        <p className="text-[11px] text-ink-faint">Couldn&apos;t count the reports against this target.</p>
+      ) : (
+        <p className="text-[11px] text-ink-soft">
+          <span className="font-medium">{reportCount}</span> report
+          {reportCount === 1 ? "" : "s"} filed against this target
+        </p>
+      )}
 
-      {actions && actions.length > 0 ? (
+      {actions === null ? (
+        <p className="text-[11px] text-ink-faint">Couldn&apos;t load the actions taken on it.</p>
+      ) : actions.length > 0 ? (
         <ul className="space-y-1">
           {actions.map((action) => (
             <li

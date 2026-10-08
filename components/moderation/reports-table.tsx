@@ -4,17 +4,14 @@ import { Fragment, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronsUpDown, Gavel, Search } from "lucide-react";
-import {
-  reportTargetDetailAction,
-  resolveReportAction,
-  type ReportTargetDetail,
-} from "@/app/(admin)/moderation/reports/actions";
+import { reportTargetDetailAction, resolveReportAction } from "@/app/(admin)/moderation/reports/actions";
 import { StatusBadge, TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ResolveForm } from "@/components/moderation/resolve-form";
+import { TargetPreviewLine } from "@/components/moderation/target-preview-line";
 import type { ReportSortField } from "@/lib/list-filters";
 import type {
   ModerationActionType,
@@ -26,6 +23,7 @@ import { formatDateTime, relativeTime, shortId } from "@/lib/format";
 import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { hrefWith } from "@/lib/url";
 import { useBelowXl } from "@/lib/use-below-xl";
+import { useRowDetail } from "@/lib/use-row-detail";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = ReportStatus | "ALL";
@@ -203,28 +201,13 @@ function ReportRow({
   belowXl: boolean;
 }) {
   const router = useRouter();
-  const [detail, setDetail] = useState(false);
-  const [target, setTarget] = useState<ReportTargetDetail | null>(null);
-  const [targetLoading, setTargetLoading] = useState(false);
+  const detail = useRowDetail(() => reportTargetDetailAction(report.targetType, report.targetId));
   const [resolving, setResolving] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
 
   const pending = report.status === "PENDING";
   const reporter = names.handles[report.reporterId] ?? `#${report.reporterId.slice(-6)}`;
-
-  function toggleDetail() {
-    const opening = !detail;
-    setDetail(opening);
-    // Fetched once per row and kept: what a report points at does not change while the admin
-    // scans the queue, and re-fetching on every toggle would be three calls per click.
-    if (opening && !target && !targetLoading) {
-      setTargetLoading(true);
-      reportTargetDetailAction(report.targetType, report.targetId)
-        .then(setTarget)
-        .finally(() => setTargetLoading(false));
-    }
-  }
 
   function submit(action: ModerationActionType, reason: string, banDays: number | null) {
     startSubmit(async () => {
@@ -243,7 +226,7 @@ function ReportRow({
   return (
     <Fragment>
       <tr
-        {...expandableRowProps(toggleDetail, detail)}
+        {...expandableRowProps(detail.toggle, detail.open)}
         className={cn(
           "cursor-pointer border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted",
           // Closed reports recede — the queue is about what still needs work
@@ -291,7 +274,7 @@ function ReportRow({
         </td>
       </tr>
 
-      {detail ? (
+      {detail.open ? (
         <RowDetail colSpan={COLUMNS}>
           {/* The columns the table drops below xl, so nothing is unreachable on a narrow screen. */}
           {belowXl ? (
@@ -320,37 +303,21 @@ function ReportRow({
               such: it means no endpoint will serve it back — a taken-down video, a deleted
               account — which is itself information a moderator needs before acting again. */}
           <Field label="Reported content" wide>
-            {targetLoading && !target ? (
-              <span className="text-ink-faint">Loading target…</span>
-            ) : target?.preview ? (
-              <span className="flex flex-wrap items-baseline gap-x-2">
-                <span>{target.preview.title}</span>
-                {target.preview.detail ? (
-                  <span className="text-[11px] text-ink-faint">· {target.preview.detail}</span>
-                ) : null}
-                {target.preview.href ? (
-                  <Link
-                    href={target.preview.href as never}
-                    className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
-                  >
-                    open →
-                  </Link>
-                ) : null}
-              </span>
-            ) : (
-              <span className="text-ink-faint">
-                Not available — the target is not readable through the console (removed, private,
-                or no longer there).
-              </span>
-            )}
+            <TargetPreviewLine
+              preview={detail.data?.preview ?? null}
+              loading={detail.loading}
+              failed={detail.failed}
+              missing="Not available — the target is not readable through the console (removed, private, or no longer there)."
+            />
           </Field>
 
           <Field label="Moderation history" wide>
             <ModerationHistory
-              reportCount={target?.reportCount ?? null}
-              actions={target?.actions ?? null}
-              handles={target?.handles}
-              loading={targetLoading && !target}
+              reportCount={detail.data?.reportCount ?? null}
+              actions={detail.data?.actions ?? null}
+              handles={detail.data?.handles}
+              loading={detail.loading}
+              onRetry={detail.retry}
             />
           </Field>
         </RowDetail>

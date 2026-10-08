@@ -4,11 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Ban, ShieldCheck } from "lucide-react";
-import {
-  moderateUserAction,
-  userModerationDetailAction,
-  type ModerationDetail,
-} from "@/app/(admin)/users/actions";
+import { moderateUserAction, userModerationDetailAction } from "@/app/(admin)/users/actions";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
 import { Segmented } from "@/components/ui/segmented";
@@ -22,6 +18,7 @@ import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import { hrefWith } from "@/lib/url";
 import { usePropagation } from "@/lib/use-propagation";
+import { useRowDetail } from "@/lib/use-row-detail";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = UserStatus | "ALL";
@@ -115,22 +112,9 @@ function UserRow({
 }) {
   const [reason, setReason] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
-  const [detail, setDetail] = useState(false);
-  const [modHistory, setModHistory] = useState<ModerationDetail | null>(null);
-  const [modLoading, setModLoading] = useState(false);
   const [submitting, startSubmit] = useTransition();
-
   // Opening the row is what triggers the fetch — once, lazily.
-  function toggleDetail() {
-    const opening = !detail;
-    setDetail(opening);
-    if (opening && !modHistory && !modLoading) {
-      setModLoading(true);
-      userModerationDetailAction(user.id)
-        .then(setModHistory)
-        .finally(() => setModLoading(false));
-    }
-  }
+  const detail = useRowDetail(() => userModerationDetailAction(user.id));
   const { pending, stalled, watch } = usePropagation(
     user.status,
     "Still the old status — auth-service has not consumed the event yet. The action is recorded; reload in a moment.",
@@ -157,7 +141,7 @@ function UserRow({
   return (
     <>
       <tr
-        {...expandableRowProps(toggleDetail, detail)}
+        {...expandableRowProps(detail.toggle, detail.open)}
         className={cn(
           "border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted",
           "cursor-pointer",
@@ -220,7 +204,7 @@ function UserRow({
         </td>
       </tr>
 
-      {detail ? (
+      {detail.open ? (
         <RowDetail colSpan={6}>
           <Field label="Email" wide>
             {user.email ?? "— social login"}
@@ -254,10 +238,11 @@ function UserRow({
           ) : null}
           <Field label="Moderation history" wide>
             <ModerationHistory
-              reportCount={modHistory?.reportCount ?? null}
-              actions={modHistory?.actions ?? null}
-              handles={modHistory?.handles}
-              loading={modLoading}
+              reportCount={detail.data?.reportCount ?? null}
+              actions={detail.data?.actions ?? null}
+              handles={detail.data?.handles}
+              loading={detail.loading}
+              onRetry={detail.retry}
             />
           </Field>
           <Field label="" wide>

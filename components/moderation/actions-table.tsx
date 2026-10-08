@@ -4,7 +4,8 @@ import { Fragment, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronsUpDown, Search, X } from "lucide-react";
-import { actionRowDetailAction, type ActionRowDetail } from "@/app/(admin)/moderation/actions/actions";
+import { actionRowDetailAction } from "@/app/(admin)/moderation/actions/actions";
+import { TargetPreviewLine } from "@/components/moderation/target-preview-line";
 import { TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
@@ -17,6 +18,7 @@ import { ENFORCED } from "@/lib/moderation";
 import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { hrefWith } from "@/lib/url";
 import { useBelowXl } from "@/lib/use-below-xl";
+import { useRowDetail } from "@/lib/use-row-detail";
 import { cn } from "@/lib/utils";
 
 const DESTRUCTIVE: ModerationActionType[] = [
@@ -220,27 +222,12 @@ function ActionRow({
   /** The log narrowed to this row's admin; null when it already is. */
   adminHref: string | null;
 }) {
-  const [detail, setDetail] = useState(false);
-  const [target, setTarget] = useState<ActionRowDetail | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  function toggleDetail() {
-    const opening = !detail;
-    setDetail(opening);
-    // Fetched once per row and kept: what an action points at does not change while the admin
-    // scans the log, and re-fetching on every toggle would be two calls per click.
-    if (opening && !target && !loading) {
-      setLoading(true);
-      actionRowDetailAction(action.targetType, action.targetId)
-        .then(setTarget)
-        .finally(() => setLoading(false));
-    }
-  }
+  const detail = useRowDetail(() => actionRowDetailAction(action.targetType, action.targetId));
 
   return (
     <Fragment>
       <tr
-        {...expandableRowProps(toggleDetail, detail)}
+        {...expandableRowProps(detail.toggle, detail.open)}
         className="cursor-pointer border-b border-line last:border-b-0 transition-colors hover:bg-surface-muted"
       >
         <td className="hidden px-5 py-3 whitespace-nowrap xl:table-cell">{admin}</td>
@@ -279,7 +266,7 @@ function ActionRow({
         </td>
       </tr>
 
-      {detail ? (
+      {detail.open ? (
         <RowDetail colSpan={7}>
           {belowXl ? (
             <>
@@ -316,29 +303,13 @@ function ActionRow({
               showing as such: a taken-down video or a deleted account resolves to nothing, and
               that absence is itself information the admin reading the log needs. */}
           <Field label="Target" wide>
-            {loading && !target ? (
-              <span className="text-ink-faint">Loading target…</span>
-            ) : target?.preview ? (
-              <span className="flex flex-wrap items-baseline gap-x-2">
-                <span>{target.preview.title}</span>
-                {target.preview.detail ? (
-                  <span className="text-[11px] text-ink-faint">· {target.preview.detail}</span>
-                ) : null}
-                {target.preview.href ? (
-                  <Link
-                    href={target.preview.href as never}
-                    className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    open →
-                  </Link>
-                ) : null}
-              </span>
-            ) : (
-              <span className="text-ink-faint">
-                {action.targetType} · {action.targetId.slice(-8)} — not found (deleted or unavailable)
-              </span>
-            )}
+            <TargetPreviewLine
+              preview={detail.data?.preview ?? null}
+              loading={detail.loading}
+              failed={detail.failed}
+              missing={`${action.targetType} · ${action.targetId.slice(-8)} — not found (deleted or unavailable)`}
+              onRetry={detail.retry}
+            />
           </Field>
         </RowDetail>
       ) : null}

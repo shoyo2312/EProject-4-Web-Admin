@@ -47,8 +47,11 @@ export interface ReviewContext {
   uploader: UploaderRecord;
   /** Reports filed against this video. A held video is not public, so this is usually zero. */
   reportCount: number | null;
-  /** Earlier decisions on this video: a held video taken down and then restored is held again. */
-  history: ModerationActionResponse[];
+  /**
+   * Earlier decisions on this video: a held video taken down and then restored is held again. Null
+   * when admin-service could not be read — an empty list would say no one has decided it before.
+   */
+  history: ModerationActionResponse[] | null;
   /** adminId → @handle, for the admins in `history`. */
   handles: Record<string, string>;
 }
@@ -90,7 +93,7 @@ export async function reviewContextAction(
     uploadsIn("TAKEN_DOWN"),
     uploadsIn("REJECTED"),
     orNull(getReportCount("VIDEO", videoId)),
-    listTargetActions("VIDEO", videoId).catch((): ModerationActionResponse[] => []),
+    orNull(listTargetActions("VIDEO", videoId)),
   ]);
   const profile = profiles?.[ownerId];
 
@@ -109,6 +112,6 @@ export async function reviewContextAction(
     },
     reportCount,
     history,
-    handles: await getAdminHandles(history.map((action) => action.adminId)),
+    handles: history ? await getAdminHandles(history.map((action) => action.adminId)) : {},
   };
 }

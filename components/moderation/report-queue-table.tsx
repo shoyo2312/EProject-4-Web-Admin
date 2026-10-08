@@ -1,24 +1,21 @@
 "use client";
 
 import { Fragment, useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Gavel } from "lucide-react";
-import {
-  reportTargetDetailAction,
-  resolveQueueAction,
-  type ReportTargetDetail,
-} from "@/app/(admin)/moderation/reports/actions";
+import { reportTargetDetailAction, resolveQueueAction } from "@/app/(admin)/moderation/reports/actions";
 import { TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ResolveForm } from "@/components/moderation/resolve-form";
+import { TargetPreviewLine } from "@/components/moderation/target-preview-line";
 import { VideoThumb } from "@/components/videos/video-thumb";
 import type { ModerationActionType, ReportGroupResponse } from "@/lib/api/types";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { useBelowXl } from "@/lib/use-below-xl";
+import { useRowDetail } from "@/lib/use-row-detail";
 import { cn } from "@/lib/utils";
 
 const COLUMNS = 6;
@@ -115,27 +112,12 @@ function QueueRow({
   belowXl: boolean;
 }) {
   const router = useRouter();
-  const [detail, setDetail] = useState(false);
-  const [target, setTarget] = useState<ReportTargetDetail | null>(null);
-  const [targetLoading, setTargetLoading] = useState(false);
+  const detail = useRowDetail(() => reportTargetDetailAction(group.targetType, group.targetId));
   const [resolving, setResolving] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
 
   const band = severityBand(group.severity);
-
-  function toggleDetail() {
-    const opening = !detail;
-    setDetail(opening);
-    // Fetched once per row and kept: what the reports point at does not change while the admin
-    // scans the queue, and re-fetching on every toggle would be three calls per click.
-    if (opening && !target && !targetLoading) {
-      setTargetLoading(true);
-      reportTargetDetailAction(group.targetType, group.targetId)
-        .then(setTarget)
-        .finally(() => setTargetLoading(false));
-    }
-  }
 
   function submit(action: ModerationActionType, reason: string, banDays: number | null) {
     startSubmit(async () => {
@@ -160,7 +142,7 @@ function QueueRow({
   return (
     <Fragment>
       <tr
-        {...expandableRowProps(toggleDetail, detail)}
+        {...expandableRowProps(detail.toggle, detail.open)}
         className="cursor-pointer border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted"
       >
         <td className="py-3 pl-5 pr-3">
@@ -221,7 +203,7 @@ function QueueRow({
         </td>
       </tr>
 
-      {detail ? (
+      {detail.open ? (
         <RowDetail colSpan={COLUMNS}>
           {belowXl ? (
             <Field label="Latest reason" wide>
@@ -241,37 +223,21 @@ function QueueRow({
               such: it means no endpoint will serve it back — a taken-down video, a deleted
               account — which is itself information a moderator needs before acting again. */}
           <Field label="Reported content" wide>
-            {targetLoading && !target ? (
-              <span className="text-ink-faint">Loading target…</span>
-            ) : target?.preview ? (
-              <span className="flex flex-wrap items-baseline gap-x-2">
-                <span>{target.preview.title}</span>
-                {target.preview.detail ? (
-                  <span className="text-[11px] text-ink-faint">· {target.preview.detail}</span>
-                ) : null}
-                {target.preview.href ? (
-                  <Link
-                    href={target.preview.href as never}
-                    className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
-                  >
-                    open →
-                  </Link>
-                ) : null}
-              </span>
-            ) : (
-              <span className="text-ink-faint">
-                Not available — the target is not readable through the console (removed, private,
-                or no longer there).
-              </span>
-            )}
+            <TargetPreviewLine
+              preview={detail.data?.preview ?? null}
+              loading={detail.loading}
+              failed={detail.failed}
+              missing="Not available — the target is not readable through the console (removed, private, or no longer there)."
+            />
           </Field>
 
           <Field label="Moderation history" wide>
             <ModerationHistory
-              reportCount={target?.reportCount ?? null}
-              actions={target?.actions ?? null}
-              handles={target?.handles}
-              loading={targetLoading && !target}
+              reportCount={detail.data?.reportCount ?? null}
+              actions={detail.data?.actions ?? null}
+              handles={detail.data?.handles}
+              loading={detail.loading}
+              onRetry={detail.retry}
             />
           </Field>
         </RowDetail>
