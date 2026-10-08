@@ -4,6 +4,7 @@ import type {
   Page,
   ReportGroupResponse,
 } from "@/lib/api/types";
+import { targetHref } from "@/lib/moderation";
 
 /**
  * The topbar bell's feed: the things waiting on an admin, plus the last day's sign-ups and
@@ -31,12 +32,6 @@ const DAY_MS = 86_400_000;
 export const TRASH_RETENTION_DAYS = 30;
 /** How close to the purge a trashed video has to be before the bell mentions it. */
 export const TRASH_WARNING_DAYS = 3;
-
-function reportHref(group: ReportGroupResponse): string {
-  if (group.targetType === "VIDEO") return `/videos/${group.targetId}`;
-  if (group.targetType === "USER") return `/users/${group.targetId}`;
-  return "/moderation/reports";
-}
 
 /**
  * What a newest-first page holds from after `since`: the newest row and how many, as "N+" when
@@ -67,7 +62,8 @@ export function buildNotifications(input: {
     kind: "report",
     title: `${group.reportCount} ${group.reportCount === 1 ? "report" : "reports"} on a ${group.targetType.toLowerCase()}`,
     detail: group.latestReason,
-    href: reportHref(group),
+    // The target itself — a comment's thread included — and the queue for an id that names none.
+    href: targetHref(group.targetType, group.targetId) ?? "/moderation/reports",
   }));
 
   const reviews = review.map<AdminNotification>((video) => ({
@@ -76,7 +72,8 @@ export function buildNotifications(input: {
     kind: "review",
     title: "Video waiting for review",
     detail: video.title,
-    href: `/videos/${video.id}`,
+    // The review screen, opened on this video rather than on the oldest one waiting.
+    href: `/moderation/review?video=${encodeURIComponent(video.id)}`,
   }));
 
   const expiring = trash.flatMap<AdminNotification>((video) => {

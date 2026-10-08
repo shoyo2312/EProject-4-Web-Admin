@@ -60,11 +60,14 @@ const ANSWERS = {
  * and until then a reload still lists it as waiting.
  */
 export function ReviewQueue({
+  startAt,
   videos,
   total,
   handles,
   lines,
 }: {
+  /** The video to open on. One not in the batch, or none, opens on the oldest still waiting. */
+  startAt: string | null;
   /** The batch, oldest upload first. */
   videos: AdminVideoResponse[];
   /** Every held video when the page loaded, the batch included. */
@@ -74,7 +77,7 @@ export function ReviewQueue({
   lines: ReviewLines | null;
 }) {
   const router = useRouter();
-  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [currentId, setCurrentId] = useState<string | null>(startAt);
   const [decided, setDecided] = useState<ReadonlyMap<string, Decision>>(() => new Map());
   const [contexts, setContexts] = useState<Record<string, Loaded>>({});
   const [open, setOpen] = useState<Answer | null>(null);

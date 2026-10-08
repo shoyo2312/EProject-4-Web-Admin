@@ -13,7 +13,13 @@ const BATCH = 50;
  * the classifier held it, who uploaded it and what their record is, and the two answers. A held
  * video is invisible to everyone until someone decides, so the order is how long each has waited.
  */
-export default async function VideoReviewPage() {
+export default async function VideoReviewPage({
+  searchParams,
+}: {
+  /** `video` opens the screen on that video — what a notification about it links to. */
+  searchParams: Promise<{ video?: string }>;
+}) {
+  const { video: startAt } = await searchParams;
   let queue;
   let settings;
   try {
@@ -46,6 +52,9 @@ export default async function VideoReviewPage() {
         }
       />
       <ReviewQueue
+        // Keyed, so following another notification while already here opens its video.
+        key={startAt ?? ""}
+        startAt={startAt ?? null}
         videos={queue.content}
         total={waiting}
         handles={handles}
