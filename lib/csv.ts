@@ -29,10 +29,20 @@ function cellsOf(row: CsvRow): Record<string, Cell> {
   return row as Record<string, Cell>;
 }
 
+/**
+ * Text that opens with one of these is a formula to Excel, Sheets and LibreOffice, so a video
+ * titled `=HYPERLINK(...)` would run when an admin opens the export. Tab and carriage return are
+ * here because Excel drops them and reads what follows.
+ */
+const FORMULA_START = /^[=+\-@\t\r]/;
+
 function serialiseCell(value: Cell): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return value.toISOString();
   if (typeof value === "object") return JSON.stringify(value);
+  // Strings only: a negative count is a number, not something a user typed. The apostrophe is how
+  // the spreadsheets mark a cell as text themselves.
+  if (typeof value === "string" && FORMULA_START.test(value)) return `'${value}`;
   return String(value);
 }
 
