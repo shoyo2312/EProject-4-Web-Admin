@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GATEWAY_URL } from "@/lib/api/config";
+import { GATEWAY_URL, TRUST_PROXY } from "@/lib/api/config";
 import { forwardedHeaders } from "@/lib/api/forwarded";
 import { parseWithLongIdsAsStrings } from "@/lib/api/json";
 import type { ApiResponse } from "@/lib/api/types";
@@ -18,14 +18,18 @@ import {
 /**
  * One call to the gateway, carrying the browser's identity with it.
  *
- * `from` is the request this handler is serving, and its user agent and forwarded-for chain are
- * relayed so auth-service's security log names the person signing in. Without it every sign-in
+ * `from` is the request this handler is serving, and its user agent (and, behind a trusted proxy,
+ * its forwarded-for chain) is relayed so auth-service's security log names the person signing in.
+ * Without it every sign-in
  * was recorded as the device "node" — undici's own user agent — at this server's address.
  */
 async function call<T>(path: string, init: RequestInit, from: Request): Promise<ApiResponse<T>> {
   const response = await fetch(`${GATEWAY_URL}${path}`, {
     ...init,
-    headers: { ...(init.headers as Record<string, string> | undefined), ...forwardedHeaders(from) },
+    headers: {
+      ...(init.headers as Record<string, string> | undefined),
+      ...forwardedHeaders(from, TRUST_PROXY),
+    },
     cache: "no-store",
   });
   const text = await response.text();

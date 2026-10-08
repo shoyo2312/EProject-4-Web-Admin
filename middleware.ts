@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { internalPath } from "@/lib/url";
 
 const SESSION_COOKIE = "admin_session";
 const REFRESH_COOKIE = "admin_refresh";
@@ -37,7 +38,7 @@ type Tokens = {
  * ponytail: no cross-request single-flight, which this layer cannot hold. The cost
  * is a few wasted rotate() calls every 15 minutes and, when the loser is the
  * navigation itself, one redirect to /login that immediately rotates and bounces
- * back to /dashboard. Add a shared lock only if that flash becomes a complaint.
+ * back to the page. Add a shared lock only if that flash becomes a complaint.
  */
 async function rotate(refreshToken: string): Promise<Tokens | null> {
   try {
@@ -114,23 +115,31 @@ export async function middleware(request: NextRequest) {
   if (!signedIn && !onPublicPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    // Come back to whatever was being opened once signed in
-    url.searchParams.set("next", request.nextUrl.pathname);
+    // Come back to whatever was being opened once signed in, filters included. Its query goes
+    // inside `next`: left on /login, nothing reads it and it is gone after the sign-in.
+    url.search = "";
+    url.searchParams.set("next", `${request.nextUrl.pathname}${request.nextUrl.search}`);
     // Deliberately no cookie delete on a failed rotation. A failure here is far
     // more often a lost race or an unreachable gateway than a dead chain, and
     // deleting destroyed the 7-day refresh token that the *winning* request had
     // just rotated — the automatic logout every ~15 minutes. Leaving the cookie
     // costs one wasted rotate() on the next request and self-heals, because
-    // /login is public and its own pass through here rotates and bounces to
-    // /dashboard. A genuinely revoked token is torn down by the ?expired=1 branch
+    // /login is public and its own pass through here rotates and bounces back to
+    // `next`. A genuinely revoked token is torn down by the ?expired=1 branch
     // above, which is the one place that knows the gateway rejected the session.
     return NextResponse.redirect(url);
   }
 
   if (signedIn && onLoginPage) {
+    // The loser of a rotation race lands here carrying ?next=, and this pass is the one that
+    // rotates — so dropping it would send the admin to /dashboard instead of what they opened.
+    const destination = new URL(
+      internalPath(request.nextUrl.searchParams.get("next")) ?? "/dashboard",
+      request.nextUrl.origin,
+    );
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    url.search = "";
+    url.pathname = destination.pathname;
+    url.search = destination.search;
     const res = NextResponse.redirect(url);
     if (refreshed) applySession(res, refreshed);
     return res;

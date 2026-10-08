@@ -12,6 +12,12 @@ export const GATEWAY_URL = process.env.GATEWAY_URL ?? "http://localhost:8080";
  */
 export const USE_MOCK = process.env.ADMIN_USE_MOCK !== "false";
 
+/**
+ * Set only when this server sits behind a proxy that overwrites `X-Forwarded-For`. Off, the
+ * browser's own value is not relayed to the gateway — see `forwardedHeaders`.
+ */
+export const TRUST_PROXY = process.env.ADMIN_TRUST_PROXY === "true";
+
 export const SESSION_COOKIE = "admin_session";
 export const REFRESH_COOKIE = "admin_refresh";
 

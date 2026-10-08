@@ -54,6 +54,11 @@ Session handling: `POST /api/session` calls auth-service through the gateway, ch
 httpOnly cookies. No token is ever readable by client JavaScript; every API call runs
 server-side. `DELETE /api/session` revokes the refresh token and clears the cookies.
 
+Set `ADMIN_TRUST_PROXY=true` only when a proxy in front of this app overwrites
+`X-Forwarded-For`. The sign-in and password-reset routes then relay it, so auth-service's
+security log records the admin's own address. Left unset, they do not relay it, because a
+caller could otherwise set the header themselves and get past the gateway's per-IP limit.
+
 Still mock even in live mode: **Inventory** — inventory-service exposes
 `GET /api/v1/inventory/{productId}` only, with no list endpoint to page through.
 

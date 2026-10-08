@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GATEWAY_URL } from "@/lib/api/config";
+import { GATEWAY_URL, TRUST_PROXY } from "@/lib/api/config";
 import { forwardedHeaders } from "@/lib/api/forwarded";
 import { parseWithLongIdsAsStrings } from "@/lib/api/json";
 import type { ApiResponse } from "@/lib/api/types";
@@ -11,7 +11,7 @@ import type { ApiResponse } from "@/lib/api/types";
 async function call(path: string, payload: unknown, from: Request): Promise<ApiResponse<null>> {
   const response = await fetch(`${GATEWAY_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...forwardedHeaders(from) },
+    headers: { "Content-Type": "application/json", ...forwardedHeaders(from, TRUST_PROXY) },
     body: JSON.stringify(payload),
     cache: "no-store",
   });

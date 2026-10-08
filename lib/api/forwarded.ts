@@ -16,12 +16,13 @@
  * asks for them with `Accept-CH`; it is this relay that gets them the rest of the way, since a
  * server-side `fetch` copies nothing.
  *
- * Trust: `X-Forwarded-For` is relayed as received, which is only worth anything when something in
- * front of this server sets it. A deployment must therefore terminate at a proxy that *overwrites*
- * the header, or a caller can name the address its own sign-in is filed under. The gateway cannot
- * close that hole from where it sits — it sees this server as the client, and this server is
- * trusted — and it is the same condition the public app's rewrite already depends on. See
- * api-gateway's `RateLimiterConfig`, which documents it for the rate limiter.
+ * Trust: `X-Forwarded-For` is relayed only when `trustProxy` is set, i.e. when a proxy in front of
+ * this server *overwrites* the header. Without one the value is whatever the caller typed — Next
+ * only fills it in when it is absent — and the gateway believes it, since it sees this server as
+ * the client and this server is trusted. A caller could then pick a fresh address per request and
+ * walk past the per-IP rate limiter, which is all that guards the OTP steps. Unset, the gateway
+ * files every sign-in under this server's address: less useful in the log, but true. See
+ * api-gateway's `RateLimiterConfig`, which documents the same condition for the rate limiter.
  */
 /** Header names as the specification spells them, since the incoming ones are lower-cased. */
 const CANONICAL = {
@@ -29,7 +30,7 @@ const CANONICAL = {
   "sec-ch-ua-platform-version": "Sec-CH-UA-Platform-Version",
 } as const;
 
-export function forwardedHeaders(request: Request): Record<string, string> {
+export function forwardedHeaders(request: Request, trustProxy: boolean): Record<string, string> {
   const relayed: Record<string, string> = {};
 
   const userAgent = request.headers.get("user-agent");
@@ -37,9 +38,7 @@ export function forwardedHeaders(request: Request): Record<string, string> {
     relayed["User-Agent"] = userAgent;
   }
 
-  // Absent in local development, where nothing sits in front of Next. The gateway then falls back
-  // to its own peer, which on one machine is the loopback address — correct, and all there is.
-  const forwardedFor = request.headers.get("x-forwarded-for");
+  const forwardedFor = trustProxy ? request.headers.get("x-forwarded-for") : null;
   if (forwardedFor) {
     relayed["X-Forwarded-For"] = forwardedFor;
   }
