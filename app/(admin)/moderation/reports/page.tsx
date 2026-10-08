@@ -13,36 +13,11 @@ import {
   listReports,
   referenceNow,
 } from "@/lib/api/admin";
-import { REPORT_SORT_FIELDS, type ReportSortField } from "@/lib/moderation";
 import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, growthPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
+import { reportFilters } from "@/lib/list-filters";
 import { idsToName } from "@/lib/names";
-import type { ReportStatus, ReportTargetType } from "@/lib/api/types";
-
-const STATUSES: ReportStatus[] = ["PENDING", "RESOLVED", "DISMISSED"];
-const TARGET_TYPES: ReportTargetType[] = ["USER", "VIDEO", "COMMENT"];
-
-/**
- * Every ledger control is parsed here and handed to the backend. A value the backend does not
- * know becomes "no filter" rather than being passed on: these arrive from the query string,
- * where anything at all can be typed, and an unknown sort property is a 500.
- */
-function parseStatus(value: string | undefined): ReportStatus | undefined {
-  return STATUSES.includes(value as ReportStatus) ? (value as ReportStatus) : undefined;
-}
-
-function parseTargetType(value: string | undefined): ReportTargetType | undefined {
-  return TARGET_TYPES.includes(value as ReportTargetType)
-    ? (value as ReportTargetType)
-    : undefined;
-}
-
-function parseSort(value: string | undefined): ReportSortField {
-  return REPORT_SORT_FIELDS.includes(value as ReportSortField)
-    ? (value as ReportSortField)
-    : "createdAt";
-}
 
 /**
  * Two tables, because they answer two questions.
@@ -72,10 +47,9 @@ export default async function ReportsQueuePage({
   const window = resolveWindow(params, latest);
   const { periodDays, periodLabel, compareLabel } = window;
   const pageIndex = parsePage(params.page);
-  const status = parseStatus(params.status);
-  const targetType = parseTargetType(params.target);
-  const sort = parseSort(params.sort);
-  const ascending = params.dir === "asc";
+  // Every ledger control is parsed and handed to the backend; see lib/list-filters for why an
+  // unknown value becomes no filter rather than an error.
+  const { status, targetType, sort, ascending } = reportFilters(params);
 
   let stats;
   let queue;
@@ -163,7 +137,13 @@ export default async function ReportsQueuePage({
         title="Reports Queue"
         subtitle="Reported videos, accounts and comments, heaviest first. One row is one target and one decision — resolving it closes every report standing against it."
         filters={{ period: window.period, asOf: window.asOf, latest }}
-        csv={{ name: "report-queue", rows: queue.content }}
+        // The ledger, every row its filters match: the queue above it is a worklist, and the
+        // ledger is the record someone asks for a copy of.
+        csv={{
+          name: "reports",
+          rows: ledger.content,
+          all: { dataset: "reports", params, total: ledger.totalElements },
+        }}
       />
 
       <div className="space-y-4">

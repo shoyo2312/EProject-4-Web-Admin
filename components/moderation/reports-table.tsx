@@ -15,7 +15,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ResolveForm } from "@/components/moderation/resolve-form";
-import type { ReportSortField } from "@/lib/moderation";
+import type { ReportSortField } from "@/lib/list-filters";
 import type {
   ModerationActionType,
   ReportResponse,

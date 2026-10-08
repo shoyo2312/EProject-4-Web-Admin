@@ -8,8 +8,17 @@ import {
   listUsers,
   listVideos,
 } from "@/lib/api/admin";
+import { exportRows } from "@/lib/api/export";
 import type { AdminUserResponse, AdminVideoResponse, ReportResponse } from "@/lib/api/types";
+import {
+  EXPORT_DATASETS,
+  EXPORT_MAX_ROWS,
+  csvFilename,
+  toCsv,
+  type ExportDataset,
+} from "@/lib/csv";
 import { REPORT_STATUS_LABELS, USER_STATUS_LABELS, VIDEO_STATUS_LABELS } from "@/lib/labels";
+import type { ListParams } from "@/lib/list-filters";
 import { targetHref } from "@/lib/moderation";
 import { looksLikeId } from "@/lib/search";
 
@@ -112,4 +121,31 @@ function reportHit(report: ReportResponse): SearchHit {
     href: targetHref(report.targetType, report.targetId) ?? "/moderation/reports",
     thumbnailUrl: null,
   };
+}
+
+export type CsvExportResult =
+  | { ok: true; csv: string; filename: string; truncated: boolean }
+  | { ok: false; message: string };
+
+/**
+ * A listing's Export button: every row the page's filters match, rather than the page on screen.
+ * Answered whole rather than streamed, since a server action answers once; the row cap keeps that
+ * to a few megabytes. A file cut at the cap says so in its name.
+ */
+export async function exportCsvAction(
+  dataset: ExportDataset,
+  params: ListParams,
+): Promise<CsvExportResult> {
+  if (!EXPORT_DATASETS.includes(dataset)) return { ok: false, message: "Nothing to export." };
+  try {
+    const { rows, truncated } = await exportRows(dataset, params);
+    return {
+      ok: true,
+      csv: toCsv(rows),
+      filename: csvFilename(truncated ? `${dataset}-first-${EXPORT_MAX_ROWS}` : dataset),
+      truncated,
+    };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+  }
 }

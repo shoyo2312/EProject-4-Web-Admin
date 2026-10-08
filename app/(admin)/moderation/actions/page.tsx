@@ -11,7 +11,7 @@ import {
   referenceNow,
 } from "@/lib/api/admin";
 import { historyUpTo, isoDay, parsePage, resolveWindow, windowRange } from "@/lib/api/window";
-import { ACTION_TYPES } from "@/lib/moderation";
+import { auditFilters } from "@/lib/list-filters";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
 import { idsToName } from "@/lib/names";
@@ -28,8 +28,7 @@ export default async function AuditLogPage({
   const pageIndex = parsePage(params.page);
   // Both come from the query string, where anything can be typed. Dropped rather than passed
   // on: admin-service answers a non-numeric id or an unknown type with a 400 for the whole page.
-  const adminId = /^\d+$/.test(params.admin ?? "") ? params.admin : undefined;
-  const actionType = ACTION_TYPES.find((type) => type === params.type);
+  const { adminId, actionType } = auditFilters(params);
   // The log covers the same days as the figures above it, so its total is the "Actions Taken"
   // card's value — and "what did this admin do yesterday" is the Day period on yesterday.
   const { from, to } = windowRange(window);
@@ -92,7 +91,11 @@ export default async function AuditLogPage({
         title="Moderation Audit Log"
         subtitle="Every action taken by an admin, in order. Append-only."
         filters={{ period: window.period, asOf, latest }}
-        csv={{ name: "moderation-actions", rows: actions }}
+        csv={{
+          name: "moderation-actions",
+          rows: actions,
+          all: { dataset: "moderation-actions", params, total: page.totalElements },
+        }}
       />
 
       <div className="mb-4">

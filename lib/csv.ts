@@ -9,6 +9,17 @@
 type Cell = unknown;
 
 /**
+ * The listings whose Export button writes every matching row rather than the page on screen — read
+ * server-side by `lib/api/export`. Here so the button can name them without importing that.
+ */
+export const EXPORT_DATASETS = ["users", "videos", "reports", "moderation-actions"] as const;
+
+export type ExportDataset = (typeof EXPORT_DATASETS)[number];
+
+/** The most rows one export writes: a hundred pages at the backends' limit of fifty. */
+export const EXPORT_MAX_ROWS = 5_000;
+
+/**
  * Plain `object`, not `Record<string, unknown>`: the DTOs come back as interfaces,
  * and an interface has no index signature, so it never satisfies a Record type.
  */

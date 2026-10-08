@@ -33,7 +33,7 @@ import {
   toMosaicSeries,
   type MosaicSeries,
 } from "./rollup";
-import type { ReportSortField } from "@/lib/moderation";
+import type { ReportSortField } from "@/lib/list-filters";
 import { memoizeFor } from "@/lib/memo";
 import type { RowNames, VideoSummary } from "@/lib/names";
 import { buildNotifications, type AdminNotification } from "@/lib/notifications";

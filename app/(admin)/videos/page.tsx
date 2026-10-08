@@ -15,21 +15,8 @@ import {
 import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, growthChange, spark, sumLast } from "@/lib/series";
 import { formatCompact, formatNumber, plural } from "@/lib/format";
+import { videoFilters } from "@/lib/list-filters";
 import type { VideoStatus } from "@/lib/api/types";
-
-const STATUSES: VideoStatus[] = [
-  "PROCESSING",
-  "PENDING_MODERATION",
-  "PENDING_REVIEW",
-  "PUBLISHED",
-  "FAILED",
-  "REJECTED",
-  "TAKEN_DOWN",
-];
-
-function parseStatus(value: string | undefined): VideoStatus | undefined {
-  return STATUSES.includes(value as VideoStatus) ? (value as VideoStatus) : undefined;
-}
 
 export default async function VideosPage({
   searchParams,
@@ -37,11 +24,8 @@ export default async function VideosPage({
   searchParams: Promise<{ q?: string; status?: string; p?: string; asOf?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const { q, status, page: pageParam } = params;
-  const filter = parseStatus(status);
-  // Not a VideoStatus — a deleted video keeps its pipeline status, so this filters on
-  // deletedAt via listVideos({ deleted: true }) instead of the status query param.
-  const deletedOnly = status === "DELETED";
+  const { q, status: filter, deletedOnly } = videoFilters(params);
+  const pageParam = params.page;
   const latest = isoDay(referenceNow());
   const window = resolveWindow(params, latest);
   const { asOf, periodDays, compareLabel } = window;
@@ -187,7 +171,11 @@ export default async function VideosPage({
         title="Videos"
         subtitle="Every upload on the platform. Taking one down writes a moderation action and removes it from the feed."
         filters={{ period: window.period, asOf, latest }}
-        csv={{ name: "videos", rows: videos }}
+        csv={{
+          name: "videos",
+          rows: videos,
+          all: { dataset: "videos", params, total: page.totalElements },
+        }}
       />
 
       <div className="space-y-4">

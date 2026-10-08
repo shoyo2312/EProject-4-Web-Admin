@@ -12,7 +12,8 @@ import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail
 import type { ModerationActionResponse, ModerationActionType } from "@/lib/api/types";
 import { formatDateTime, relativeTime, shortId } from "@/lib/format";
 import { ACTION_LABELS } from "@/lib/labels";
-import { ACTION_TYPES, ENFORCED } from "@/lib/moderation";
+import { ACTION_TYPES } from "@/lib/list-filters";
+import { ENFORCED } from "@/lib/moderation";
 import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { hrefWith } from "@/lib/url";
 import { useBelowXl } from "@/lib/use-below-xl";
