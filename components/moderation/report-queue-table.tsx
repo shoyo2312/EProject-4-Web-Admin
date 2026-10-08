@@ -10,7 +10,7 @@ import {
   type ReportTargetDetail,
 } from "@/app/(admin)/moderation/reports/actions";
 import { TargetBadge } from "@/components/ui/badge";
-import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ResolveForm } from "@/components/moderation/resolve-form";
@@ -59,7 +59,6 @@ export function ReportQueueTable({
             ? `Top ${groups.length} of ${total} targets waiting — ranked by report count × severity`
             : "GET /api/v1/admin/reports/queue — one row per target, ranked by report count × severity"
         }
-        actions={<CardMenuButton />}
       />
 
       <div className="overflow-x-auto">

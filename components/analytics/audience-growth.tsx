@@ -1,4 +1,4 @@
-import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import type { DailySignupResponse } from "@/lib/api/types";
 import { formatDate, formatNumber } from "@/lib/format";
 
@@ -19,7 +19,6 @@ export function AudienceGrowth({
       <CardHeader
         title="Audience Growth"
         hint="GET /api/v1/analytics/signups/daily — one row per day a user registered"
-        actions={<CardMenuButton />}
       />
 
       <div className="flex flex-1 flex-col p-5">

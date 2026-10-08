@@ -1,4 +1,17 @@
-import type { ModerationActionType, VideoStatus } from "@/lib/api/types";
+import type { ModerationActionType, ReportTargetType, VideoStatus } from "@/lib/api/types";
+
+/**
+ * Where in the console a reported target opens. A COMMENT target is "videoId:commentId" — comments
+ * are partitioned by video, so the thread is reached through its video — and any other shape has
+ * nowhere to go, rather than a guessed video.
+ */
+export function targetHref(targetType: ReportTargetType, targetId: string): string | null {
+  if (targetType === "USER") return `/users/${targetId}`;
+  if (targetType === "VIDEO") return `/videos/${targetId}`;
+  const [videoId, commentId, ...rest] = targetId.split(":");
+  if (!videoId || !commentId || rest.length > 0) return null;
+  return `/comments?videoId=${encodeURIComponent(videoId)}`;
+}
 
 /**
  * Whether the file behind a video can actually be played back, which is also whether its view

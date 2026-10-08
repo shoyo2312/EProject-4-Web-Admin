@@ -45,6 +45,7 @@ import {
   mockTopVideos,
 } from "@/lib/mock/analytics";
 import {
+  MOCK_REPORTER_HANDLES,
   mockDailyAdminStats,
   mockModerationActions,
   mockReportQueue,
@@ -307,6 +308,21 @@ export async function listTargetActions(
   return page.content;
 }
 
+/**
+ * One report by id — what a moderator pastes when someone asks about report #…4821. Null for an
+ * id nothing was filed under (404) and for one that is not a number at all (400): a mistyped id
+ * is "not found", not a failure.
+ */
+export async function getReport(reportId: string): Promise<ReportResponse | null> {
+  if (USE_MOCK) return mockReports.find((report) => report.id === reportId) ?? null;
+  try {
+    return await apiGet<ReportResponse>(`/api/v1/admin/reports/${encodeURIComponent(reportId)}`);
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 400)) return null;
+    throw error;
+  }
+}
+
 /** How many reports have been filed against one user, video or comment. */
 export async function getReportCount(
   targetType: ReportTargetType,
@@ -332,14 +348,18 @@ export async function getUserProfiles(
   const unique = [...new Set(ids)].filter(Boolean);
   if (unique.length === 0) return {};
   if (USE_MOCK) {
+    // The mock reporters are not in the mock directory, so their handles come from the ledger's
+    // own fixture — the same handles the live path would get back for them.
+    const handles = new Map<string, string>(Object.entries(MOCK_REPORTER_HANDLES));
+    for (const user of mockUsers) handles.set(user.id, user.username);
     return Object.fromEntries(
-      mockUsers
-        .filter((u) => unique.includes(u.id))
-        .map((u) => [
-          u.id,
+      unique
+        .filter((id) => handles.has(id))
+        .map((id) => [
+          id,
           {
-            userId: u.id,
-            username: u.username,
+            userId: id,
+            username: handles.get(id) ?? null,
             displayName: null,
             avatarUrl: null,
             followerCount: 0,
@@ -351,6 +371,23 @@ export async function getUserProfiles(
   const params = new URLSearchParams({ ids: unique.join(",") });
   const profiles = await apiGet<UserProfileResponse[]>(`/api/v1/users?${params}`);
   return Object.fromEntries(profiles.map((p) => [p.userId, p]));
+}
+
+/**
+ * @handles for a batch of user ids — the admins on a page of the audit log, the reporters on a
+ * page of the ledger, the accounts reports point at. One call for the page rather than one per
+ * row. An id user-service does not know, or a user-service that cannot be reached, is simply
+ * absent: the row keeps showing the id, which is what it showed before.
+ */
+export async function getHandles(ids: string[]): Promise<Record<string, string>> {
+  const profiles = await getUserProfiles(ids).catch(
+    (): Record<string, UserProfileResponse> => ({}),
+  );
+  const handles: Record<string, string> = {};
+  for (const [id, profile] of Object.entries(profiles)) {
+    if (profile.username) handles[id] = `@${profile.username}`;
+  }
+  return handles;
 }
 
 /**

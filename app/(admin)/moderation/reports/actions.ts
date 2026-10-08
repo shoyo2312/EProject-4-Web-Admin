@@ -10,6 +10,7 @@ import {
   resolveQueueRow,
   resolveReport,
 } from "@/lib/api/admin";
+import { targetHref } from "@/lib/moderation";
 import type {
   ModerationActionResponse,
   ModerationActionType,
@@ -66,7 +67,7 @@ export async function loadPreview(
       // The account's own page, by id. A search link lands on a result set instead — several
       // rows for a handle that is a common substring, and none at all for an account that has
       // no handle yet.
-      href: `/users/${targetId}`,
+      href: targetHref("USER", targetId),
     };
   }
 
@@ -80,7 +81,7 @@ export async function loadPreview(
       detail: video.deletedAt ? "deleted by its owner" : video.status,
       // By id, and always present: the video's own page reads back what the listing cannot —
       // a taken-down video, and one its owner deleted after the report came in.
-      href: `/videos/${targetId}`,
+      href: targetHref("VIDEO", targetId),
     };
   }
 
@@ -90,7 +91,7 @@ export async function loadPreview(
   return {
     title: comment?.content ?? "(comment not found in the thread)",
     detail: comment?.deletedAt ? "already removed" : null,
-    href: `/comments?videoId=${encodeURIComponent(target.videoId)}`,
+    href: targetHref("COMMENT", targetId),
   };
 }
 

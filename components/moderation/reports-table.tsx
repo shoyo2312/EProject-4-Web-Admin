@@ -10,7 +10,7 @@ import {
   type ReportTargetDetail,
 } from "@/app/(admin)/moderation/reports/actions";
 import { StatusBadge, TargetBadge } from "@/components/ui/badge";
-import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
@@ -128,9 +128,7 @@ export function ReportsTable({
               </label>
               <LedgerControls filter={filter} />
             </>
-          ) : (
-            <CardMenuButton />
-          )
+          ) : null
         }
       />
 

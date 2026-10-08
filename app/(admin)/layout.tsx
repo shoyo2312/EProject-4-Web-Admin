@@ -21,7 +21,6 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
       <Sidebar session={session} defaultCollapsed={collapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar
-          session={session}
           usingMockData={USE_MOCK}
           notifications={notifications}
           notificationsSeenAt={notificationsSeenAt}

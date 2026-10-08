@@ -1,4 +1,3 @@
-import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Card({
@@ -63,17 +62,5 @@ export function CardHeader({
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div>
     </header>
-  );
-}
-
-export function CardMenuButton() {
-  return (
-    <button
-      type="button"
-      aria-label="More options"
-      className="flex h-7 w-7 items-center justify-center rounded-md border border-line text-ink-soft transition-colors hover:bg-surface-muted"
-    >
-      <MoreHorizontal className="h-4 w-4" />
-    </button>
   );
 }

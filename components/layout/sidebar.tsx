@@ -3,12 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  ChevronsUpDown,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ShieldCheck,
-} from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, ShieldCheck } from "lucide-react";
 import { NAV_GROUPS } from "./nav-config";
 import { UserBlock } from "./user-block";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -54,7 +49,7 @@ export function Sidebar({
         collapsed ? "w-[68px]" : "w-[260px]",
       )}
     >
-      {/* Workspace switcher + collapse toggle. Collapsed, the logo *is* the toggle —
+      {/* Console mark + collapse toggle. Collapsed, the logo *is* the toggle —
           two stacked buttons in 68px reads as clutter. */}
       <div className="flex items-center gap-1.5 p-3">
         {collapsed && narrow ? (
@@ -84,9 +79,10 @@ export function Sidebar({
           </button>
         ) : (
           <>
-            <button
-              type="button"
-              className="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-line px-3 py-2.5 text-left transition-colors hover:bg-surface-muted"
+            {/* There is one console, so this is the way home rather than a switcher. */}
+            <Link
+              href="/dashboard"
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-line px-3 py-2.5 transition-colors hover:bg-surface-muted"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-ink text-surface">
                 <ShieldCheck className="h-4 w-4" />
@@ -99,8 +95,7 @@ export function Sidebar({
                   TikTok Admin
                 </span>
               </span>
-              <ChevronsUpDown className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
-            </button>
+            </Link>
             <button
               type="button"
               onClick={toggle}
