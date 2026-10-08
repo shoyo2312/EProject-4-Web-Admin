@@ -75,7 +75,7 @@ function applySession(response: NextResponse, tokens: Tokens) {
   });
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   if (USE_MOCK) return NextResponse.next();
 
   const onLoginPage = request.nextUrl.pathname === "/login";

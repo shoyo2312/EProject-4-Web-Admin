@@ -6,7 +6,7 @@ const ADMIN_TOPIC = "/topic/admin";
 
 /**
  * Never reconnects on its own: the browser's EventSource reconnect goes back through the
- * middleware, which is what rotates an expired token.
+ * proxy, which is what rotates an expired token.
  */
 export function subscribeAdminLive(
   brokerURL: string,

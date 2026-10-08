@@ -53,7 +53,7 @@ app/                    → Next.js App Router: routing + page component
     moderation/reports/, moderation/actions/, system/queues/, settings/
   login/, forgot-password/  → trang public (không cần đăng nhập)
   api/                   → route handler nội bộ (session, password-reset, live — SSE báo trang admin tải lại khi dữ liệu đổi)
-middleware.ts            → gác cổng auth, refresh token, redirect /login
+proxy.ts                 → gác cổng auth, refresh token, redirect /login (Next 16 đổi tên từ middleware.ts)
 
 lib/
   api/                   → toàn bộ logic gọi API + kiểu dữ liệu (types.ts)
@@ -169,14 +169,14 @@ thật — không có cách nào giả lập hợp lý trong bộ nhớ.
 
 ## 8. Xác thực (Authentication)
 
-`middleware.ts` chạy trước mọi request:
+`proxy.ts` chạy trước mọi request:
 
 - Nếu `USE_MOCK = true` → bỏ qua hoàn toàn việc kiểm tra đăng nhập (để `npm run dev` không bị kẹt
   ở trang login mà không có backend để đăng nhập vào).
 - Nếu `USE_MOCK = false`:
   - Có 2 cookie: `admin_session` (access token, sống 15 phút) và `admin_refresh` (refresh token,
     sống 7 ngày).
-  - Khi access token hết hạn nhưng refresh token còn → middleware tự động gọi
+  - Khi access token hết hạn nhưng refresh token còn → proxy tự động gọi
     `/api/v1/auth/refresh` để lấy access token mới **trước khi** request được xử lý tiếp, tránh
     tình trạng "tự động đăng xuất" dù refresh token vẫn còn hạn.
   - Trang `/login` và `/forgot-password` luôn truy cập được kể cả khi chưa đăng nhập.

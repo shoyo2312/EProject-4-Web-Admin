@@ -9,7 +9,7 @@ const CLOSED = 2;
  * including the trash expiry warning, which is a date passing rather than an event.
  *
  * When the access cookie has lapsed, the stream request is what spends the single-use refresh
- * token in middleware.ts, and three rules follow from that:
+ * token in proxy.ts, and three rules follow from that:
  * - A catch-up refresh waits for the relay's `ready` event, which comes after `open` — by then the
  *   rotated cookies are stored. Sent alongside the stream request, it would race it for the
  *   rotation.
