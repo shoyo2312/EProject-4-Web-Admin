@@ -10,7 +10,11 @@ const ADMIN_TOPIC = "/topic/admin";
  */
 export function subscribeAdminLive(
   brokerURL: string,
-  { onFrame, onClose }: { onFrame: (body: string) => void; onClose: () => void },
+  {
+    onReady,
+    onFrame,
+    onClose,
+  }: { onReady: () => void; onFrame: (body: string) => void; onClose: () => void },
 ): () => void {
   let closed = false;
   const client = new Client({
@@ -18,6 +22,7 @@ export function subscribeAdminLive(
     reconnectDelay: 0,
     onConnect: () => {
       client.subscribe(ADMIN_TOPIC, (message) => onFrame(message.body));
+      onReady();
     },
     onStompError: () => {
       void client.deactivate();

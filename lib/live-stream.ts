@@ -10,8 +10,9 @@ const CLOSED = 2;
  *
  * When the access cookie has lapsed, the stream request is what spends the single-use refresh
  * token in middleware.ts, and three rules follow from that:
- * - A catch-up refresh waits for `open`, by which point the rotated cookies are stored. Sent
- *   alongside the stream request, it would race it for the rotation.
+ * - A catch-up refresh waits for the relay's `ready` event, which comes after `open` — by then the
+ *   rotated cookies are stored. Sent alongside the stream request, it would race it for the
+ *   rotation.
  * - A stream that is still connecting is never aborted, only closed once it answers. Aborting
  *   drops the Set-Cookie carrying the rotated tokens, and the next request then presents the spent
  *   token after auth-service's 10s grace, which revokes every session the admin has.
@@ -19,8 +20,11 @@ const CLOSED = 2;
  *   request was redirected to an HTML page; without the retry this page stops updating until it
  *   is hidden and shown again. Only once, so a dead session cannot loop.
  *
- * An error also cancels a refresh still pending: while chat-service is down the relay opens and
- * fails within a second, and each ~3s reconnect would otherwise re-render the page.
+ * `open` alone says nothing about chat-service: it fires on the relay's headers, before its socket
+ * has connected. While chat-service is down every ~3s reconnect opens and then fails, so a catch-up
+ * keyed to `open` would re-render the page on each one for as long as the outage lasts; `ready` is
+ * only sent once the relay has subscribed. An error also cancels a refresh still pending, which the
+ * catch-up after the next `ready` covers.
  */
 export function createLiveStream({
   open,
@@ -48,10 +52,12 @@ export function createLiveStream({
     s.onmessage = () => scheduler.request();
     s.onopen = () => {
       retried = false;
+    };
+    s.addEventListener("ready", () => {
       if (!stale) return;
       stale = false;
       scheduler.request();
-    };
+    });
     s.onerror = () => {
       stale = true;
       scheduler.cancel();
@@ -62,7 +68,7 @@ export function createLiveStream({
   };
 
   return {
-    /** `catchUp` refreshes the page once the stream opens, for a tab that was hidden. */
+    /** `catchUp` refreshes the page once the stream is ready, for a tab that was hidden. */
     show(catchUp: boolean) {
       if (source && source.readyState !== CLOSED) return;
       retried = false;

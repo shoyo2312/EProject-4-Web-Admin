@@ -23,7 +23,10 @@ export async function GET(request: Request) {
       };
       const ping = setInterval(() => write(": ping\n\n"), PING_MS);
       const unsubscribe = subscribeAdminLive(brokerURL, {
-        onFrame: (body) => write(`data: ${body.replace(/\r?\n/g, " ")}\n\n`),
+        // Named, so it is not mistaken for a change. See lib/live-stream.ts for why it exists.
+        onReady: () => write("event: ready\ndata: ok\n\n"),
+        // SSE ends a line at a lone \r as well, which would start a stray field mid-body.
+        onFrame: (body) => write(`data: ${body.replace(/\r\n|\r|\n/g, " ")}\n\n`),
         onClose: () => {
           if (done) return;
           stop();
