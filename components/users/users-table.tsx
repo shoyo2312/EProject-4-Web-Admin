@@ -13,7 +13,7 @@ import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
 import { USER_STATUS_LABELS } from "@/lib/labels";
-import { PRESET_REASONS } from "@/lib/moderation";
+import { BAN_DURATIONS, PRESET_REASONS, banDaysOf, type BanDuration } from "@/lib/moderation";
 import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import { hrefWith } from "@/lib/url";
@@ -111,6 +111,7 @@ function UserRow({
   user: AdminUserResponse;
 }) {
   const [reason, setReason] = useState<string | null>(null);
+  const [duration, setDuration] = useState<BanDuration>("permanent");
   const [result, setResult] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
   // Opening the row is what triggers the fetch — once, lazily.
@@ -129,7 +130,12 @@ function UserRow({
 
   function submit() {
     startSubmit(async () => {
-      const outcome = await moderateUserAction(user.id, action, reason ?? "");
+      const outcome = await moderateUserAction(
+        user.id,
+        action,
+        reason ?? "",
+        action === "ban" ? banDaysOf(duration) : null,
+      );
       setResult(outcome.message);
       if (outcome.ok) {
         setReason(null);
@@ -180,7 +186,10 @@ function UserRow({
             // Disabled until the change lands, so a second click cannot queue the same
             // action twice against a status that has not moved yet.
             disabled={selfDestructive || pending}
-            onClick={() => setReason(reason === null ? "" : null)}
+            onClick={() => {
+              setReason(reason === null ? "" : null);
+              setDuration("permanent");
+            }}
             title={
               selfDestructive
                 ? "Banning an admin account would lock the console"
@@ -259,6 +268,14 @@ function UserRow({
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">
           <td colSpan={6} className="px-5 py-3">
+            {/* The same choice the account's own page and a report's resolution offer: a ban
+                from here was always permanent. */}
+            {action === "ban" ? (
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="label-caps text-ink-soft">Duration</span>
+                <Segmented options={BAN_DURATIONS} value={duration} onChange={setDuration} />
+              </div>
+            ) : null}
             <ReasonForm
               presets={presets}
               reason={reason}
@@ -267,7 +284,9 @@ function UserRow({
               onCancel={() => setReason(null)}
               submitting={submitting}
               placeholder={`Reason for ${action}ning @${user.username} — pick one above or write your own`}
-              confirmLabel={`Confirm ${action}`}
+              confirmLabel={
+                action === "ban" && duration !== "permanent" ? `Ban for ${duration}d` : `Confirm ${action}`
+              }
             />
           </td>
         </tr>
