@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 const DESTRUCTIVE: ModerationActionType[] = [
   "BAN_USER",
   "TAKEDOWN_VIDEO",
+  "PURGE_VIDEO",
   "REMOVE_COMMENT",
   "WARN_USER",
 ];
