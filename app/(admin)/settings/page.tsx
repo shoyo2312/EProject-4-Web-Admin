@@ -56,10 +56,6 @@ export default async function SettingsPage() {
               Admin accounts — there is a single admin role, and no way yet to grant or revoke
               it from the console.
             </li>
-            <li>
-              Signing an admin out of every device — only a ban ends all of an account&apos;s
-              sessions today.
-            </li>
             <li>How long the audit log is kept — fixed by a nightly cleanup job.</li>
           </ul>
         </Card>

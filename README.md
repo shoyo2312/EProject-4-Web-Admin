@@ -10,21 +10,21 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
-## Phase 1 scope
+## Screens
 
 Two data sources behind one interface, switched by `ADMIN_USE_MOCK` (see `.env.example`):
 mock (default, no backend needed, no login) or live through api-gateway on `:8080`.
 `lib/api/types.ts` mirrors the Java response records 1-1, so pages are identical either way.
 
-| Screen | Route | Backing endpoint |
+| Section | Routes | What it is |
 |---|---|---|
-| Overview | `/dashboard` | `GET /api/v1/admin/stats/summary`, `GET /api/v1/analytics/{engagement,revenue,signups}/daily` |
-| Reports Queue | `/moderation/reports` | `GET /api/v1/admin/reports`, `POST /api/v1/admin/reports/{id}/resolve` |
-| Audit Log | `/moderation/actions` | `GET /api/v1/admin/actions` |
-| Inventory | `/inventory` | `GET /api/v1/inventory/{productId}`, `POST /api/v1/inventory/{productId}/restock` |
+| Overview | `/dashboard`, `/analytics` | Platform figures and trends from admin-service and analytics-service |
+| Moderation | `/moderation/reports`, `/moderation/review`, `/moderation/actions` | The report queue and ledger, the videos automatic moderation held for a person, and the audit log |
+| Management | `/users`, `/videos`, `/comments` | The directories, each account's and video's own page, and one video's comment thread at a time |
+| System | `/settings`, `/trash`, `/notifications` | The classifier's thresholds, videos their owners deleted, and the bell's whole feed |
 
-The remaining sidebar entries are marked `SOON` and render a page listing the exact
-backend gap that blocks them.
+`/system/queues` is marked `SOON` in the sidebar and renders a page listing the backend gap
+that blocks it.
 
 ## Running against the real backend
 
@@ -59,14 +59,11 @@ Set `ADMIN_TRUST_PROXY=true` only when a proxy in front of this app overwrites
 security log records the admin's own address. Left unset, they do not relay it, because a
 caller could otherwise set the header themselves and get past the gateway's per-IP limit.
 
-Still mock even in live mode: **Inventory** — inventory-service exposes
-`GET /api/v1/inventory/{productId}` only, with no list endpoint to page through.
-
 Every moderation action admin-service publishes has a consumer: video-service
-(takedown/restore/purge), auth-service (ban/unban), interaction-service (comment
-removal) and notification-service (warnings, which reach the account, the video's owner
-or the comment's author). `DISMISS_REPORT` is recorded and never published, so the
-Audit Log marks it `no consumer`.
+(takedown/restore/purge), auth-service (ban/unban, signing an account out),
+interaction-service (comment removal) and notification-service (warnings, which reach the
+account, the video's owner or the comment's author). `DISMISS_REPORT` is recorded and never
+published, so the Audit Log marks it "Recorded only".
 
 ## Design notes
 
@@ -81,4 +78,5 @@ Snowflake ids are parsed as strings (`lib/api/json.ts`). They are Java `Long`s s
 as bare JSON numbers up to 19 digits, past `Number.MAX_SAFE_INTEGER`; plain `JSON.parse`
 rounds them and every subsequent lookup 404s.
 
-Desktop-first (≥1280px). Mobile is out of scope for phase 1.
+Desktop-first. Below `xl` (1280px) the tables move their secondary columns into each row's
+expandable detail, so nothing is out of reach on a narrow screen.
