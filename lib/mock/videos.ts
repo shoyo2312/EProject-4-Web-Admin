@@ -5,6 +5,7 @@ import type {
   VideoStatus,
   VideoVisibility,
 } from "@/lib/api/types";
+import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import { MOCK_NOW, between, pick, seededRandom } from "./random";
 
 const TITLES = [
@@ -127,8 +128,8 @@ export const mockVideos: AdminVideoResponse[] = (() => {
       deletedAt:
         deletedDaysAgo != null ? new Date(MOCK_NOW - deletedDaysAgo * DAY_MS).toISOString() : null,
       purgeEventPublishedAt:
-        deletedDaysAgo != null && deletedDaysAgo > 30
-          ? new Date(MOCK_NOW - (deletedDaysAgo - 30) * DAY_MS).toISOString()
+        deletedDaysAgo != null && deletedDaysAgo > TRASH_RETENTION_DAYS
+          ? new Date(MOCK_NOW - (deletedDaysAgo - TRASH_RETENTION_DAYS) * DAY_MS).toISOString()
           : null,
       moderation: moderationFor(status, i, createdAt),
     };

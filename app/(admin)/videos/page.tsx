@@ -198,6 +198,7 @@ export default async function VideosPage({
           owners={owners}
           query={q ?? ""}
           status={deletedOnly ? "DELETED" : (filter ?? "ALL")}
+          now={referenceNow()}
         />
 
         <Pager

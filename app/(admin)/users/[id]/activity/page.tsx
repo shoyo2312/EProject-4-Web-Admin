@@ -100,6 +100,7 @@ export default async function UserActivityPage({
     reportsFiled: filed?.content ?? [],
     reportsReceived: received?.content ?? [],
     securityEvents: security?.content ?? [],
+    securityLogTruncated: security ? security.totalElements > security.content.length : false,
   });
   const visible = filterActivity(events, filter);
   const slice = pageOfActivity(visible, requestedPage, LIST_PAGE_SIZE);

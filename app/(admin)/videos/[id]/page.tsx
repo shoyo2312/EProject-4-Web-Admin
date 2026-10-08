@@ -12,8 +12,10 @@ import {
   getVideo,
   getVideoEngagement,
   listTargetActions,
+  referenceNow,
 } from "@/lib/api/admin";
 import { playable } from "@/lib/moderation";
+import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import {
   daysUntilPurge,
   formatCompact,
@@ -98,6 +100,9 @@ export default async function VideoDetailPage({
     || video.status === "PENDING_REVIEW"
       ? "restore"
       : "takedown";
+  const purgesIn = video.deletedAt
+    ? daysUntilPurge(video.deletedAt, TRASH_RETENTION_DAYS, referenceNow())
+    : null;
 
   return (
     <>
@@ -107,7 +112,7 @@ export default async function VideoDetailPage({
           video.deletedAt
             ? video.purgeEventPublishedAt
               ? `Deleted by its owner on ${formatDateTime(video.deletedAt)} — media permanently purged.`
-              : `Deleted by its owner on ${formatDateTime(video.deletedAt)} — in trash, ${daysUntilPurge(video.deletedAt)} left before permanent deletion.`
+              : `Deleted by its owner on ${formatDateTime(video.deletedAt)} — in trash, ${purgesIn} left before permanent deletion.`
             : `${video.status} · ${video.visibility} · uploaded ${formatDateTime(video.createdAt)}`
         }
       />
@@ -195,7 +200,7 @@ export default async function VideoDetailPage({
             </Field>
             <Field label="Updated">{formatDateTime(video.updatedAt)}</Field>
             {video.deletedAt && !video.purgeEventPublishedAt ? (
-              <Field label="Purges in">{daysUntilPurge(video.deletedAt)}</Field>
+              <Field label="Purges in">{purgesIn}</Field>
             ) : null}
             {video.purgeEventPublishedAt ? (
               <Field label="Media purged">{formatDateTime(video.purgeEventPublishedAt)}</Field>

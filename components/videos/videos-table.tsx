@@ -19,6 +19,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
 import { PRESET_REASONS, playable } from "@/lib/moderation";
+import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import type {
   AdminVideoResponse,
   UserProfileResponse,
@@ -99,12 +100,15 @@ export function VideosTable({
   owners,
   query,
   status,
+  now,
 }: {
   videos: AdminVideoResponse[];
   /** userId → profile, for showing the owner as @handle. May be missing an id. */
   owners: Record<string, UserProfileResponse>;
   query: string;
   status: StatusFilter;
+  /** `referenceNow()`, from the server — the purge countdown is measured against it. */
+  now: number;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -158,7 +162,7 @@ export function VideosTable({
           </thead>
           <tbody>
             {videos.map((video) => (
-              <VideoRow key={video.id} video={video} owner={owners[video.userId]} />
+              <VideoRow key={video.id} video={video} owner={owners[video.userId]} now={now} />
             ))}
 
             {videos.length === 0 ? (
@@ -178,9 +182,11 @@ export function VideosTable({
 function VideoRow({
   video,
   owner,
+  now,
 }: {
   video: AdminVideoResponse;
   owner?: UserProfileResponse;
+  now: number;
 }) {
   const [reason, setReason] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -394,7 +400,9 @@ function VideoRow({
               {video.purgeEventPublishedAt ? (
                 <Field label="Media purged">{formatDateTime(video.purgeEventPublishedAt)}</Field>
               ) : (
-                <Field label="Purges in">{daysUntilPurge(video.deletedAt)}</Field>
+                <Field label="Purges in">
+                  {daysUntilPurge(video.deletedAt, TRASH_RETENTION_DAYS, now)}
+                </Field>
               )}
               <Field label="Media" wide>
                 <span className="text-ink-faint">

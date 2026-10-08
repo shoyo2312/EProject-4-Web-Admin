@@ -105,7 +105,7 @@ export default async function AnalyticsPage({
   ];
 
   const signupBuckets = bucketByGranularity(
-    sliceToWindow(signups, window),
+    sliceToWindow(signups, window, (day) => ({ day, signups: 0 })),
     window.bucket,
     (a, b) => ({ day: a.day, signups: a.signups + b.signups }),
   );

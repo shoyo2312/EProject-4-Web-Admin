@@ -10,6 +10,7 @@ import {
   resolveOwners,
 } from "@/lib/api/admin";
 import { parsePage } from "@/lib/api/window";
+import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 
 export default async function TrashPage({
   searchParams,
@@ -46,7 +47,7 @@ export default async function TrashPage({
     <>
       <PageHeader
         title="Trash"
-        subtitle="Videos their owners deleted. Each stays watchable here for 30 days, then its media is erased for good — or delete it now."
+        subtitle={`Videos their owners deleted. Each stays watchable here for ${TRASH_RETENTION_DAYS} days, then its media is erased for good — or delete it now.`}
       />
 
       <div className="space-y-4">

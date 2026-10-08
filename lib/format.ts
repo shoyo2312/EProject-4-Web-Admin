@@ -52,8 +52,12 @@ export function shortId(id: string, keep = 6) {
   return id.length <= keep ? id : `${id.slice(0, keep)}…`;
 }
 
-/** "12 days" / "less than a day" left in the 30-day trash window before video-service purges the video — see video.trash.retention on the backend. */
-export function daysUntilPurge(deletedAtIso: string, retentionDays = 30, now = Date.now()) {
+/**
+ * "12 days" / "less than a day" left in the trash before video-service purges the video.
+ * `retentionDays` is `TRASH_RETENTION_DAYS` and `now` is `referenceNow()` at every call site, so
+ * the countdown agrees with the bell's warning and, in mock mode, with the mock clock.
+ */
+export function daysUntilPurge(deletedAtIso: string, retentionDays: number, now: number) {
   const daysLeft = retentionDays - (now - new Date(deletedAtIso).getTime()) / 86_400_000;
   return daysLeft < 1 ? "less than a day" : `${Math.ceil(daysLeft)} days`;
 }

@@ -9,6 +9,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
 import { ReasonForm } from "@/components/moderation/reason-form";
 import { PRESET_REASONS } from "@/lib/moderation";
+import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import type { AdminVideoResponse, UserProfileResponse } from "@/lib/api/types";
 import { daysUntilPurge, formatDateTime, shortId } from "@/lib/format";
 import { hrefWith } from "@/lib/url";
@@ -42,7 +43,7 @@ export function TrashTable({
     <Card>
       <CardHeader
         title="Deleted by their owners"
-        hint="GET /api/v1/videos/admin?deleted=true&purged=false — the media stays in storage, and playable, until its 30 days run out"
+        hint={`GET /api/v1/videos/admin?deleted=true&purged=false — the media stays in storage, and playable, until its ${TRASH_RETENTION_DAYS} days run out`}
         actions={
           <SearchBox query={query} onCommit={search} placeholder="Search title or owner..." />
         }
@@ -134,7 +135,7 @@ function TrashRow({
           {pending ? (
             <span className="text-ink-faint">deleting…</span>
           ) : video.deletedAt ? (
-            daysUntilPurge(video.deletedAt, 30, now)
+            daysUntilPurge(video.deletedAt, TRASH_RETENTION_DAYS, now)
           ) : (
             "—"
           )}
@@ -166,7 +167,7 @@ function TrashRow({
               onSubmit={submit}
               onCancel={() => setReason(null)}
               submitting={submitting}
-              placeholder={`Why "${video.title}" cannot wait out its 30 days — this is permanent`}
+              placeholder={`Why "${video.title}" cannot wait out its ${TRASH_RETENTION_DAYS} days — this is permanent`}
               confirmLabel="Delete permanently"
             />
           </td>

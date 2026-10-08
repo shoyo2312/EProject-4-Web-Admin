@@ -27,7 +27,7 @@ export interface AdminNotification {
 }
 
 const DAY_MS = 86_400_000;
-/** Mirrors video-service's `video.trash.retention`. */
+/** Mirrors video-service's `video.trash.retention`. The trash countdowns read it too. */
 export const TRASH_RETENTION_DAYS = 30;
 /** How close to the purge a trashed video has to be before the bell mentions it. */
 export const TRASH_WARNING_DAYS = 3;

@@ -163,12 +163,33 @@ export function windowRange(window: TimeWindow): { from: string; to: string } {
   };
 }
 
-/** Trims a daily series to the chart window: everything up to `asOf`, at most `chartDays` of it. */
+/**
+ * The `length` calendar days ending at `asOf`, oldest first.
+ *
+ * The daily endpoints send no row for a day on which nothing happened, so a series is laid on
+ * these rather than taken row by row. Counting rows instead, the last thirty of a sparse series
+ * reach back months — a chart titled "last 30d" drawing ninety days under a figure that sums
+ * thirty — and a weekly bucket of seven rows is not a week.
+ */
+function calendarDays(asOf: string, length: number): string[] {
+  const end = Date.parse(`${asOf}T00:00:00Z`);
+  return Array.from({ length }, (_, i) => isoDay(end - (length - 1 - i) * DAY_MS));
+}
+
+/**
+ * A daily series cut to the chart window: one row per calendar day up to `asOf`, at most
+ * `chartDays` of them, with `empty` standing in for a day that sent no row. Never longer than
+ * the fetch covers — a day past it is unknown, not zero.
+ */
 export function sliceToWindow<T extends { day: string }>(
   rows: T[],
   window: TimeWindow,
+  empty: (day: string) => T,
 ): T[] {
-  return rows.filter((r) => r.day <= window.asOf).slice(-window.chartDays);
+  const byDay = new Map(rows.map((r) => [r.day, r]));
+  return calendarDays(window.asOf, Math.min(window.chartDays, window.historyDays)).map(
+    (day) => byDay.get(day) ?? empty(day),
+  );
 }
 
 /**
@@ -176,10 +197,9 @@ export function sliceToWindow<T extends { day: string }>(
  * the two periods behind it are still there. Cutting to the window first would leave nothing to
  * compare against.
  *
- * The daily endpoints send no row for a day on which nothing happened, so a missing day is
- * filled with 0 here. Without it `sumLast(values, 7)` is the last seven *active* days however
- * far back they reach — a library whose four videos span ten days reads as all four uploaded
- * this week, and its growth as undefined.
+ * A day that sent no row is 0. Without it `sumLast(values, 7)` is the last seven *active* days
+ * however far back they reach — a library whose four videos span ten days reads as all four
+ * uploaded this week, and its growth as undefined.
  */
 export function historyUpTo<T extends { day: string }>(
   rows: T[],
@@ -187,11 +207,7 @@ export function historyUpTo<T extends { day: string }>(
   pick: (row: T) => number,
 ): number[] {
   const byDay = new Map(rows.map((r) => [r.day, pick(r)]));
-  const end = Date.parse(`${window.asOf}T00:00:00Z`);
-  return Array.from(
-    { length: window.historyDays },
-    (_, i) => byDay.get(isoDay(end - (window.historyDays - 1 - i) * DAY_MS)) ?? 0,
-  );
+  return calendarDays(window.asOf, window.historyDays).map((day) => byDay.get(day) ?? 0);
 }
 
 /**

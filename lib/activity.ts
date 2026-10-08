@@ -66,12 +66,19 @@ export function buildUserActivity(input: {
   reportsReceived: ReportResponse[];
   /** auth-service's security log. Empty for an account that predates it. */
   securityEvents?: SecurityEventResponse[];
+  /** The log holds more entries than `securityEvents` — only its newest page was fetched. */
+  securityLogTruncated?: boolean;
 }): ActivityEvent[] {
   const { user, actions, uploads, reportsFiled, reportsReceived } = input;
   const securityEvents = input.securityEvents ?? [];
 
   return [
-    ...accountEvents(user, actions, new Set(securityEvents.map((event) => event.eventType))),
+    ...accountEvents(
+      user,
+      actions,
+      new Set(securityEvents.map((event) => event.eventType)),
+      input.securityLogTruncated ?? false,
+    ),
     ...securityEvents.map(securityEvent),
     ...actions.map(actionEvent),
     ...uploads.flatMap(videoEvents),
@@ -100,6 +107,7 @@ function accountEvents(
   user: AdminUserResponse,
   actions: ModerationActionResponse[],
   recorded: Set<SecurityEventType>,
+  truncated: boolean,
 ): ActivityEvent[] {
   const events: ActivityEvent[] = [
     {
@@ -138,8 +146,12 @@ function accountEvents(
       // Said plainly because one row here looks like one sign-in and is not: the column is
       // overwritten on every refresh, so every earlier one has already been lost. Only reached
       // when the security log holds no sign-in for this account — an account last active before
-      // the log existed, or one that has never signed in since.
-      detail: "No sign-in recorded in the security log — this single timestamp is all that is left",
+      // the log existed, or one that has never signed in since — or when the page of it fetched
+      // holds none, as on an account whose newest entries are a run of failed guesses. The log
+      // may well have sign-ins then, so the detail must not say it has none.
+      detail: truncated
+        ? "No sign-in among the security-log entries loaded here — older entries were not fetched"
+        : "No sign-in recorded in the security log — this single timestamp is all that is left",
       actor: `@${user.username}`,
     });
   }
