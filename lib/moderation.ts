@@ -87,7 +87,8 @@ export type EnforcementAction =
   | "revokeSessions"
   | "takedown"
   | "restore"
-  | "approve";
+  | "approve"
+  | "reject";
 
 /** The decision a video's state offers — what its row and its own page put on the button. */
 export type VideoDecision = Extract<EnforcementAction, "takedown" | "restore" | "approve">;
@@ -102,6 +103,15 @@ export function videoDecision(status: VideoStatus): VideoDecision {
   if (status === "PENDING_REVIEW") return "approve";
   if (status === "TAKEN_DOWN" || status === "REJECTED") return "restore";
   return "takedown";
+}
+
+/**
+ * Every decision a video's own page and the review screen offer. A held video is the one with two
+ * answers: approve it, or reject it — a takedown on the wire, named for what it is to someone
+ * deciding a video nobody has seen yet. The directory row keeps the single primary decision.
+ */
+export function videoDecisions(status: VideoStatus): readonly EnforcementAction[] {
+  return status === "PENDING_REVIEW" ? ["approve", "reject"] : [videoDecision(status)];
 }
 
 /**
@@ -126,6 +136,17 @@ export type BanDuration = (typeof BAN_DURATIONS)[number]["value"];
 export function banDaysOf(duration: BanDuration): number | null {
   return duration === "permanent" ? null : Number(duration);
 }
+
+const CONTENT_VIOLATIONS = [
+  "Sexual or nude content",
+  "Graphic violence",
+  "Hate speech or harassment",
+  "Dangerous act likely to be imitated",
+  "Spam or scam",
+  "Copyright infringement",
+  "Harmful misinformation",
+  "Involves a minor",
+] as const;
 
 /**
  * Preset reasons, per enforcement. They are written to read on their own months later, because
@@ -182,16 +203,10 @@ export const PRESET_REASONS: Record<
     "Sign-ins the owner does not recognise",
     "Signed in from a shared or public device",
   ],
-  takedown: [
-    "Sexual or nude content",
-    "Graphic violence",
-    "Hate speech or harassment",
-    "Dangerous act likely to be imitated",
-    "Spam or scam",
-    "Copyright infringement",
-    "Harmful misinformation",
-    "Involves a minor",
-  ],
+  takedown: CONTENT_VIOLATIONS,
+  // The same violations: a rejection is a takedown of a video that never went live, and the audit
+  // log should not grow a second vocabulary for it.
+  reject: CONTENT_VIOLATIONS,
   restore: [
     "Reviewed — automatic flag was wrong",
     "Appeal upheld — no violation",

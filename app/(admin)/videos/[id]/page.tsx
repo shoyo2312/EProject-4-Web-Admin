@@ -16,7 +16,7 @@ import {
   referenceNow,
 } from "@/lib/api/admin";
 import { VIDEO_STATUS_LABELS } from "@/lib/labels";
-import { playable, videoDecision } from "@/lib/moderation";
+import { playable, videoDecisions } from "@/lib/moderation";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import {
   daysUntilPurge,
@@ -96,7 +96,6 @@ export default async function VideoDetailPage({
   const owner = owners[video.userId];
   const watchable = playable(video.status);
 
-  const action = videoDecision(video.status);
   const purgesIn = video.deletedAt
     ? daysUntilPurge(video.deletedAt, TRASH_RETENTION_DAYS, referenceNow())
     : null;
@@ -272,7 +271,7 @@ export default async function VideoDetailPage({
             <EnforcePanel
               kind="video"
               targetId={video.id}
-              actions={[action]}
+              actions={videoDecisions(video.status)}
               subject={`"${video.title || video.id}"`}
             />
           </div>

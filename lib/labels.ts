@@ -34,7 +34,8 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
 
 /**
  * Past tense, because the audit log is a record of what was done. An approved held video is a
- * RESTORE_VIDEO too — both put the video back through the same event — so "restored" covers it.
+ * RESTORE_VIDEO too — both put the video back through the same event — so "restored" covers it,
+ * as "took down" covers a rejected one.
  */
 export const ACTION_LABELS: Record<ModerationActionType, string> = {
   BAN_USER: "Banned account",

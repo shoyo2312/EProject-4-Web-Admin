@@ -10,6 +10,7 @@ import {
   RotateCcw,
   ShieldCheck,
   TriangleAlert,
+  XCircle,
 } from "lucide-react";
 import { moderateUserAction } from "@/app/(admin)/users/actions";
 import { moderateVideoAction } from "@/app/(admin)/videos/actions";
@@ -32,6 +33,7 @@ const ICONS = {
   takedown: EyeOff,
   restore: RotateCcw,
   approve: CheckCircle2,
+  reject: XCircle,
 } as const;
 
 const BUTTON_LABELS: Record<EnforcementAction, string> = {
@@ -42,6 +44,7 @@ const BUTTON_LABELS: Record<EnforcementAction, string> = {
   takedown: "Take down",
   restore: "Restore",
   approve: "Approve",
+  reject: "Reject",
 };
 
 const CONFIRM_LABELS: Record<EnforcementAction, string> = {
@@ -52,6 +55,7 @@ const CONFIRM_LABELS: Record<EnforcementAction, string> = {
   takedown: "Confirm takedown",
   restore: "Confirm restore",
   approve: "Confirm approval",
+  reject: "Confirm rejection",
 };
 
 /**
@@ -99,7 +103,11 @@ export function EnforcePanel({
               reason,
               action === "ban" ? banDaysOf(duration) : null,
             )
-          : await moderateVideoAction(targetId, action as "takedown" | "restore" | "approve", reason);
+          : await moderateVideoAction(
+              targetId,
+              action as "takedown" | "restore" | "approve" | "reject",
+              reason,
+            );
       setResult(outcome.message);
       if (outcome.ok) {
         setOpen(null);
@@ -137,7 +145,8 @@ export function EnforcePanel({
                     ? "cursor-not-allowed text-ink-faint"
                     : cn(
                         "hover:bg-surface",
-                        (action === "ban" || action === "takedown") && "text-danger",
+                        (action === "ban" || action === "takedown" || action === "reject")
+                          && "text-danger",
                         action === "approve" && "text-success",
                       ),
                 )}
