@@ -1,37 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { listTargetActions } from "@/lib/api/moderation";
-import { getAdminHandles } from "@/lib/api/names";
-import { getReportCount } from "@/lib/api/reports";
+import { getModerationDetail, type ModerationDetail } from "@/lib/api/moderation";
 import { moderateVideo } from "@/lib/api/videos";
-import type { ModerationActionResponse } from "@/lib/api/types";
+import type { ModerationResult } from "@/lib/moderation";
 
-export interface ModerationResult {
-  ok: boolean;
-  message: string;
-}
-
-export interface ModerationDetail {
-  reportCount: number;
-  actions: ModerationActionResponse[];
-  /** adminId → @handle, for the admins named in `actions`. */
-  handles: Record<string, string>;
-}
-
-/**
- * The report count and the moderation-action log for one video, fetched together. Called from the
- * table's expandable row so nothing loads until an admin opens it — a page of 100 rows would
- * otherwise be 200 extra calls on first paint.
- */
-export async function videoModerationDetailAction(
-  videoId: string,
-): Promise<ModerationDetail> {
-  const [reportCount, actions] = await Promise.all([
-    getReportCount("VIDEO", videoId),
-    listTargetActions("VIDEO", videoId),
-  ]);
-  return { reportCount, actions, handles: await getAdminHandles(actions.map((a) => a.adminId)) };
+/** One video's report count and moderation history, for its row in the videos table. */
+export async function videoModerationDetailAction(videoId: string): Promise<ModerationDetail> {
+  return getModerationDetail("VIDEO", videoId);
 }
 
 /**

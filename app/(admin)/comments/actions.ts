@@ -1,43 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getComments, listCommentReplies, listComments, removeComment } from "@/lib/api/comments";
-import { getUserProfiles } from "@/lib/api/names";
-import type { AdminCommentFilter, AdminCommentPage } from "@/lib/api/types";
+import {
+  decorateCommentPage,
+  getComments,
+  listCommentReplies,
+  listComments,
+  removeComment,
+} from "@/lib/api/comments";
+import type { AdminCommentFilter } from "@/lib/api/types";
 import type { CommentPageView } from "@/lib/comments";
-
-export interface ModerationResult {
-  ok: boolean;
-  message: string;
-}
-
-/**
- * Fills a raw page out with its authors and parent comments. Both lookups are best-effort — a row
- * falls back to the bare id rather than failing the page, because the thing being moderated is the
- * comment text and it is already in hand.
- */
-export async function decoratePage(
-  videoId: string,
-  page: AdminCommentPage,
-): Promise<CommentPageView> {
-  const onPage = new Set(page.items.map((c) => c.commentId));
-  const missingParents = [
-    ...new Set(page.items.flatMap((c) => (c.parentId && !onPage.has(c.parentId) ? [c.parentId] : []))),
-  ];
-
-  const parentList = missingParents.length
-    ? await getComments(videoId, missingParents).catch(() => [])
-    : [];
-  const parents = Object.fromEntries(parentList.map((c) => [c.commentId, c]));
-
-  const authors = await getUserProfiles([
-    ...page.items.map((c) => c.userId),
-    ...page.items.flatMap((c) => c.replyToUserId ?? []),
-    ...parentList.map((c) => c.userId),
-  ]).catch(() => ({}));
-
-  return { items: page.items, authors, parents, nextCursor: page.nextCursor, hasMore: page.hasMore };
-}
+import type { ModerationResult } from "@/lib/moderation";
 
 /** The next page of the listing, for the Load more button. */
 export async function loadCommentsAction(
@@ -45,7 +18,7 @@ export async function loadCommentsAction(
   filter: AdminCommentFilter,
   cursor: string,
 ): Promise<CommentPageView> {
-  return decoratePage(videoId, await listComments(videoId, { filter, cursor }));
+  return decorateCommentPage(videoId, await listComments(videoId, { filter, cursor }));
 }
 
 /**
@@ -57,7 +30,7 @@ export async function loadRepliesAction(
   commentId: string,
   cursor: string | null,
 ): Promise<CommentPageView> {
-  return decoratePage(videoId, await listCommentReplies(videoId, commentId, cursor));
+  return decorateCommentPage(videoId, await listCommentReplies(videoId, commentId, cursor));
 }
 
 /**

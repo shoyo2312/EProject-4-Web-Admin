@@ -6,7 +6,7 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { getDailyAdminStats } from "@/lib/api/analytics";
-import { listComments } from "@/lib/api/comments";
+import { decorateCommentPage, listComments } from "@/lib/api/comments";
 import { referenceNow } from "@/lib/api/shared";
 import { getVideo, listVideos } from "@/lib/api/videos";
 import { historyUpTo, isoDay, resolveWindow } from "@/lib/api/window";
@@ -14,7 +14,6 @@ import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
 import type { AdminCommentFilter } from "@/lib/api/types";
 import type { CommentPageView } from "@/lib/comments";
-import { decoratePage } from "./actions";
 
 const FILTERS: AdminCommentFilter[] = ["THREAD", "REPLIES", "REMOVED"];
 
@@ -66,7 +65,7 @@ export default async function CommentsPage({
     // Only the first page. The rest is pulled in by the table as the admin asks for it — a thread
     // can run to thousands, and before this it was read as one slab and silently cut off at 50.
     comments = selected
-      ? await decoratePage(selected, await listComments(selected, { filter: selectedFilter }))
+      ? await decorateCommentPage(selected, await listComments(selected, { filter: selectedFilter }))
       : null;
   } catch (error) {
     return (

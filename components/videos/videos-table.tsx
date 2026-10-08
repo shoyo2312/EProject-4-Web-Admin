@@ -206,7 +206,7 @@ function VideoRow({
   const [result, setResult] = useState<string | null>(null);
   const [watching, setWatching] = useState(false);
   const [submitting, startSubmit] = useTransition();
-  // Opening the row is what triggers the fetch — once, lazily. See videoModerationDetailAction.
+  // Opening the row is what triggers the fetch — once, lazily. See getModerationDetail.
   const detail = useRowDetail(() => videoModerationDetailAction(video.id));
   const { pending, stalled, watch } = usePropagation(
     video.status,

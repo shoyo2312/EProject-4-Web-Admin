@@ -2,12 +2,14 @@ import "server-only";
 
 import { apiGet, apiPost } from "./client";
 import { USE_MOCK } from "./config";
+import { getUserProfiles } from "./names";
 import type {
   AdminCommentFilter,
   AdminCommentPage,
   AdminCommentResponse,
   ModerationActionResponse,
 } from "./types";
+import type { CommentPageView } from "@/lib/comments";
 import { mockCommentPage, mockCommentsByIds, mockReplyPage } from "@/lib/mock/comments";
 
 /**
@@ -104,4 +106,32 @@ export async function removeComment(
     `/api/v1/admin/comments/${videoId}/${commentId}/remove`,
     { reason },
   );
+}
+
+/**
+ * Fills a raw page out with its authors and parent comments. Both lookups are best-effort — a row
+ * falls back to the bare id rather than failing the page, because the thing being moderated is the
+ * comment text and it is already in hand.
+ */
+export async function decorateCommentPage(
+  videoId: string,
+  page: AdminCommentPage,
+): Promise<CommentPageView> {
+  const onPage = new Set(page.items.map((c) => c.commentId));
+  const missingParents = [
+    ...new Set(page.items.flatMap((c) => (c.parentId && !onPage.has(c.parentId) ? [c.parentId] : []))),
+  ];
+
+  const parentList = missingParents.length
+    ? await getComments(videoId, missingParents).catch(() => [])
+    : [];
+  const parents = Object.fromEntries(parentList.map((c) => [c.commentId, c]));
+
+  const authors = await getUserProfiles([
+    ...page.items.map((c) => c.userId),
+    ...page.items.flatMap((c) => c.replyToUserId ?? []),
+    ...parentList.map((c) => c.userId),
+  ]).catch(() => ({}));
+
+  return { items: page.items, authors, parents, nextCursor: page.nextCursor, hasMore: page.hasMore };
 }

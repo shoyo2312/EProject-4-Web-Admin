@@ -2,6 +2,8 @@ import "server-only";
 
 import { apiGet } from "./client";
 import { USE_MOCK } from "./config";
+import { getAdminHandles } from "./names";
+import { getReportCount } from "./reports";
 import { LIST_PAGE_SIZE, mockPage } from "./shared";
 import type {
   ModerationActionResponse,
@@ -69,6 +71,30 @@ export async function listTargetActions(
   });
   const page = await apiGet<Page<ModerationActionResponse>>(`/api/v1/admin/actions?${params}`);
   return page.content;
+}
+
+export interface ModerationDetail {
+  reportCount: number;
+  actions: ModerationActionResponse[];
+  /** adminId → @handle, for the admins named in `actions`. */
+  handles: Record<string, string>;
+}
+
+/**
+ * The report count and the moderation history of one target, with the admins in it named —
+ * what an expanded row of the users, videos and report tables shows. Read when a row is opened
+ * rather than for the page: a page of a hundred rows would otherwise be two hundred calls on first
+ * paint.
+ */
+export async function getModerationDetail(
+  targetType: ReportTargetType,
+  targetId: string,
+): Promise<ModerationDetail> {
+  const [reportCount, actions] = await Promise.all([
+    getReportCount(targetType, targetId),
+    listTargetActions(targetType, targetId),
+  ]);
+  return { reportCount, actions, handles: await getAdminHandles(actions.map((a) => a.adminId)) };
 }
 
 /**

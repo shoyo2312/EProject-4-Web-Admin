@@ -1,16 +1,31 @@
 import type { ModerationActionType, ReportTargetType, VideoStatus } from "@/lib/api/types";
 
+/** What a moderation server action answers: whether it was recorded, and the sentence to show. */
+export interface ModerationResult {
+  ok: boolean;
+  message: string;
+}
+
 /**
- * Where in the console a reported target opens. A COMMENT target is "videoId:commentId" — comments
- * are partitioned by video, so the thread is reached through its video — and any other shape has
- * nowhere to go, rather than a guessed video.
+ * A COMMENT target is stored as "videoId:commentId" — admin-service's CommentTarget, and what the
+ * client sends — because comments are partitioned by video and the comment id alone reaches
+ * nothing. Null for any other shape, rather than a guessed video.
+ */
+export function parseCommentTarget(targetId: string): { videoId: string; commentId: string } | null {
+  const [videoId, commentId, ...rest] = targetId.split(":");
+  if (!videoId || !commentId || rest.length > 0) return null;
+  return { videoId, commentId };
+}
+
+/**
+ * Where in the console a reported target opens. A comment opens its video's thread, and a comment
+ * target that names no video has nowhere to go.
  */
 export function targetHref(targetType: ReportTargetType, targetId: string): string | null {
   if (targetType === "USER") return `/users/${targetId}`;
   if (targetType === "VIDEO") return `/videos/${targetId}`;
-  const [videoId, commentId, ...rest] = targetId.split(":");
-  if (!videoId || !commentId || rest.length > 0) return null;
-  return `/comments?videoId=${encodeURIComponent(videoId)}`;
+  const comment = parseCommentTarget(targetId);
+  return comment ? `/comments?videoId=${encodeURIComponent(comment.videoId)}` : null;
 }
 
 /**

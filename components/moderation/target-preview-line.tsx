@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { TargetPreview } from "@/app/(admin)/moderation/reports/actions";
+import type { TargetPreview } from "@/lib/api/previews";
 
 /**
  * What a report or an audit row points at, in one line: a video title, a @handle or the comment

@@ -1,97 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getComments } from "@/lib/api/comments";
-import { listTargetActions } from "@/lib/api/moderation";
-import { getAdminHandles, getUserProfiles } from "@/lib/api/names";
-import { getReportCount, resolveQueueRow, resolveReport } from "@/lib/api/reports";
-import { getVideo } from "@/lib/api/videos";
-import { formatCompact, plural } from "@/lib/format";
-import { targetHref } from "@/lib/moderation";
-import type {
-  ModerationActionResponse,
-  ModerationActionType,
-  ReportTargetType,
-} from "@/lib/api/types";
+import { getModerationDetail, type ModerationDetail } from "@/lib/api/moderation";
+import { getTargetPreview, type TargetPreview } from "@/lib/api/previews";
+import { resolveQueueRow, resolveReport } from "@/lib/api/reports";
+import type { ModerationActionType, ReportTargetType } from "@/lib/api/types";
+import type { ModerationResult } from "@/lib/moderation";
 
-export interface ModerationResult {
-  ok: boolean;
-  message: string;
-}
-
-/**
- * What the report points at, in the shape the queue can show in one line. Null when the target
- * cannot be read back — a taken-down video is invisible to the endpoint that serves previews, and
- * an id from a deleted row resolves to nothing. The row still renders: the report, its reason and
- * the moderation history are the record, and a missing preview must not hide them.
- */
-export interface TargetPreview {
-  /** Headline: a video title, a @handle, or the comment text. */
-  title: string;
-  /** Second line — status, follower count, "removed", whatever that type makes obvious. */
-  detail: string | null;
-  /** Where in the console this target can be opened, or null when nothing can reach it. */
-  href: string | null;
-}
-
-export interface ReportTargetDetail {
-  reportCount: number;
-  actions: ModerationActionResponse[];
-  /** adminId → @handle, for the admins named in `actions`. */
-  handles: Record<string, string>;
+export interface ReportTargetDetail extends ModerationDetail {
   preview: TargetPreview | null;
-}
-
-/**
- * A COMMENT target is stored as "videoId:commentId" — admin-service's CommentTarget, and what the
- * client sends — because comments are partitioned by video and the comment id alone reaches
- * nothing. Returns null for any other shape rather than guessing a video.
- */
-function parseCommentTarget(targetId: string): { videoId: string; commentId: string } | null {
-  const [videoId, commentId, ...rest] = targetId.split(":");
-  if (!videoId || !commentId || rest.length > 0) return null;
-  return { videoId, commentId };
-}
-
-export async function loadPreview(
-  targetType: ReportTargetType,
-  targetId: string,
-): Promise<TargetPreview | null> {
-  if (targetType === "USER") {
-    const profile = (await getUserProfiles([targetId]))[targetId];
-    if (!profile) return null;
-    return {
-      title: profile.username ? `@${profile.username}` : `#${targetId.slice(-8)}`,
-      detail: `${formatCompact(profile.followerCount)} ${plural(profile.followerCount, "follower")}`,
-      // The account's own page, by id. A search link lands on a result set instead — several
-      // rows for a handle that is a common substring, and none at all for an account that has
-      // no handle yet.
-      href: targetHref("USER", targetId),
-    };
-  }
-
-  if (targetType === "VIDEO") {
-    const video = await getVideo(targetId);
-    if (!video) return null;
-    // Deleted first: a deleted video keeps whatever status it had, so showing PUBLISHED alone
-    // would read as a video still up.
-    return {
-      title: video.title,
-      detail: video.deletedAt ? "deleted by its owner" : video.status,
-      // By id, and always present: the video's own page reads back what the listing cannot —
-      // a taken-down video, and one its owner deleted after the report came in.
-      href: targetHref("VIDEO", targetId),
-    };
-  }
-
-  const target = parseCommentTarget(targetId);
-  if (!target) return null;
-  const [comment] = await getComments(target.videoId, [target.commentId]);
-  return {
-    title: comment?.content ?? "(comment not found in the thread)",
-    detail: comment?.deletedAt ? "already removed" : null,
-    href: targetHref("COMMENT", targetId),
-  };
 }
 
 /**
@@ -103,19 +20,13 @@ export async function reportTargetDetailAction(
   targetType: ReportTargetType,
   targetId: string,
 ): Promise<ReportTargetDetail> {
-  const [reportCount, actions, preview] = await Promise.all([
-    getReportCount(targetType, targetId),
-    listTargetActions(targetType, targetId),
+  const [detail, preview] = await Promise.all([
+    getModerationDetail(targetType, targetId),
     // A preview is a convenience; the report and its history are the point, so a target that
     // cannot be read does not fail the whole row.
-    loadPreview(targetType, targetId).catch(() => null),
+    getTargetPreview(targetType, targetId).catch(() => null),
   ]);
-  return {
-    reportCount,
-    actions,
-    handles: await getAdminHandles(actions.map((a) => a.adminId)),
-    preview,
-  };
+  return { ...detail, preview };
 }
 
 /**

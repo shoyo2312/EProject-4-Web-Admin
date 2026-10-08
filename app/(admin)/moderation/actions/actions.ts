@@ -1,6 +1,6 @@
 "use server";
 
-import { loadPreview, type TargetPreview } from "@/app/(admin)/moderation/reports/actions";
+import { getTargetPreview, type TargetPreview } from "@/lib/api/previews";
 import type { ReportTargetType } from "@/lib/api/types";
 
 export interface ActionRowDetail {
@@ -18,5 +18,5 @@ export async function actionRowDetailAction(
   targetType: ReportTargetType,
   targetId: string,
 ): Promise<ActionRowDetail> {
-  return { preview: await loadPreview(targetType, targetId).catch(() => null) };
+  return { preview: await getTargetPreview(targetType, targetId).catch(() => null) };
 }
