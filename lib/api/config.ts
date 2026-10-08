@@ -24,6 +24,37 @@ export const REFRESH_COOKIE = "admin_refresh";
 /** Who is signed in — name, role and initials for the sidebar — set beside the tokens at sign-in. */
 export const PROFILE_COOKIE = "admin_profile";
 
+export interface SessionTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresInMillis: number;
+}
+
+/**
+ * The two token cookies and how they are set: by the sign-in handler, and by the proxy when it
+ * rotates an expired access token. One definition, so a session the proxy refreshed is the same
+ * cookie a sign-in wrote.
+ *
+ * httpOnly, so no client component and no injected script can read a token. The access cookie
+ * lives exactly as long as the token; the refresh cookie a week, as auth-service's refresh token.
+ */
+export function sessionCookies(tokens: SessionTokens) {
+  const options = {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+  };
+  return [
+    {
+      name: SESSION_COOKIE,
+      value: tokens.accessToken,
+      options: { ...options, maxAge: Math.floor(tokens.expiresInMillis / 1000) },
+    },
+    { name: REFRESH_COOKIE, value: tokens.refreshToken, options: { ...options, maxAge: 7 * 24 * 60 * 60 } },
+  ];
+}
+
 /**
  * A "remember this device" token from a past OTP-verified login. Sent back on the next login so
  * auth-service skips the email-OTP step; httpOnly, 30-day lifetime, survives logout (the password

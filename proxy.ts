@@ -1,23 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  GATEWAY_URL,
+  PROFILE_COOKIE,
+  REFRESH_COOKIE,
+  SESSION_COOKIE,
+  USE_MOCK,
+  sessionCookies,
+  type SessionTokens,
+} from "@/lib/api/config";
 import { internalPath } from "@/lib/url";
-
-const SESSION_COOKIE = "admin_session";
-const REFRESH_COOKIE = "admin_refresh";
-
-const GATEWAY_URL = process.env.GATEWAY_URL ?? "http://localhost:8080";
-
-/**
- * In mock mode there is no session to check and no backend to sign in against, so the
- * gate is skipped entirely — otherwise `npm run dev` would dead-end on a login form
- * that cannot succeed.
- */
-const USE_MOCK = process.env.ADMIN_USE_MOCK !== "false";
-
-type Tokens = {
-  accessToken: string;
-  refreshToken: string;
-  expiresInMillis: number;
-};
 
 /**
  * The access-token cookie lives exactly as long as the token itself — 15 minutes,
@@ -40,7 +31,7 @@ type Tokens = {
  * navigation itself, one redirect to /login that immediately rotates and bounces
  * back to the page. Add a shared lock only if that flash becomes a complaint.
  */
-async function rotate(refreshToken: string): Promise<Tokens | null> {
+async function rotate(refreshToken: string): Promise<SessionTokens | null> {
   try {
     const response = await fetch(`${GATEWAY_URL}/api/v1/auth/refresh`, {
       method: "POST",
@@ -49,7 +40,7 @@ async function rotate(refreshToken: string): Promise<Tokens | null> {
       cache: "no-store",
     });
     if (!response.ok) return null;
-    const body = (await response.json()) as { success?: boolean; data?: Tokens | null };
+    const body = (await response.json()) as { success?: boolean; data?: SessionTokens | null };
     return body.success && body.data?.accessToken ? body.data : null;
   } catch {
     // Gateway unreachable — treat as not signed in, same as an expired session.
@@ -57,25 +48,15 @@ async function rotate(refreshToken: string): Promise<Tokens | null> {
   }
 }
 
-function applySession(response: NextResponse, tokens: Tokens) {
-  const secure = process.env.NODE_ENV === "production";
-  response.cookies.set(SESSION_COOKIE, tokens.accessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",
-    maxAge: Math.floor(tokens.expiresInMillis / 1000),
-  });
-  response.cookies.set(REFRESH_COOKIE, tokens.refreshToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  });
+function applySession(response: NextResponse, tokens: SessionTokens) {
+  for (const cookie of sessionCookies(tokens)) {
+    response.cookies.set(cookie.name, cookie.value, cookie.options);
+  }
 }
 
 export async function proxy(request: NextRequest) {
+  // Mock mode has no session to check and no backend to sign in against: gating it would dead-end
+  // `npm run dev` on a login form that cannot succeed.
   if (USE_MOCK) return NextResponse.next();
 
   const onLoginPage = request.nextUrl.pathname === "/login";
@@ -86,19 +67,20 @@ export async function proxy(request: NextRequest) {
   // A page hit a 401 from the gateway mid-session — token revoked server-side
   // (ban, replay, password reset) while the cookie was still within its maxAge,
   // so neither the gate nor the refresh path above would notice. `ErrorState`
-  // redirects such a render here; drop both cookies and show the login form
+  // redirects such a render here; drop the session cookies and show the login form
   // rather than bouncing straight back to /dashboard on a dead token.
   if (onLoginPage && request.nextUrl.searchParams.has("expired")) {
     const res = NextResponse.next();
     res.cookies.delete(SESSION_COOKIE);
     res.cookies.delete(REFRESH_COOKIE);
+    res.cookies.delete(PROFILE_COOKIE);
     return res;
   }
 
   let signedIn = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
 
-  let refreshed: Tokens | null = null;
+  let refreshed: SessionTokens | null = null;
   if (!signedIn && refreshToken) {
     refreshed = await rotate(refreshToken);
     if (refreshed) {
