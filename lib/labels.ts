@@ -1,5 +1,6 @@
 import type {
   ModerationActionType,
+  ModerationSummary,
   ReportStatus,
   UserStatus,
   VideoStatus,
@@ -31,6 +32,13 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   PENDING: "Pending",
   RESOLVED: "Resolved",
   DISMISSED: "Dismissed",
+};
+
+/** What the classifier decided, which an admin's later decision does not rewrite. */
+export const MODERATION_VERDICT_LABELS: Record<ModerationSummary["verdict"], string> = {
+  APPROVED: "Passed",
+  REVIEW: "Held for review",
+  REJECTED: "Auto-removed",
 };
 
 /**

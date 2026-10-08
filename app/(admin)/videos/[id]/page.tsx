@@ -15,9 +15,10 @@ import {
   listTargetActions,
   referenceNow,
 } from "@/lib/api/admin";
-import { VIDEO_STATUS_LABELS } from "@/lib/labels";
+import { MODERATION_VERDICT_LABELS, VIDEO_STATUS_LABELS } from "@/lib/labels";
 import { playable, videoDecisions } from "@/lib/moderation";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
+import { unscoredBecause } from "@/lib/review";
 import {
   daysUntilPurge,
   formatCompact,
@@ -316,13 +317,31 @@ function ClassifierVerdict({ video }: { video: AdminVideoResponse }) {
     );
   }
 
+  const verdict = (
+    <Field label="Verdict">
+      <span className={moderation.verdict === "REJECTED" ? "text-danger" : undefined}>
+        {MODERATION_VERDICT_LABELS[moderation.verdict]}
+      </span>
+    </Field>
+  );
+  const checked = <Field label="Checked">{formatDateTime(moderation.checkedAt)}</Field>;
+  const unscored = unscoredBecause(moderation);
+
+  if (unscored) {
+    return (
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[12px] xl:grid-cols-4">
+        {verdict}
+        {checked}
+        <Field label="Not scored" wide>
+          <span className="text-pending">{unscored}</span>
+        </Field>
+      </dl>
+    );
+  }
+
   return (
     <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[12px] xl:grid-cols-4">
-      <Field label="Verdict">
-        <span className={moderation.verdict === "REJECTED" ? "text-danger" : undefined}>
-          {moderation.verdict}
-        </span>
-      </Field>
+      {verdict}
       <Field label="Label">{moderation.label ?? "—"}</Field>
       {/* Raw rather than a percentage: the thresholds it is compared against are configured on
           this same 0–1 scale, and whoever is deciding whether to move one should not convert. */}
@@ -332,12 +351,7 @@ function ClassifierVerdict({ video }: { video: AdminVideoResponse }) {
       </Field>
       <Field label="Model">{moderation.model ?? "unknown"}</Field>
       <Field label="Model version">{moderation.modelVersion ?? "unversioned"}</Field>
-      <Field label="Checked">{formatDateTime(moderation.checkedAt)}</Field>
-      {moderation.reason ? (
-        <Field label="Check did not complete" wide>
-          <span className="text-pending">{moderation.reason}</span>
-        </Field>
-      ) : null}
+      {checked}
     </dl>
   );
 }

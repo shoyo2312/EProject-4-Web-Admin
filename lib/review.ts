@@ -63,6 +63,26 @@ export function heldBecause(
 }
 
 /**
+ * What to show in place of a score for a check that scored no frame, or null when it has one.
+ * Moderation switched off, a check that could not finish, a file with no frame to sample and a
+ * verdict that never arrived all store 0.000 on 0 of 0 frames, and shown as figures those read as
+ * a clean pass. The reason is the backend's own sentence (media-worker's or the stuck-video
+ * sweeper's), shown as written.
+ */
+export function unscoredBecause(moderation: ModerationSummary): string | null {
+  if (moderation.totalFrames > 0) return null;
+  const why = (moderation.reason ?? "No frame could be sampled from the video").replace(/\.$/, "");
+  switch (moderation.verdict) {
+    case "REVIEW":
+      return `${why}. A check that cannot finish holds the video for a person rather than passing it.`;
+    case "APPROVED":
+      return `${why}, so it was passed without a score.`;
+    default:
+      return `${why}.`;
+  }
+}
+
+/**
  * Where to go once a video is decided: the next one not yet decided after it, then the first one
  * skipped before it, and -1 when every video in the batch has an answer. `from` may be -1, to
  * start from the top.
