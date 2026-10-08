@@ -21,13 +21,19 @@ async function call(path: string, payload: unknown, from: Request): Promise<ApiR
     : ({ success: response.ok, data: null, timestamp: "" } as ApiResponse<null>);
 }
 
-const GATEWAY_DOWN = NextResponse.json(
-  {
-    code: "GATEWAY_UNREACHABLE",
-    message: `Cannot reach the gateway at ${GATEWAY_URL}. Start it with 'make run-gateway'.`,
-  },
-  { status: 502 },
-);
+/**
+ * A fresh response per call: a body can be read once, so one shared constant went out empty from
+ * the second failure on.
+ */
+function gatewayDown() {
+  return NextResponse.json(
+    {
+      code: "GATEWAY_UNREACHABLE",
+      message: `Cannot reach the gateway at ${GATEWAY_URL}. Start it with 'make run-gateway'.`,
+    },
+    { status: 502 },
+  );
+}
 
 /**
  * Password reset, mirrored on auth-service's two endpoints — the new password is posted from the
@@ -71,7 +77,7 @@ export async function POST(request: Request) {
         newPassword: body.newPassword,
       }, request);
     } catch {
-      return GATEWAY_DOWN;
+      return gatewayDown();
     }
 
     if (!reset.success) {
@@ -94,7 +100,7 @@ export async function POST(request: Request) {
   try {
     await call("/api/v1/auth/forgot-password", { email, turnstileToken: body.turnstileToken }, request);
   } catch {
-    return GATEWAY_DOWN;
+    return gatewayDown();
   }
 
   // Deliberately not forwarding a failure here: a bad Turnstile token is the only real error, and

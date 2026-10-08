@@ -38,13 +38,19 @@ async function call<T>(path: string, init: RequestInit, from: Request): Promise<
     : ({ success: response.ok, data: null as T, timestamp: "" } as ApiResponse<T>);
 }
 
-const GATEWAY_DOWN = NextResponse.json(
-  {
-    code: "GATEWAY_UNREACHABLE",
-    message: `Cannot reach the gateway at ${GATEWAY_URL}. Start it with 'make run-gateway'.`,
-  },
-  { status: 502 },
-);
+/**
+ * A fresh response per call: a body can be read once, so one shared constant went out empty from
+ * the second failure on.
+ */
+function gatewayDown() {
+  return NextResponse.json(
+    {
+      code: "GATEWAY_UNREACHABLE",
+      message: `Cannot reach the gateway at ${GATEWAY_URL}. Start it with 'make run-gateway'.`,
+    },
+    { status: 502 },
+  );
+}
 
 /**
  * Turns a fresh token pair into console cookies, after checking the account is actually an ADMIN
@@ -113,7 +119,7 @@ export async function POST(request: Request) {
         }),
       }, request);
     } catch {
-      return GATEWAY_DOWN;
+      return gatewayDown();
     }
 
     if (!otpLogin.success || !otpLogin.data) {
@@ -146,7 +152,7 @@ export async function POST(request: Request) {
       }),
     }, request);
   } catch {
-    return GATEWAY_DOWN;
+    return gatewayDown();
   }
 
   if (login.code === "MFA_REQUIRED") {

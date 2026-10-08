@@ -38,6 +38,8 @@ export function ForgotPasswordForm() {
       });
       const body = (await response.json()) as { message?: string };
       return { ok: response.ok, body };
+    } catch {
+      return { ok: false, body: { message: "The console server did not answer. Try again in a moment." } };
     } finally {
       if (withTurnstile) turnstile.consume();
       setPending(false);

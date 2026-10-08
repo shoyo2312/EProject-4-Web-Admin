@@ -47,6 +47,9 @@ export function LoginForm() {
       });
       const body = (await response.json()) as { message?: string; mfaRequired?: boolean };
       return { ok: response.ok, body };
+    } catch {
+      // No answer, or one that is not JSON: the server or the connection failed, not the password.
+      return { ok: false, body: { message: "The console server did not answer. Try again in a moment." } };
     } finally {
       // The token is single-use; every attempt gets a fresh widget.
       turnstile.consume();
