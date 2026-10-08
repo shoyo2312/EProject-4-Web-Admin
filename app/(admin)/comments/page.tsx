@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import {
   getDailyAdminStats,
+  getVideo,
   listComments,
   listVideos,
   referenceNow,
@@ -43,15 +44,26 @@ export default async function CommentsPage({
   let adminStats;
   let comments: CommentPageView | null = null;
   try {
-    // Platform-wide, unlike everything else on this page: interaction-service stores comments
-    // partitioned by video, so there is no comment series to trend — the one dated record of
-    // comment moderation is the audit log.
-    adminStats = await getDailyAdminStats(window.fetchDays);
-    // The picker is a search box, not a directory: the matches that fit the rail, and the
-    // admin narrows with q rather than paging to find a video.
-    videos = (await listVideos({ q, size: 50 })).content;
-    // Only a video that is actually in the list may be opened: a videoId left in the URL from a
-    // previous search would otherwise render a thread with nothing selected beside it.
+    const [stats, matches] = await Promise.all([
+      // Platform-wide, unlike everything else on this page: interaction-service stores comments
+      // partitioned by video, so there is no comment series to trend — the one dated record of
+      // comment moderation is the audit log.
+      getDailyAdminStats(window.fetchDays),
+      // The picker is a search box, not a directory: the matches that fit the rail, and the
+      // admin narrows with q rather than paging to find a video.
+      listVideos({ q, size: 50 }),
+    ]);
+    adminStats = stats;
+    videos = matches.content;
+    // A video linked to directly — from its own page, or a report on one of its comments — is
+    // older than the fifty the rail holds once the platform has more, so it is looked up by id and
+    // joins the top of the rail.
+    if (videoId && !q && !videos.some((v) => v.id === videoId)) {
+      const linked = await getVideo(videoId);
+      if (linked) videos = [linked, ...videos];
+    }
+    // Only a video that is actually in the list may be opened: a videoId beside a search it does
+    // not match would otherwise render a thread with nothing selected beside it.
     const selected = videoId && videos.some((v) => v.id === videoId) ? videoId : null;
     // Only the first page. The rest is pulled in by the table as the admin asks for it — a thread
     // can run to thousands, and before this it was read as one slab and silently cut off at 50.
