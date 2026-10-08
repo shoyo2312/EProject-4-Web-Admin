@@ -44,10 +44,11 @@ export default async function DashboardPage({
       getDailySignups(window.fetchDays),
       getDailyAdminStats(window.fetchDays),
       getEngagementSeries(asOfMs),
-      // Over-fetched, then cut to the picked date: the eight newest reports as of
-      // three weeks ago are not the eight newest today.
-      // Only the newest slice — the dashboard card shows a handful and links to the queue.
-      listReports({ size: 8 }).then((page) => page.content),
+      // The card shows a handful and links to the queue. The eight newest reports as of three
+      // weeks ago are not the eight newest today, and the ledger has no date filter, so a past
+      // date reads the most one page holds and is cut to the date below. A date further back
+      // than fifty reports reach shows fewer rows rather than newer ones.
+      listReports({ size: window.asOf < latest ? 50 : 8 }).then((page) => page.content),
     ]);
     data = { stats, signups, adminStats, series, reports };
   } catch (error) {
