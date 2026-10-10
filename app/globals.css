@@ -96,6 +96,17 @@ button[aria-disabled="true"],
   cursor: not-allowed;
 }
 
+/*
+ * No focus ring when tabbing between controls. Transparent rather than `none`: Windows
+ * high-contrast mode paints outlines in a system colour, so focus still shows there. In the
+ * base layer so a component can still draw its own ring with a utility class.
+ */
+@layer base {
+  :focus-visible {
+    outline: 2px solid transparent;
+  }
+}
+
 /* Section labels: uppercase, letter-spaced, small — the spec's "technical" cue */
 .label-caps {
   text-transform: uppercase;
