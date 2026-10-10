@@ -12,7 +12,7 @@ import { UserStatusBadge } from "@/components/ui/status-badge";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
-import { USER_STATUS_LABELS } from "@/lib/labels";
+import { USER_STATUS_LABELS, statusTabs } from "@/lib/labels";
 import { BAN_DURATIONS, PRESET_REASONS, banDaysOf, type BanDuration } from "@/lib/moderation";
 import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
 import { formatDateTime, relativeTime } from "@/lib/format";
@@ -23,12 +23,7 @@ import { cn } from "@/lib/utils";
 
 type StatusFilter = UserStatus | "ALL";
 
-const STATUS_FILTERS = [
-  { value: "ALL" as const, label: "All" },
-  { value: "ACTIVE" as const, label: "Active" },
-  { value: "BANNED" as const, label: "Banned" },
-  { value: "LOCKED" as const, label: "Locked" },
-];
+const STATUS_FILTERS = statusTabs(["ACTIVE", "BANNED", "LOCKED"], USER_STATUS_LABELS);
 
 export function UsersTable({
   users,

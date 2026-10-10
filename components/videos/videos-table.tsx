@@ -36,6 +36,7 @@ import {
   relativeTime,
   shortId,
 } from "@/lib/format";
+import { VIDEO_STATUS_LABELS, statusTabs } from "@/lib/labels";
 import { hrefWith } from "@/lib/url";
 import { usePropagation } from "@/lib/use-propagation";
 import { useRowDetail } from "@/lib/use-row-detail";
@@ -52,19 +53,16 @@ const DECISIONS: Record<
   approve: { label: "Approve", verb: "approving", confirm: "Confirm approval", Icon: CheckCircle2 },
 };
 
-const STATUS_FILTERS = [
-  { value: "ALL" as const, label: "All" },
-  // First after All: this is the one filter that is a worklist rather than a
+const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
+  // PENDING_REVIEW first after All: this is the one filter that is a worklist rather than a
   // report — every row in it is a video nobody can see until someone acts.
-  { value: "PENDING_REVIEW" as const, label: "To review" },
-  { value: "PUBLISHED" as const, label: "Live" },
-  { value: "PROCESSING" as const, label: "Processing" },
-  { value: "FAILED" as const, label: "Failed" },
-  { value: "REJECTED" as const, label: "Auto-removed" },
-  { value: "TAKEN_DOWN" as const, label: "Down" },
+  ...statusTabs(
+    ["PENDING_REVIEW", "PUBLISHED", "PROCESSING", "FAILED", "REJECTED", "TAKEN_DOWN"],
+    VIDEO_STATUS_LABELS,
+  ),
   // Not a VideoStatus — a video keeps its pipeline status after its owner deletes it, so this
   // filters on deletedAt instead. The page translates it to listVideos({ deleted: true }).
-  { value: "DELETED" as const, label: "Deleted" },
+  { value: "DELETED", label: "Deleted" },
 ];
 
 export function VideosTable({

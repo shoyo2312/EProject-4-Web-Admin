@@ -20,6 +20,7 @@ import type {
   ReportTargetType,
 } from "@/lib/api/types";
 import { formatDateTime, relativeTime, shortId } from "@/lib/format";
+import { REPORT_STATUS_LABELS, statusTabs } from "@/lib/labels";
 import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { hrefWith } from "@/lib/url";
 import { useBelowXl } from "@/lib/use-below-xl";
@@ -43,12 +44,7 @@ export interface ReportsFilter {
 
 const COLUMNS = 7;
 
-const STATUS_FILTERS = [
-  { value: "ALL" as const, label: "All" },
-  { value: "PENDING" as const, label: "Pending" },
-  { value: "RESOLVED" as const, label: "Resolved" },
-  { value: "DISMISSED" as const, label: "Dismissed" },
-];
+const STATUS_FILTERS = statusTabs(["PENDING", "RESOLVED", "DISMISSED"], REPORT_STATUS_LABELS);
 
 const TARGET_FILTERS = [
   { value: "ALL" as const, label: "Any" },

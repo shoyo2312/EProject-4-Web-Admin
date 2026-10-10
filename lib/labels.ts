@@ -34,6 +34,18 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   DISMISSED: "Dismissed",
 };
 
+/**
+ * A directory's status tabs: "All", then the given statuses by the names above, so a tab reads
+ * the same as the badge on every row it selects. The order is the caller's, because which status
+ * comes first is a decision about that list.
+ */
+export function statusTabs<T extends string>(
+  order: readonly T[],
+  labels: Record<T, string>,
+): { value: T | "ALL"; label: string }[] {
+  return [{ value: "ALL", label: "All" }, ...order.map((value) => ({ value, label: labels[value] }))];
+}
+
 /** What the classifier decided, which an admin's later decision does not rewrite. */
 export const MODERATION_VERDICT_LABELS: Record<ModerationSummary["verdict"], string> = {
   APPROVED: "Passed",
