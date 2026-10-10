@@ -92,10 +92,19 @@ export async function getDailyActiveUsers(days = 7): Promise<DailyActiveUsersRes
   return apiGet<DailyActiveUsersResponse[]>(`/api/v1/analytics/active-users/daily?days=${days}`);
 }
 
-/** The most-watched videos of the window, ordered by time spent rather than by view count. */
-export async function getTopVideos(days = 7, limit = 20): Promise<TopVideoResponse[]> {
+/**
+ * The most-watched videos of the `days` before `until` (an ISO instant, end exclusive), or before
+ * now without one — ordered by time spent rather than by view count.
+ */
+export async function getTopVideos(
+  days = 7,
+  limit = 20,
+  until?: string,
+): Promise<TopVideoResponse[]> {
   if (USE_MOCK) return mockTopVideos(limit);
-  return apiGet<TopVideoResponse[]>(`/api/v1/analytics/videos/top?days=${days}&limit=${limit}`);
+  const params = new URLSearchParams({ days: String(days), limit: String(limit) });
+  if (until) params.set("until", until);
+  return apiGet<TopVideoResponse[]>(`/api/v1/analytics/videos/top?${params}`);
 }
 
 /** One video's all-time likes, comments and shares, from analytics-service's event store. */

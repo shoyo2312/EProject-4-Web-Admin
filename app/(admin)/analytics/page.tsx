@@ -26,6 +26,7 @@ import {
   isoDay,
   resolveWindow,
   sliceToWindow,
+  windowRange,
 } from "@/lib/api/window";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatDate, formatNumber } from "@/lib/format";
@@ -51,8 +52,9 @@ export default async function AnalyticsPage({
       getDailyActiveUsers(window.fetchDays),
       getDailyVideoStats(window.fetchDays),
       // The period itself, not the doubled window: this list is "what people watched over
-      // these days", and there is nothing to compare it against.
-      getTopVideos(window.periodDays),
+      // these days", and there is nothing to compare it against. Ending on the as-of day like
+      // every other figure here, so an earlier date shows what was watched then.
+      getTopVideos(window.periodDays, 20, windowRange(window).to),
     ]);
     data = { signups, engagement, activeUsers, videoStats, topVideos };
   } catch (error) {
@@ -192,7 +194,7 @@ export default async function AnalyticsPage({
           <Uploads days={uploadDays} bars={uploadBars} unit={unit} />
         </div>
 
-        <TopVideos rows={topVideos} days={periodDays} names={topNames} />
+        <TopVideos rows={topVideos} period={covered} names={topNames} />
       </div>
     </>
   );

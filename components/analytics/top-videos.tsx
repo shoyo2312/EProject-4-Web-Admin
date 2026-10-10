@@ -19,11 +19,12 @@ import type { RowNames } from "@/lib/names";
  */
 export function TopVideos({
   rows,
-  days,
+  period,
   names,
 }: {
   rows: TopVideoResponse[];
-  days: number;
+  /** The days the list covers, in the words the page header uses. */
+  period: string;
   /** Titles and posters by video id; owner @handles by user id. */
   names: RowNames;
 }) {
@@ -31,7 +32,7 @@ export function TopVideos({
     <Card className="min-w-0">
       <CardHeader
         title="Most watched"
-        hint={`Ranked by total time watched over the last ${days} days, not by views — a three-second bounce counts as a view too.`}
+        hint={`Ranked by total time watched over ${period}, not by views — a three-second bounce counts as a view too.`}
       />
 
       {rows.length === 0 ? (
