@@ -44,7 +44,7 @@ export default async function DashboardPage({
       // below has the period before this one to compare itself against.
       getDailySignups(window.fetchDays),
       getDailyAdminStats(window.fetchDays),
-      getEngagementSeries(asOfMs),
+      getEngagementSeries(asOfMs, window.fetchDays),
       // The card shows a handful and links to the queue: the eight newest as of the picked day,
       // which three weeks back are not the eight newest today.
       listReports({ size: 8, to: windowRange(window).to }).then((page) => page.content),

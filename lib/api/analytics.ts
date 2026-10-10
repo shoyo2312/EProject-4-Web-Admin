@@ -54,12 +54,15 @@ export async function getDailyEngagement(days = 7): Promise<DailyCountResponse[]
 }
 
 /**
- * One 365-day pull rolled up into all three chart ranges, so the Daily/Weekly/Monthly
- * toggle is instant instead of a refetch per click.
+ * The trend alone, for a page with no use for the rows — the same pull as getEngagementOverview.
+ * `days` counts back from today, so a trend ending on an earlier "as of" day needs the gap on top
+ * of its year: pass the window's fetchDays, or its oldest months come back empty.
  */
-export async function getEngagementSeries(asOfMs = referenceNow()): Promise<MosaicSeries> {
-  const rows = await getDailyEngagement(365);
-  return toMosaicSeries(rows, asOfMs);
+export async function getEngagementSeries(
+  asOfMs = referenceNow(),
+  days = 365,
+): Promise<MosaicSeries> {
+  return (await getEngagementOverview(asOfMs, days)).series;
 }
 
 /**
