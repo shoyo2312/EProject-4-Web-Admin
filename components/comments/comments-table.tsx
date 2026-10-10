@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CornerDownRight, Heart, MessageSquare, Trash2 } from "lucide-react";
+import { CornerDownRight, Heart, MessageSquare, Trash2, X } from "lucide-react";
 import {
   commentRemovedAction,
   loadCommentsAction,
@@ -51,12 +52,18 @@ export function CommentsTable({
   videoId,
   filter,
   videoTitle,
+  linked,
 }: {
   /** The first page, rendered on the server. Later pages are appended client-side. */
   page: CommentPageView;
   videoId: string;
   filter: AdminCommentFilter;
   videoTitle: string;
+  /**
+   * The comment the link named, looked up by id: undefined when it named none, null when the
+   * lookup failed, and a page with no item when this video has no comment by that id.
+   */
+  linked?: CommentPageView | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -98,6 +105,14 @@ export function CommentsTable({
         actions={<Segmented options={FILTER_OPTIONS} value={filter} onChange={selectFilter} />}
       />
 
+      {linked !== undefined ? (
+        <LinkedComment
+          linked={linked}
+          videoId={videoId}
+          dismissHref={hrefWith(pathname, params, { comment: null })}
+        />
+      ) : null}
+
       <div className="divide-y divide-line">
         {view.items.map((comment) => (
           <CommentRow
@@ -135,6 +150,52 @@ export function CommentsTable({
         ) : null}
       </footer>
     </Card>
+  );
+}
+
+/**
+ * The comment a report or a notification pointed at, above the thread rather than somewhere in it,
+ * with the same remove action a row of the thread has. It may also be on the page below; this copy
+ * is the one the link was about, so it stays until dismissed.
+ */
+function LinkedComment({
+  linked,
+  videoId,
+  dismissHref,
+}: {
+  linked: CommentPageView | null;
+  videoId: string;
+  dismissHref: string;
+}) {
+  const comment = linked?.items[0];
+  return (
+    <section className="border-b border-line bg-pending-bg/40">
+      <div className="flex items-center justify-between gap-2 px-5 pt-3">
+        <span className="label-caps text-ink-soft">Linked comment</span>
+        <Link
+          href={dismissHref as never}
+          title="Show the thread only"
+          className="inline-flex items-center gap-1 text-[11px] text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+        >
+          Dismiss
+          <X className="h-3 w-3" />
+        </Link>
+      </div>
+      {comment && linked ? (
+        <CommentRow
+          comment={comment}
+          videoId={videoId}
+          authors={linked.authors}
+          parents={linked.parents}
+        />
+      ) : (
+        <p className="px-5 pt-1 pb-3 text-[12px] text-ink-faint">
+          {linked
+            ? "This video has no comment with that id. The link may name a comment on another video."
+            : "Couldn't load the linked comment. The thread below is still current."}
+        </p>
+      )}
+    </section>
   );
 }
 

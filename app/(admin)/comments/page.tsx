@@ -6,7 +6,7 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { getDailyAdminStats } from "@/lib/api/analytics";
-import { decorateCommentPage, listComments } from "@/lib/api/comments";
+import { decorateCommentPage, getComments, listComments } from "@/lib/api/comments";
 import { referenceNow } from "@/lib/api/shared";
 import { getVideo, listVideos } from "@/lib/api/videos";
 import { historyUpTo, isoDay, resolveWindow } from "@/lib/api/window";
@@ -23,6 +23,8 @@ export default async function CommentsPage({
   searchParams: Promise<{
     q?: string;
     videoId?: string;
+    /** A comment to pin above the thread — where a report or a notification on one lands. */
+    comment?: string;
     filter?: string;
     p?: string;
     asOf?: string;
@@ -40,6 +42,7 @@ export default async function CommentsPage({
   let videos;
   let adminStats;
   let comments: CommentPageView | null = null;
+  let linked: CommentPageView | null | undefined;
   try {
     const [stats, matches] = await Promise.all([
       // Platform-wide, unlike everything else on this page: interaction-service stores comments
@@ -67,6 +70,15 @@ export default async function CommentsPage({
     comments = selected
       ? await decorateCommentPage(selected, await listComments(selected, { filter: selectedFilter }))
       : null;
+    // The comment a link named, by id: a thread is paged newest first, so a reported comment from
+    // last month would otherwise be any number of Load more clicks down. A failed lookup is null
+    // rather than a failed page — the thread is still worth showing.
+    if (selected && params.comment) {
+      const found = await getComments(selected, [params.comment]).catch(() => null);
+      linked = found
+        ? await decorateCommentPage(selected, { items: found, nextCursor: null, hasMore: false })
+        : null;
+    }
   } catch (error) {
     return (
       <>
@@ -131,6 +143,7 @@ export default async function CommentsPage({
             videoId={selected.id}
             filter={selectedFilter}
             videoTitle={selected.title}
+            linked={linked}
           />
         ) : (
           <Card className="flex flex-col items-center justify-center gap-2 px-6 py-20 text-center">

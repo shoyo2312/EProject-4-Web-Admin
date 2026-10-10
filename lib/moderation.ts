@@ -18,14 +18,16 @@ export function parseCommentTarget(targetId: string): { videoId: string; comment
 }
 
 /**
- * Where in the console a reported target opens. A comment opens its video's thread, and a comment
- * target that names no video has nowhere to go.
+ * Where in the console a reported target opens. A comment opens its video's thread with that
+ * comment pinned above it, and a comment target that names no video has nowhere to go.
  */
 export function targetHref(targetType: ReportTargetType, targetId: string): string | null {
   if (targetType === "USER") return `/users/${targetId}`;
   if (targetType === "VIDEO") return `/videos/${targetId}`;
   const comment = parseCommentTarget(targetId);
-  return comment ? `/comments?videoId=${encodeURIComponent(comment.videoId)}` : null;
+  if (!comment) return null;
+  const params = new URLSearchParams({ videoId: comment.videoId, comment: comment.commentId });
+  return `/comments?${params}`;
 }
 
 /**
