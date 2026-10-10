@@ -17,7 +17,7 @@ import type {
  * from an `auth_security_events` table will land here without the page changing.
  *
  * Pure on purpose: the fetching lives in the route, so the merge, the ordering and the
- * de-duplication can be checked by `activity.check.mjs` without a backend.
+ * de-duplication can be tested by `__tests__/activity.test.mjs` without a backend.
  */
 
 export const ACTIVITY_CATEGORIES = ["security", "content", "moderation"] as const;

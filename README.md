@@ -8,11 +8,11 @@ Stack: Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · lucide-react · 
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm run check      # lint, typecheck, the lib checks and a production build
+npm run check      # lint, typecheck, the lib tests and a production build
 ```
 
-`npm test` runs the checks alone: every `lib/**/*.check.mjs`, under Node's built-in test
-runner. They import the `.ts` modules directly, so they need a Node that strips types on its own
+`npm test` runs the tests alone: every `lib/**/__tests__/*.test.mjs`, beside the module it tests,
+under Node's built-in test runner. They import the `.ts` modules directly, so they need a Node that strips types on its own
 (22.18 or newer).
 
 ## Screens
