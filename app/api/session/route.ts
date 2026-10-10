@@ -53,9 +53,34 @@ function gatewayDown() {
 }
 
 /**
+ * Ends a session at auth-service: the refresh token is revoked and, when given, the access token
+ * blacklisted. Best effort — whatever auth-service says, the caller goes on to drop its side.
+ */
+async function endSession(
+  tokens: { refreshToken: string; accessToken?: string },
+  from: Request,
+) {
+  try {
+    await call("/api/v1/auth/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(tokens.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : {}),
+      },
+      body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+    }, from);
+  } catch {
+    // Nothing to do about it here; the session is not kept on this side either way.
+  }
+}
+
+/**
  * Turns a fresh token pair into console cookies, after checking the account is actually an ADMIN
  * — a valid non-admin token would sail past the gateway and then 403 on every panel, which reads
  * as a broken app rather than a refusal. Shared by the remembered-device path and the OTP path.
+ *
+ * A refused pair is ended, not just left uncollected: auth-service issued it, and until its
+ * refresh token expires it is a live session for an account that only typed its password here.
  */
 async function establishSession(tokens: TokenResponse, from: Request) {
   const me = await call<AuthUserResponse>("/api/v1/auth/me", {
@@ -63,6 +88,7 @@ async function establishSession(tokens: TokenResponse, from: Request) {
   }, from);
 
   if (!me.success || !me.data || me.data.role !== "ADMIN") {
+    await endSession(tokens, from);
     return NextResponse.json(
       { code: "NOT_ADMIN", message: "This account does not have admin access." },
       { status: 403 },
@@ -176,17 +202,8 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const refreshToken = await getRefreshToken();
 
-  if (refreshToken) {
-    try {
-      await call("/api/v1/auth/logout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-      }, request);
-    } catch {
-      // Best effort: the cookies still go, so this browser is signed out either way.
-    }
-  }
+  // Best effort: the cookies still go, so this browser is signed out either way.
+  if (refreshToken) await endSession({ refreshToken }, request);
 
   await clearSessionCookies();
   return NextResponse.json({ ok: true });
