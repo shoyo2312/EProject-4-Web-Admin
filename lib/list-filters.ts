@@ -46,6 +46,14 @@ export const REPORT_SORT_FIELDS = ["id", "targetType", "status", "createdAt"] as
 
 export type ReportSortField = (typeof REPORT_SORT_FIELDS)[number];
 
+/**
+ * The columns admin-service will order the audit log by. Not the admin: the log holds an id, and
+ * ordering by it would group the rows without putting the names in any order a reader expects.
+ */
+export const ACTION_SORT_FIELDS = ["createdAt", "actionType", "targetType"] as const;
+
+export type ActionSortField = (typeof ACTION_SORT_FIELDS)[number];
+
 /** Every decision admin-service records — the audit log's type filter. */
 export const ACTION_TYPES: readonly ModerationActionType[] = [
   "BAN_USER",
@@ -93,5 +101,8 @@ export function auditFilters(params: ListParams) {
   return {
     adminId: /^\d+$/.test(params.admin ?? "") ? params.admin : undefined,
     actionType: oneOf(params.type, ACTION_TYPES),
+    // Anything else is a 400 from admin-service; the log falls back to newest first.
+    sort: oneOf(params.sort, ACTION_SORT_FIELDS) ?? "createdAt",
+    ascending: params.dir === "asc",
   };
 }

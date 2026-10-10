@@ -3,11 +3,12 @@
 import { Fragment, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronsUpDown, Gavel } from "lucide-react";
+import { Gavel } from "lucide-react";
 import { reportTargetDetailAction, resolveReportAction } from "@/app/(admin)/moderation/reports/actions";
 import { StatusBadge, TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
@@ -80,6 +81,7 @@ export function ReportsTable({
 }) {
   const belowXl = useBelowXl();
   const rows = limit ? reports.slice(0, limit) : reports;
+  const order = filter && { field: filter.sort, ascending: filter.ascending };
 
   return (
     <Card>
@@ -100,19 +102,19 @@ export function ReportsTable({
               <SortableHeader
                 label="ID"
                 sortKey="id"
-                filter={filter}
+                sort={order}
                 className="hidden pl-5 xl:table-cell"
               />
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reporter</th>
               <SortableHeader
                 label="Target"
                 sortKey="targetType"
-                filter={filter}
+                sort={order}
                 className="pl-5 xl:pl-3"
               />
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reason</th>
-              <SortableHeader label="Status" sortKey="status" filter={filter} />
-              <SortableHeader label="Created" sortKey="createdAt" filter={filter} />
+              <SortableHeader label="Status" sortKey="status" sort={order} />
+              <SortableHeader label="Created" sortKey="createdAt" sort={order} />
               <th className="label-caps px-5 py-3 text-right text-ink-soft">
                 Actions
               </th>
@@ -346,82 +348,5 @@ function LedgerControls({ filter }: { filter: ReportsFilter }) {
         onChange={(value) => go("status", value === "ALL" ? null : value)}
       />
     </div>
-  );
-}
-
-/**
- * A plain header when the table has no `filter`, and a navigating one when it does. Sorting a
- * page client-side could only reorder the twenty-five rows that already won, which is a
- * different list from "the oldest reports on the platform" while looking exactly like it.
- */
-function SortableHeader({
-  label,
-  sortKey,
-  filter,
-  className,
-}: {
-  label: string;
-  sortKey: ReportSortField;
-  filter?: ReportsFilter;
-  className?: string;
-}) {
-  if (!filter) {
-    return (
-      <th className={cn("label-caps px-3 py-3 text-ink-soft", className)}>{label}</th>
-    );
-  }
-  return (
-    <th
-      className={cn("px-3 py-3", className)}
-      aria-sort={
-        filter.sort === sortKey
-          ? filter.ascending
-            ? "ascending"
-            : "descending"
-          : "none"
-      }
-    >
-      <SortButton label={label} sortKey={sortKey} filter={filter} />
-    </th>
-  );
-}
-
-function SortButton({
-  label,
-  sortKey,
-  filter,
-}: {
-  label: string;
-  sortKey: ReportSortField;
-  filter: ReportsFilter;
-}) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
-  const active = filter.sort === sortKey;
-
-  function toggle() {
-    // A fresh column starts descending — newest, highest, last — and only clicking the column
-    // that is already active flips it.
-    const href = hrefWith(pathname, params, {
-      sort: sortKey,
-      dir: active && !filter.ascending ? "asc" : null,
-      page: null,
-    });
-    router.replace(href as never);
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      className={cn(
-        "label-caps flex items-center gap-1 transition-colors hover:text-ink",
-        active ? "text-ink" : "text-ink-soft",
-      )}
-    >
-      {label}
-      <ChevronsUpDown className="h-3 w-3" />
-    </button>
   );
 }

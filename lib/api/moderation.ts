@@ -12,6 +12,7 @@ import type {
   Page,
   ReportTargetType,
 } from "./types";
+import type { ActionSortField } from "@/lib/list-filters";
 import { mockModerationActions } from "@/lib/mock/moderation";
 
 /** The audit log, newest first. Every filter is optional; `from` is inclusive, `to` exclusive. */
@@ -23,8 +24,23 @@ export async function listModerationActions(options: {
   /** ISO instants. */
   from?: string;
   to?: string;
+  /**
+   * Ordered by admin-service, which breaks ties newest first, so a page boundary never splits or
+   * repeats the rows that share a type.
+   */
+  sort?: ActionSortField;
+  ascending?: boolean;
 } = {}): Promise<Page<ModerationActionResponse>> {
-  const { page = 0, size = LIST_PAGE_SIZE, adminId, actionType, from, to } = options;
+  const {
+    page = 0,
+    size = LIST_PAGE_SIZE,
+    adminId,
+    actionType,
+    from,
+    to,
+    sort = "createdAt",
+    ascending = false,
+  } = options;
   if (USE_MOCK) {
     const matches = mockModerationActions.filter(
       (a) =>
@@ -33,13 +49,19 @@ export async function listModerationActions(options: {
         && (!from || Date.parse(a.createdAt) >= Date.parse(from))
         && (!to || Date.parse(a.createdAt) < Date.parse(to)),
     );
-    return mockPage(matches, page, size);
+    const sign = ascending ? 1 : -1;
+    const ordered = [...matches].sort(
+      (a, b) =>
+        a[sort].localeCompare(b[sort]) * sign
+        || (sort === "createdAt" ? 0 : b.createdAt.localeCompare(a.createdAt)),
+    );
+    return mockPage(ordered, page, size);
   }
 
   const params = new URLSearchParams({
     page: String(page),
     size: String(size),
-    sort: "createdAt,desc",
+    sort: `${sort},${ascending ? "asc" : "desc"}`,
   });
   if (adminId) params.set("adminId", adminId);
   if (actionType) params.set("actionType", actionType);

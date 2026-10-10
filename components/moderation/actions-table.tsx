@@ -3,17 +3,18 @@
 import { Fragment, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronsUpDown, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { actionRowDetailAction } from "@/app/(admin)/moderation/actions/actions";
 import { TargetPreviewLine } from "@/components/moderation/target-preview-line";
 import { TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import type { ModerationActionResponse, ModerationActionType } from "@/lib/api/types";
 import { formatDateTime, relativeTime, shortId } from "@/lib/format";
 import { ACTION_LABELS } from "@/lib/labels";
-import { ACTION_TYPES } from "@/lib/list-filters";
+import { ACTION_TYPES, type ActionSortField } from "@/lib/list-filters";
 import { ENFORCED } from "@/lib/moderation";
 import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { hrefWith } from "@/lib/url";
@@ -41,20 +42,23 @@ type EnforcementFilter = (typeof ENFORCEMENT_FILTERS)[number]["value"];
 function adminName(names: RowNames, adminId: string): string {
   return names.handles[adminId] ?? `#${shortId(adminId.slice(-8), 8)}`;
 }
-type SortKey = "admin" | "action" | "target" | "createdAt";
 
 export function ActionsTable({
   actions,
   names = NO_NAMES,
   adminId,
   actionType,
+  sort,
+  ascending,
 }: {
   actions: ModerationActionResponse[];
   /** Admins and targets by name, resolved by the page in one batch each. */
   names?: RowNames;
-  /** The server-side filters the page was fetched with, so the controls show them. */
+  /** The server-side filters and order the page was fetched with, so the controls show them. */
   adminId?: string;
   actionType?: ModerationActionType;
+  sort: ActionSortField;
+  ascending: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -62,10 +66,6 @@ export function ActionsTable({
   const [, startNavigation] = useTransition();
   const [query, setQuery] = useState("");
   const [enforcement, setEnforcement] = useState<EnforcementFilter>("ALL");
-  const [sort, setSort] = useState<{ key: SortKey; asc: boolean }>({
-    key: "createdAt",
-    asc: false,
-  });
 
   // Back to the first page: page 3 of everything is not page 3 of one admin's actions.
   const filterHref = (patch: Record<string, string | null>) =>
@@ -75,7 +75,7 @@ export function ActionsTable({
 
   const rows = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const filtered = actions.filter((action) => {
+    return actions.filter((action) => {
       if (enforcement !== "ALL") {
         const enforced = ENFORCED.includes(action.actionType);
         if (enforcement === "ENFORCED" ? !enforced : enforced) return false;
@@ -92,27 +92,14 @@ export function ActionsTable({
         action.reportId ?? "",
       ].some((field) => field.toLowerCase().includes(needle));
     });
-
-    const direction = sort.asc ? 1 : -1;
-    return [...filtered].sort((a, b) => {
-      switch (sort.key) {
-        case "admin":
-          return adminName(names, a.adminId).localeCompare(adminName(names, b.adminId)) * direction;
-        case "action":
-          return ACTION_LABELS[a.actionType].localeCompare(ACTION_LABELS[b.actionType]) * direction;
-        case "target":
-          return a.targetType.localeCompare(b.targetType) * direction;
-        default:
-          return a.createdAt.localeCompare(b.createdAt) * direction;
-      }
-    });
-  }, [actions, names, query, enforcement, sort]);
+  }, [actions, names, query, enforcement]);
+  const order = { field: sort, ascending };
 
   return (
     <Card>
       <CardHeader
         title="Recent Actions"
-        hint="Every moderation decision in the selected period. The action-type and admin filters cover the whole log; the search box, the tabs and sorting cover this page."
+        hint="Every moderation decision in the selected period. The action-type and admin filters and the column order cover the whole log; the search box and the tabs cover this page."
         actions={
           <>
             <label className="flex w-[180px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 lg:w-[240px]">
@@ -165,19 +152,13 @@ export function ActionsTable({
         <table className="w-full border-collapse text-[12px] xl:min-w-[840px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <SortableHeader label="Admin" sortKey="admin" sort={sort} onSort={setSort} className="hidden px-5 xl:table-cell" />
-              <SortableHeader label="Action" sortKey="action" sort={sort} onSort={setSort} className="px-5 xl:px-3" />
-              <SortableHeader label="Target" sortKey="target" sort={sort} onSort={setSort} />
+              <th className="label-caps hidden px-5 py-3 text-ink-soft xl:table-cell">Admin</th>
+              <SortableHeader label="Action" sortKey="actionType" sort={order} className="px-5 xl:px-3" />
+              <SortableHeader label="Target" sortKey="targetType" sort={order} />
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reason</th>
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Report</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Effect</th>
-              <SortableHeader
-                label="When"
-                sortKey="createdAt"
-                sort={sort}
-                onSort={setSort}
-                className="px-5 text-right"
-              />
+              <SortableHeader label="When" sortKey="createdAt" sort={order} className="px-5 text-right" />
             </tr>
           </thead>
           <tbody>
@@ -315,36 +296,5 @@ function ActionRow({
         </RowDetail>
       ) : null}
     </Fragment>
-  );
-}
-
-function SortableHeader({
-  label,
-  sortKey,
-  sort,
-  onSort,
-  className,
-}: {
-  label: string;
-  sortKey: SortKey;
-  sort: { key: SortKey; asc: boolean };
-  onSort: (sort: { key: SortKey; asc: boolean }) => void;
-  className?: string;
-}) {
-  const active = sort.key === sortKey;
-  return (
-    <th className={cn("px-3 py-3", className)}>
-      <button
-        type="button"
-        onClick={() => onSort({ key: sortKey, asc: active ? !sort.asc : false })}
-        className={cn(
-          "label-caps inline-flex items-center gap-1 transition-colors hover:text-ink",
-          active ? "text-ink" : "text-ink-soft",
-        )}
-      >
-        {label}
-        <ChevronsUpDown className="h-3 w-3" />
-      </button>
-    </th>
   );
 }

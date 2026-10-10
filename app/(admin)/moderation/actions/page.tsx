@@ -16,7 +16,15 @@ import { idsToName } from "@/lib/names";
 export default async function AuditLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ p?: string; asOf?: string; page?: string; admin?: string; type?: string }>;
+  searchParams: Promise<{
+    p?: string;
+    asOf?: string;
+    page?: string;
+    admin?: string;
+    type?: string;
+    sort?: string;
+    dir?: string;
+  }>;
 }) {
   const params = await searchParams;
   const latest = isoDay(referenceNow());
@@ -25,7 +33,7 @@ export default async function AuditLogPage({
   const pageIndex = parsePage(params.page);
   // Both come from the query string, where anything can be typed. Dropped rather than passed
   // on: admin-service answers a non-numeric id or an unknown type with a 400 for the whole page.
-  const { adminId, actionType } = auditFilters(params);
+  const { adminId, actionType, sort, ascending } = auditFilters(params);
   // The log covers the same days as the figures above it, so its total is the "Actions Taken"
   // card's value — and "what did this admin do yesterday" is the Day period on yesterday.
   const { from, to } = windowRange(window);
@@ -34,7 +42,7 @@ export default async function AuditLogPage({
   let adminStats;
   try {
     [page, adminStats] = await Promise.all([
-      listModerationActions({ page: pageIndex, adminId, actionType, from, to }),
+      listModerationActions({ page: pageIndex, adminId, actionType, from, to, sort, ascending }),
       // The page itself is one slice of the log; the counts above it are the whole of it,
       // which is the only way a percentage over a year means anything.
       getDailyAdminStats(window.fetchDays),
@@ -101,7 +109,14 @@ export default async function AuditLogPage({
 
       {/* The type and admin filters go to the server with the period. The search box, the
           enforcement tabs and the sort work over the rows on this page only. */}
-      <ActionsTable actions={actions} names={names} adminId={adminId} actionType={actionType} />
+      <ActionsTable
+        actions={actions}
+        names={names}
+        adminId={adminId}
+        actionType={actionType}
+        sort={sort}
+        ascending={ascending}
+      />
 
       <Pager
         page={page.number}
