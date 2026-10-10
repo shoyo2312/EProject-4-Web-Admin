@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { ErrorState } from "@/components/layout/error-state";
+import { BackLink } from "@/components/layout/back-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Pager } from "@/components/ui/pager";
@@ -71,7 +71,7 @@ export default async function UserActivityPage({
   } catch (error) {
     return (
       <>
-        <BackLink id={id} />
+        <BackLink href={`/users/${id}`}>Back to account</BackLink>
         <PageHeader title="Activity" />
         <ErrorState error={error} />
       </>
@@ -81,7 +81,7 @@ export default async function UserActivityPage({
   if (!user) {
     return (
       <>
-        <BackLink id={id} />
+        <BackLink href={`/users/${id}`}>Back to account</BackLink>
         <PageHeader title="Activity" />
         <Card className="px-5 py-10 text-center text-[12px] text-ink-faint">
           No account reachable at id <span className="figure">{id}</span>.
@@ -104,7 +104,7 @@ export default async function UserActivityPage({
 
   return (
     <>
-      <BackLink id={id} />
+      <BackLink href={`/users/${id}`}>Back to account</BackLink>
 
       <PageHeader
         title={`Activity — @${user.username}`}
@@ -206,14 +206,3 @@ function FilterTab({
   );
 }
 
-function BackLink({ id }: { id: string }) {
-  return (
-    <Link
-      href={`/users/${id}` as never}
-      className="mb-3 inline-flex items-center gap-1.5 text-[11px] text-ink-soft underline-offset-4 hover:underline"
-    >
-      <ArrowLeft className="h-3.5 w-3.5" />
-      Back to account
-    </Link>
-  );
-}

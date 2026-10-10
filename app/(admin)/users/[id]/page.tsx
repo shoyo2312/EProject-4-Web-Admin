@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { ErrorState } from "@/components/layout/error-state";
+import { BackLink } from "@/components/layout/back-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { EnforcePanel } from "@/components/moderation/enforce-panel";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
-import { AvatarBody } from "@/components/users/avatar-body";
 import { UserUploads } from "@/components/users/user-uploads";
+import { Avatar } from "@/components/ui/avatar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
 import { UserStatusBadge } from "@/components/ui/status-badge";
@@ -64,7 +64,8 @@ export default async function UserDetailPage({
   } catch (error) {
     return (
       <>
-        <DetailHeader title="Account" />
+        <BackLink href="/users">All accounts</BackLink>
+        <PageHeader title="Account" />
         <ErrorState error={error} />
       </>
     );
@@ -73,7 +74,8 @@ export default async function UserDetailPage({
   if (!user) {
     return (
       <>
-        <DetailHeader title="Account" />
+        <BackLink href="/users">All accounts</BackLink>
+        <PageHeader title="Account" />
         <Card className="px-5 py-10 text-center text-[12px] text-ink-faint">
           No account at id <span className="figure">{id}</span>. Either nothing is registered
           there, or the account has been deleted.
@@ -89,17 +91,11 @@ export default async function UserDetailPage({
 
   return (
     <>
-      <Link
-        href="/users"
-        className="mb-3 inline-flex items-center gap-1.5 text-[11px] text-ink-soft underline-offset-4 hover:underline"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        All accounts
-      </Link>
+      <BackLink href="/users">All accounts</BackLink>
 
       <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Avatar avatarUrl={profile?.avatarUrl ?? null} username={user.username} />
+          <Avatar src={profile?.avatarUrl} initials={user.username.slice(0, 2)} size="lg" />
           <div>
             <h1 className="text-[26px] leading-tight font-bold tracking-tight">
               @{user.username}
@@ -253,31 +249,6 @@ export default async function UserDetailPage({
         </Card>
       </div>
     </>
-  );
-}
-
-function DetailHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <>
-      <Link
-        href="/users"
-        className="mb-3 inline-flex items-center gap-1.5 text-[11px] text-ink-soft underline-offset-4 hover:underline"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        All accounts
-      </Link>
-      <PageHeader title={title} subtitle={subtitle} />
-    </>
-  );
-}
-
-/** Round avatar image, or the handle's initials over a neutral fill when there is none — also
- * the fallback once a broken CDN url 404s, which a bare `<img>` cannot recover from itself. */
-function Avatar({ avatarUrl, username }: { avatarUrl: string | null; username: string }) {
-  return (
-    <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-surface-muted text-[16px] font-semibold text-ink-soft uppercase">
-      <AvatarBody avatarUrl={avatarUrl} initials={username.slice(0, 2)} />
-    </span>
   );
 }
 

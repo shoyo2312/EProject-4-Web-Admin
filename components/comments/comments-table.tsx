@@ -10,6 +10,7 @@ import {
   loadRepliesAction,
   removeCommentAction,
 } from "@/app/(admin)/comments/actions";
+import { Avatar } from "@/components/ui/avatar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { ReasonForm } from "@/components/moderation/reason-form";
@@ -199,32 +200,6 @@ function LinkedComment({
   );
 }
 
-/** Handle, avatar and name for one user, or the id when user-service had nothing for it. */
-function Avatar({
-  profile,
-  userId,
-}: {
-  profile: UserProfileResponse | undefined;
-  userId: string;
-}) {
-  const name = displayName(profile, userId);
-  return (
-    <span
-      className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-surface-muted text-[10px] font-semibold text-ink-soft uppercase"
-      aria-hidden
-    >
-      {profile?.avatarUrl ? (
-        // A plain img: avatars come from arbitrary CDN hosts that next/image would have to be
-        // configured for one by one, and a broken avatar must not fail a moderation row.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
-      ) : (
-        name.replace(/^[#@]/, "").slice(0, 2)
-      )}
-    </span>
-  );
-}
-
 /**
  * The comment being answered, quoted small. Admins judge a reply against what it replies to —
  * "delete this" is abuse or a fair complaint depending entirely on the comment above it.
@@ -368,7 +343,10 @@ function CommentRow({
         ) : null}
 
         <div className="flex items-start gap-3">
-          <Avatar profile={author} userId={comment.userId} />
+          <Avatar
+            src={author?.avatarUrl}
+            initials={displayName(author, comment.userId).replace(/^[#@]/, "").slice(0, 2)}
+          />
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">

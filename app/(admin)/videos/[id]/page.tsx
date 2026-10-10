@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { ErrorState } from "@/components/layout/error-state";
+import { BackLink } from "@/components/layout/back-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { EnforcePanel } from "@/components/moderation/enforce-panel";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
@@ -68,7 +68,8 @@ export default async function VideoDetailPage({
   } catch (error) {
     return (
       <>
-        <DetailHeader title="Video" />
+        <BackLink href="/videos">All videos</BackLink>
+        <PageHeader title="Video" />
         <ErrorState error={error} />
       </>
     );
@@ -77,7 +78,8 @@ export default async function VideoDetailPage({
   if (!video) {
     return (
       <>
-        <DetailHeader title="Video" />
+        <BackLink href="/videos">All videos</BackLink>
+        <PageHeader title="Video" />
         <Card className="px-5 py-10 text-center text-[12px] text-ink-faint">
           Nothing at id <span className="figure">{id}</span>. Whatever pointed here was filed
           against a video video-service has no record of.
@@ -100,7 +102,8 @@ export default async function VideoDetailPage({
 
   return (
     <>
-      <DetailHeader
+      <BackLink href="/videos">All videos</BackLink>
+      <PageHeader
         title={video.title || "(untitled upload)"}
         subtitle={
           video.deletedAt
@@ -275,21 +278,6 @@ export default async function VideoDetailPage({
           </div>
         </Card>
       </div>
-    </>
-  );
-}
-
-function DetailHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <>
-      <Link
-        href="/videos"
-        className="mb-3 inline-flex items-center gap-1.5 text-[11px] text-ink-soft underline-offset-4 hover:underline"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        All videos
-      </Link>
-      <PageHeader title={title} subtitle={subtitle} />
     </>
   );
 }
