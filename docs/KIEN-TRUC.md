@@ -197,6 +197,10 @@ lặp code:
 | `components/ui/status-badge.tsx` | Hiển thị badge trạng thái user/video — có `VideoStatusBadge`, `UserStatusBadge` |
 | `components/ui/search-box.tsx` | Ô tìm kiếm có debounce sẵn (350ms) |
 | `components/ui/pager.tsx` | Phân trang, dùng chung cho mọi bảng danh sách |
+| `components/ui/sortable-header.tsx` | Tiêu đề cột sắp xếp phía server — ghi `sort`/`dir` vào URL, không sắp xếp các dòng đã tải |
+| `components/ui/avatar.tsx` | Ảnh đại diện, tự rơi về chữ viết tắt khi không có ảnh hoặc ảnh lỗi |
+| `components/layout/back-link.tsx` | Link "← quay lại" ở đầu các trang chi tiết |
+| `lib/labels.ts` (`statusTabs`) | Tên hiển thị của mọi trạng thái, và các tab lọc trạng thái dựng từ chúng — tab và badge luôn cùng tên |
 | `lib/moderation.ts` (`PRESET_REASONS`) | Danh sách lý do gợi ý khi ban/takedown/xoá bình luận — **một nguồn duy nhất**, không hardcode lại trong component |
 | `lib/format.ts` | Format số, ngày tháng hiển thị |
 
@@ -214,7 +218,8 @@ chỉ cần sửa ở đây và TypeScript sẽ báo lỗi mọi chỗ dùng sai
    `ROUTE_TITLES` cùng file.
 3. Nếu cần gọi API mới: thêm type vào `lib/api/types.ts`, thêm hàm vào file domain ở `lib/api/` theo
    đúng pattern `if (USE_MOCK) {...} else { apiGet/apiPost(...) }`, thêm data giả tương ứng vào
-   `lib/mock/`.
+   `lib/mock/`. Logic thuần mới trong `lib/` có test trong thư mục `__tests__/` cạnh nó
+   (`*.test.mjs`, chạy bằng `npm test`).
 4. Ưu tiên tái sử dụng component trong `components/ui/` trước khi viết mới.
 5. Nếu trang có filter/sort/phân trang: đưa state vào query string, dùng `hrefWith`, không dùng
    `useState` cho các giá trị đó.
