@@ -1,12 +1,13 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronsUpDown, Gavel, Search } from "lucide-react";
+import { ChevronsUpDown, Gavel } from "lucide-react";
 import { reportTargetDetailAction, resolveReportAction } from "@/app/(admin)/moderation/reports/actions";
 import { StatusBadge, TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
+import { SearchBox } from "@/components/ui/search-box";
 import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
@@ -36,6 +37,7 @@ type TargetFilter = ReportTargetType | "ALL";
  * nothing and draws no controls, because there is nothing there worth filtering.
  */
 export interface ReportsFilter {
+  query: string;
   status: StatusFilter;
   targetType: TargetFilter;
   sort: ReportSortField;
@@ -77,58 +79,18 @@ export function ReportsTable({
   filter?: ReportsFilter;
 }) {
   const belowXl = useBelowXl();
-  const [query, setQuery] = useState("");
-
-  /**
-   * Status, target and ordering are the server's answer already. The box is the one control
-   * that cannot be: admin-service's listing takes no search term, so this narrows the rows on
-   * screen and says so — hence "on this page" rather than "Search reports", which is what a
-   * moderator would reasonably read as "in the ledger".
-   *
-   * ponytail: a `q` on `GET /api/v1/admin/reports` matching the reason and the target id is
-   * what would make it a real search. Worth it the first time someone has to find one report
-   * by id across pages.
-   */
-  const rows = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const matching = needle
-      ? reports.filter((report) => {
-          const handle = names.handles[report.reporterId] ?? "";
-          const target = targetName(names, report.targetType, report.targetId) ?? "";
-          return (
-            report.id.includes(needle)
-            || report.targetId.includes(needle)
-            || report.targetType.toLowerCase().includes(needle)
-            || report.reason.toLowerCase().includes(needle)
-            || handle.toLowerCase().includes(needle)
-            || target.toLowerCase().includes(needle)
-          );
-        })
-      : reports;
-    return limit ? matching.slice(0, limit) : matching;
-  }, [reports, names, query, limit]);
+  const rows = limit ? reports.slice(0, limit) : reports;
 
   return (
     <Card>
       <CardHeader
         title={title}
-        hint="Every report ever filed. Resolving one records the decision in the audit log and closes that report."
-        actions={
-          filter ? (
-            <>
-              <label className="flex w-[180px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 lg:w-[240px]">
-                <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Filter rows on this page..."
-                  className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
-                />
-              </label>
-              <LedgerControls filter={filter} />
-            </>
-          ) : null
+        hint={
+          filter
+            ? "Every report filed in the selected period. Resolving one records the decision in the audit log and closes that report."
+            : "The newest reports. Resolving one records the decision in the audit log and closes that report."
         }
+        actions={filter ? <LedgerControls filter={filter} /> : null}
       />
 
       <div className="overflow-x-auto">
@@ -366,6 +328,13 @@ function LedgerControls({ filter }: { filter: ReportsFilter }) {
 
   return (
     <div className={cn("flex flex-wrap items-center gap-2", navigating && "opacity-50")}>
+      {/* The search is the server's too, like every other control here: narrowing the page on
+          screen would answer "the matches among these twenty-five" while reading as the ledger. */}
+      <SearchBox
+        query={filter.query}
+        onCommit={(term) => go("q", term || null)}
+        placeholder="Search reason or id..."
+      />
       <Segmented
         options={TARGET_FILTERS}
         value={filter.targetType}

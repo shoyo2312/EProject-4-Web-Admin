@@ -8,7 +8,7 @@ import { getDailyAdminStats, getStatsSummary } from "@/lib/api/analytics";
 import { getRowNames } from "@/lib/api/names";
 import { listReportQueue, listReports } from "@/lib/api/reports";
 import { LIST_PAGE_SIZE, referenceNow } from "@/lib/api/shared";
-import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
+import { historyUpTo, isoDay, parsePage, resolveWindow, windowRange } from "@/lib/api/window";
 import { deltaPercent, growthPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
 import { reportFilters } from "@/lib/list-filters";
@@ -29,6 +29,7 @@ export default async function ReportsQueuePage({
 }: {
   searchParams: Promise<{
     page?: string;
+    q?: string;
     status?: string;
     target?: string;
     sort?: string;
@@ -44,7 +45,10 @@ export default async function ReportsQueuePage({
   const pageIndex = parsePage(params.page);
   // Every ledger control is parsed and handed to the backend; see lib/list-filters for why an
   // unknown value becomes no filter rather than an error.
-  const { status, targetType, sort, ascending } = reportFilters(params);
+  const { q, status, targetType, sort, ascending } = reportFilters(params);
+  // The ledger covers the period the figures above it do, as the audit log does: its total is
+  // the "Reports Created" card's, and "what was reported last week" is the Week period.
+  const { from, to } = windowRange(window);
 
   let stats;
   let queue;
@@ -54,7 +58,7 @@ export default async function ReportsQueuePage({
     [stats, queue, ledger, adminStats] = await Promise.all([
       getStatsSummary(),
       listReportQueue(),
-      listReports({ status, targetType, sort, ascending, page: pageIndex }),
+      listReports({ q, status, targetType, sort, ascending, from, to, page: pageIndex }),
       // Two periods deep, so each figure has the period before this one behind it.
       getDailyAdminStats(window.fetchDays),
     ]);
@@ -153,6 +157,7 @@ export default async function ReportsQueuePage({
           reports={ledger.content}
           names={names}
           filter={{
+            query: q ?? "",
             status: status ?? "ALL",
             targetType: targetType ?? "ALL",
             sort,

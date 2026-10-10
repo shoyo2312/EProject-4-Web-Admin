@@ -18,6 +18,7 @@ import {
   isoDay,
   resolveWindow,
   sliceToWindow,
+  windowRange,
 } from "@/lib/api/window";
 import { getSessionProfile } from "@/lib/api/session";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
@@ -44,11 +45,9 @@ export default async function DashboardPage({
       getDailySignups(window.fetchDays),
       getDailyAdminStats(window.fetchDays),
       getEngagementSeries(asOfMs),
-      // The card shows a handful and links to the queue. The eight newest reports as of three
-      // weeks ago are not the eight newest today, and the ledger has no date filter, so a past
-      // date reads the most one page holds and is cut to the date below. A date further back
-      // than fifty reports reach shows fewer rows rather than newer ones.
-      listReports({ size: window.asOf < latest ? 50 : 8 }).then((page) => page.content),
+      // The card shows a handful and links to the queue: the eight newest as of the picked day,
+      // which three weeks back are not the eight newest today.
+      listReports({ size: 8, to: windowRange(window).to }).then((page) => page.content),
     ]);
     data = { stats, signups, adminStats, series, reports };
   } catch (error) {
@@ -65,9 +64,7 @@ export default async function DashboardPage({
   const { stats, signups, adminStats, series } = data;
   const { periodDays, periodLabel, compareLabel } = window;
 
-  const reports = data.reports
-    .filter((r) => r.createdAt.slice(0, 10) <= window.asOf)
-    .slice(0, 8);
+  const { reports } = data;
   const wanted = idsToName(reports, reports.map((r) => r.reporterId));
   const names = await getRowNames(
     wanted.userIds,

@@ -80,6 +80,7 @@ export function videoFilters(params: ListParams) {
 
 export function reportFilters(params: ListParams) {
   return {
+    q: params.q?.trim() || undefined,
     status: oneOf(params.status, REPORT_STATUSES),
     targetType: oneOf(params.target, REPORT_TARGET_TYPES),
     sort: oneOf(params.sort, REPORT_SORT_FIELDS) ?? "createdAt",

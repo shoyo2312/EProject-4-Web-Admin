@@ -45,20 +45,28 @@ function sortReports(
  * and call it the whole history.
  */
 export async function listReports(options: {
+  /** Matches the reason and the target id, and a report's own id. */
+  q?: string;
   status?: ReportStatus;
   targetType?: ReportTargetType;
   targetId?: string;
   reporterId?: string;
+  /** ISO instants on when it was filed: `from` inclusive, `to` exclusive. */
+  from?: string;
+  to?: string;
   sort?: ReportSortField;
   ascending?: boolean;
   page?: number;
   size?: number;
 } = {}): Promise<Page<ReportResponse>> {
   const {
+    q,
     status,
     targetType,
     targetId,
     reporterId,
+    from,
+    to,
     sort = "createdAt",
     ascending = false,
     page = 0,
@@ -66,12 +74,19 @@ export async function listReports(options: {
   } = options;
 
   if (USE_MOCK) {
+    const needle = q?.toLowerCase();
     const filtered = mockReports.filter(
       (report) =>
         (!status || report.status === status)
         && (!targetType || report.targetType === targetType)
         && (!targetId || report.targetId === targetId)
-        && (!reporterId || report.reporterId === reporterId),
+        && (!reporterId || report.reporterId === reporterId)
+        && (!needle
+          || report.id === needle
+          || report.reason.toLowerCase().includes(needle)
+          || report.targetId.toLowerCase().includes(needle))
+        && (!from || Date.parse(report.createdAt) >= Date.parse(from))
+        && (!to || Date.parse(report.createdAt) < Date.parse(to)),
     );
     return mockPage(sortReports(filtered, sort, ascending), page, size);
   }
@@ -81,10 +96,13 @@ export async function listReports(options: {
     size: String(size),
     sort: `${sort},${ascending ? "asc" : "desc"}`,
   });
+  if (q) params.set("q", q);
   if (status) params.set("status", status);
   if (targetType) params.set("targetType", targetType);
   if (targetId) params.set("targetId", targetId);
   if (reporterId) params.set("reporterId", reporterId);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
 
   return apiGet<Page<ReportResponse>>(`/api/v1/admin/reports?${params}`);
 }

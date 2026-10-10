@@ -56,7 +56,7 @@ export async function exportRows(
       return { ...all, rows: all.rows.filter((v) => v.createdAt.slice(0, 10) <= window.asOf) };
     }
     case "reports": {
-      const filters = reportFilters(params);
+      const filters = { ...reportFilters(params), ...windowRange(window) };
       return collect((page) => listReports({ ...filters, page, size: PAGE_SIZE }));
     }
     case "moderation-actions": {
