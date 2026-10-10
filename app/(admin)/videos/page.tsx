@@ -7,12 +7,12 @@ import { getDailyAdminStats, getDailyVideoStats } from "@/lib/api/analytics";
 import { getUserProfiles } from "@/lib/api/names";
 import { LIST_PAGE_SIZE, referenceNow } from "@/lib/api/shared";
 import { resolveOwners } from "@/lib/api/users";
-import { listVideos } from "@/lib/api/videos";
+import { getVideoStatusCounts, listVideos } from "@/lib/api/videos";
 import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, growthChange, spark, sumLast } from "@/lib/series";
 import { formatCompact, formatNumber, plural } from "@/lib/format";
 import { videoFilters } from "@/lib/list-filters";
-import type { UserProfileResponse, VideoStatus } from "@/lib/api/types";
+import type { UserProfileResponse } from "@/lib/api/types";
 
 export default async function VideosPage({
   searchParams,
@@ -35,46 +35,37 @@ export default async function VideosPage({
   const pageIndex = parsePage(pageParam);
 
   let page;
-  let counts;
+  let counts: { awaitingReview: number; takenDown: number; stuck: number } | null;
   let videoStats;
   let adminStats;
   try {
     // A handle is a search term like any other to whoever typed it, but video-service has never
     // heard of handles — it stores owner ids. Resolving here rather than inside listVideos keeps
-    // it to one directory call for the six listing calls below, which all share the term.
+    // it to one directory call for the listing and the totals, which share the term.
     const ownerIds = ownerId ? [ownerId] : q ? await resolveOwners(q) : [];
-
-    /**
-     * A status total across the whole library, not the page: a one-row request exists only for
-     * its `totalElements`. Counting the rows on screen would report "2 to review" when the
-     * queue holds four hundred.
-     */
-    const countByStatus = (s: VideoStatus) =>
-      listVideos({ q, ownerIds, status: s, size: 1 }).then((p) => p.totalElements);
 
     // Filtering and paging server-side rather than over the fetched rows: "show me everything
     // taken down" must not depend on how many rows happened to come back.
-    const [listed, uploads, moderation, ...totals] = await Promise.all([
+    const [listed, uploads, moderation, totals] = await Promise.all([
       listVideos({ q, ownerIds, status: filter, deleted: deletedOnly ? true : undefined, page: pageIndex }),
       // Uploads per day, plus each day's cohort standing — the series behind the percentages.
       getDailyVideoStats(window.fetchDays),
       // Takedowns are an admin decision, recorded in the audit log rather than on the video:
       // the library knows a video is down, not the day it went down.
       getDailyAdminStats(window.fetchDays),
-      countByStatus("PENDING_REVIEW"),
-      countByStatus("TAKEN_DOWN"),
-      countByStatus("REJECTED"),
-      countByStatus("PROCESSING"),
-      countByStatus("FAILED"),
+      // Status totals across the whole library, not the page: counting the rows on screen would
+      // report "2 to review" when the queue holds four hundred. The cards' figures, not the list,
+      // so a failure leaves the cards blank rather than the page — a video-service that predates
+      // this endpoint answers it with a 404 until it is redeployed.
+      getVideoStatusCounts({ q, ownerIds }).catch(() => null),
     ]);
     page = listed;
     videoStats = uploads;
     adminStats = moderation;
-    const [review, down, rejected, processing, failed] = totals;
-    counts = {
-      awaitingReview: review,
-      takenDown: down + rejected,
-      stuck: processing + failed,
+    counts = totals && {
+      awaitingReview: totals.PENDING_REVIEW,
+      takenDown: totals.TAKEN_DOWN + totals.REJECTED,
+      stuck: totals.PROCESSING + totals.FAILED,
     };
   } catch (error) {
     return (
@@ -103,9 +94,11 @@ export default async function VideosPage({
   const filtered = Boolean(q || ownerId || filter);
   const uploads = sumLast(uploadCounts, periodDays);
   const libraryGrowth = filtered ? null : growthChange(page.totalElements, uploads);
-  const takedownGrowth = filtered
+  const takedownGrowth = filtered || !counts
     ? null
     : growthChange(counts.takenDown, sumLast(takedownCounts, periodDays));
+  /** A status total, or a dash when the totals could not be read. */
+  const total = (figure: number | undefined) => (figure === undefined ? "—" : formatNumber(figure));
 
   const cards: KpiCard[] = [
     {
@@ -122,7 +115,7 @@ export default async function VideosPage({
     },
     {
       label: "To Review",
-      value: formatNumber(counts.awaitingReview),
+      value: total(counts?.awaitingReview),
       unit: "Backlog",
       // The worklist. Everything else on this row is a report; this one is a number that is
       // supposed to go down, and a video sitting in it is one nobody can watch until an
@@ -140,7 +133,7 @@ export default async function VideosPage({
     },
     {
       label: "Taken Down",
-      value: formatNumber(counts.takenDown),
+      value: total(counts?.takenDown),
       unit: "Videos",
       // An admin's takedown and the classifier's own removal, together: for this count what
       // matters is that the video is off the platform. The percentage is on the admin half
@@ -153,7 +146,7 @@ export default async function VideosPage({
     },
     {
       label: "Not Playable",
-      value: formatNumber(counts.stuck),
+      value: total(counts?.stuck),
       // Processing and failed together: both mean nobody can watch it, and a queue that
       // stops draining shows up here before anywhere else. Same cohort caveat as To Review.
       unit: `${formatCompact(views)} ${plural(views, "view")} on this page`,

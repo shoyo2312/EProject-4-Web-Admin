@@ -4,6 +4,7 @@ import { ApiError, apiGet, apiPost } from "./client";
 import { USE_MOCK } from "./config";
 import { LIST_PAGE_SIZE, mockPage } from "./shared";
 import type { AdminVideoResponse, ModerationActionResponse, Page, VideoStatus } from "./types";
+import { VIDEO_STATUS_LABELS } from "@/lib/labels";
 import { mockVideos } from "@/lib/mock/videos";
 
 /**
@@ -42,16 +43,12 @@ export async function listVideos(options: {
   const { q, status, ownerIds, deleted, purged, sort, page = 0, size = LIST_PAGE_SIZE } = options;
 
   if (USE_MOCK) {
-    const needle = q?.trim().toLowerCase();
-    const owners = new Set(ownerIds);
+    const matches = mockSearch(q, ownerIds);
     const filtered = mockVideos.filter((video) => {
       if (status && video.status !== status) return false;
       if (deleted != null && Boolean(video.deletedAt) !== deleted) return false;
       if (purged != null && Boolean(video.purgeEventPublishedAt) !== purged) return false;
-      if (!needle && owners.size === 0) return true;
-      return (
-        (!!needle && video.title.toLowerCase().includes(needle)) || owners.has(video.userId)
-      );
+      return matches(video);
     });
     if (sort === "deletedAt,asc") {
       filtered.sort((a, b) => (a.deletedAt ?? "").localeCompare(b.deletedAt ?? ""));
@@ -70,6 +67,43 @@ export async function listVideos(options: {
   for (const ownerId of ownerIds ?? []) params.append("ownerId", ownerId);
 
   return apiGet<Page<AdminVideoResponse>>(`/api/v1/videos/admin?${params}`);
+}
+
+/** The mock fixtures' version of video-service's search: the title term or the owners, OR'd. */
+function mockSearch(q: string | undefined, ownerIds: string[] | undefined) {
+  const needle = q?.trim().toLowerCase();
+  const owners = new Set(ownerIds);
+  return (video: AdminVideoResponse) =>
+    (!needle && owners.size === 0)
+    || (!!needle && video.title.toLowerCase().includes(needle))
+    || owners.has(video.userId);
+}
+
+/**
+ * How many videos stand in each status for the listing's own search, every status present and
+ * zero included. One request where the videos page used to send a one-row listing per status —
+ * five calls on every render, against a gateway rate limit the console's admins share.
+ */
+export async function getVideoStatusCounts(
+  options: { q?: string; ownerIds?: string[] } = {},
+): Promise<Record<VideoStatus, number>> {
+  const { q, ownerIds } = options;
+
+  if (USE_MOCK) {
+    const matches = mockSearch(q, ownerIds);
+    const counts = Object.fromEntries(
+      Object.keys(VIDEO_STATUS_LABELS).map((status) => [status, 0]),
+    ) as Record<VideoStatus, number>;
+    for (const video of mockVideos) {
+      if (matches(video)) counts[video.status] += 1;
+    }
+    return counts;
+  }
+
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  for (const ownerId of ownerIds ?? []) params.append("ownerId", ownerId);
+  return apiGet<Record<VideoStatus, number>>(`/api/v1/videos/admin/stats/by-status?${params}`);
 }
 
 /**
