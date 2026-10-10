@@ -12,15 +12,22 @@ import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window"
 import { deltaPercent, growthChange, spark, sumLast } from "@/lib/series";
 import { formatCompact, formatNumber, plural } from "@/lib/format";
 import { videoFilters } from "@/lib/list-filters";
-import type { VideoStatus } from "@/lib/api/types";
+import type { UserProfileResponse, VideoStatus } from "@/lib/api/types";
 
 export default async function VideosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; p?: string; asOf?: string; page?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    owner?: string;
+    status?: string;
+    p?: string;
+    asOf?: string;
+    page?: string;
+  }>;
 }) {
   const params = await searchParams;
-  const { q, status: filter, deletedOnly } = videoFilters(params);
+  const { q, ownerId, status: filter, deletedOnly } = videoFilters(params);
   const pageParam = params.page;
   const latest = isoDay(referenceNow());
   const window = resolveWindow(params, latest);
@@ -35,7 +42,7 @@ export default async function VideosPage({
     // A handle is a search term like any other to whoever typed it, but video-service has never
     // heard of handles — it stores owner ids. Resolving here rather than inside listVideos keeps
     // it to one directory call for the six listing calls below, which all share the term.
-    const ownerIds = q ? await resolveOwners(q) : [];
+    const ownerIds = ownerId ? [ownerId] : q ? await resolveOwners(q) : [];
 
     /**
      * A status total across the whole library, not the page: a one-row request exists only for
@@ -93,7 +100,7 @@ export default async function VideosPage({
 
   // The percentages below pair a library-wide total with a library-wide series, so a search or
   // a status filter — which narrows the total but not the series — has to drop them.
-  const filtered = Boolean(q || filter);
+  const filtered = Boolean(q || ownerId || filter);
   const uploads = sumLast(uploadCounts, periodDays);
   const libraryGrowth = filtered ? null : growthChange(page.totalElements, uploads);
   const takedownGrowth = filtered
@@ -157,9 +164,13 @@ export default async function VideosPage({
     },
   ];
 
-  // Owner handles for the rows on screen. user-service owns them; video-service only has the id.
-  // Non-fatal — a row just falls back to showing the raw id if this lookup is unavailable.
-  const owners = await getUserProfiles(videos.map((v) => v.userId)).catch(() => ({}));
+  // Owner handles for the rows on screen, and for the owner filter even when it matched nothing.
+  // user-service owns them; video-service only has the id. Non-fatal — a row just falls back to
+  // showing the raw id if this lookup is unavailable.
+  const owners: Record<string, UserProfileResponse> = await getUserProfiles([
+    ...videos.map((v) => v.userId),
+    ...(ownerId ? [ownerId] : []),
+  ]).catch(() => ({}));
 
   return (
     <>
@@ -181,6 +192,7 @@ export default async function VideosPage({
           videos={videos}
           owners={owners}
           query={q ?? ""}
+          ownerId={ownerId ?? null}
           status={deletedOnly ? "DELETED" : (filter ?? "ALL")}
           now={referenceNow()}
         />

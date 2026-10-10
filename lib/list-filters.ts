@@ -64,8 +64,13 @@ export function userFilters(params: ListParams) {
 }
 
 export function videoFilters(params: ListParams) {
+  // One account's uploads, by id — where an account page's "All N" link lands. Exact, unlike a
+  // search for the handle, which also matches other handles and titles that contain it. The two
+  // are one search expressed two ways (video-service ORs them), so the exact one replaces the term.
+  const ownerId = /^\d+$/.test(params.owner ?? "") ? params.owner : undefined;
   return {
-    q: params.q,
+    q: ownerId ? undefined : params.q,
+    ownerId,
     status: oneOf(params.status, VIDEO_STATUSES),
     // Not a VideoStatus: a video keeps its pipeline status after its owner deletes it, so
     // "Deleted" filters on deletedAt instead — listVideos({ deleted: true }).

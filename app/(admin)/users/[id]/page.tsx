@@ -194,7 +194,7 @@ export default async function UserDetailPage({
             actions={
               uploads && uploads.totalElements > INLINE_UPLOADS ? (
                 <Link
-                  href={{ pathname: "/videos", query: { q: user.username } } as never}
+                  href={{ pathname: "/videos", query: { owner: user.id } } as never}
                   className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
                 >
                   All {uploads.totalElements} →

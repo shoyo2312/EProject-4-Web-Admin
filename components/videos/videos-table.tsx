@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CheckCircle2, EyeOff, Play, RotateCcw, type LucideIcon } from "lucide-react";
+import { CheckCircle2, EyeOff, Play, RotateCcw, X, type LucideIcon } from "lucide-react";
 import {
   moderateVideoAction,
   videoModerationDetailAction,
@@ -71,6 +71,7 @@ export function VideosTable({
   videos,
   owners,
   query,
+  ownerId,
   status,
   now,
 }: {
@@ -78,6 +79,8 @@ export function VideosTable({
   /** userId → profile, for showing the owner as @handle. May be missing an id. */
   owners: Record<string, UserProfileResponse>;
   query: string;
+  /** The exact owner filter, when the list was opened from an account's uploads. */
+  ownerId: string | null;
   status: StatusFilter;
   /** `referenceNow()`, from the server — the purge countdown is measured against it. */
   now: number;
@@ -87,13 +90,12 @@ export function VideosTable({
   const params = useSearchParams();
   const [navigating, startNavigation] = useTransition();
 
-  function go(term: string, next: StatusFilter) {
-    const href = hrefWith(pathname, params, {
-      q: term || null,
-      status: next === "ALL" ? null : next,
-      page: null,
-    });
-    startNavigation(() => router.replace(href as never));
+  // Back to the first page: page 3 of everything is not page 3 of one owner's uploads.
+  const filterHref = (patch: Record<string, string | null>) =>
+    hrefWith(pathname, params, { ...patch, page: null });
+
+  function go(patch: Record<string, string | null>) {
+    startNavigation(() => router.replace(filterHref(patch) as never));
   }
 
   return (
@@ -103,15 +105,29 @@ export function VideosTable({
         hint="Every upload, in every state. Click a row for its details; a takedown is recorded in the audit log."
         actions={
           <>
+            {ownerId ? (
+              <Link
+                href={filterHref({ owner: null }) as never}
+                title="Show every owner's uploads"
+                className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[11px] text-ink-soft hover:text-ink"
+              >
+                {owners[ownerId]?.username
+                  ? `@${owners[ownerId].username}`
+                  : `#${shortId(ownerId.slice(-8), 8)}`}
+                <X className="h-3 w-3" />
+              </Link>
+            ) : null}
             <SearchBox
               query={query}
-              onCommit={(term) => go(term, status)}
+              // A search replaces the owner filter rather than narrowing it: video-service reads
+              // a term and an owner list as one search, so the two together would widen it.
+              onCommit={(term) => go({ q: term || null, owner: null })}
               placeholder="Search title or owner..."
             />
             <Segmented
               options={STATUS_FILTERS}
               value={status}
-              onChange={(next) => go(query, next)}
+              onChange={(next) => go({ status: next === "ALL" ? null : next })}
             />
           </>
         }

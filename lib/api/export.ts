@@ -41,8 +41,8 @@ export async function exportRows(
       return { ...all, rows: all.rows.filter((u) => u.createdAt.slice(0, 10) <= window.asOf) };
     }
     case "videos": {
-      const { q, status, deletedOnly } = videoFilters(params);
-      const ownerIds = q ? await resolveOwners(q) : [];
+      const { q, ownerId, status, deletedOnly } = videoFilters(params);
+      const ownerIds = ownerId ? [ownerId] : q ? await resolveOwners(q) : [];
       const all = await collect((page) =>
         listVideos({
           q,
