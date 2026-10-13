@@ -11,6 +11,18 @@ import { useTurnstileToken } from "@/lib/auth/use-turnstile-token";
 
 type Step = "request" | "reset";
 
+/** What `/api/password-reset` answers: `resendTicket` on a code sent, `code` on a refusal. */
+interface ResetAnswer {
+  message?: string;
+  code?: string;
+  resendTicket?: string | null;
+}
+
+/**
+ * Step one asks for an email and the Turnstile check, and mails a code. "Send a new code" then
+ * goes on the ticket that send answered with, so the check is not solved a second time; it is put
+ * back up only when there is no ticket, or the server refuses it 15 minutes on.
+ */
 export function ForgotPasswordForm() {
   const router = useRouter();
   const turnstile = useTurnstileToken();
@@ -22,6 +34,7 @@ export function ForgotPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [resendTicket, setResendTicket] = useState<string | null>(null);
 
   const turnstileConfigured = isTurnstileConfigured();
 
@@ -36,7 +49,7 @@ export function ForgotPasswordForm() {
           withTurnstile ? { ...payload, turnstileToken: turnstile.token } : payload,
         ),
       });
-      const body = (await response.json()) as { message?: string };
+      const body = (await response.json()) as ResetAnswer;
       return { ok: response.ok, body };
     } catch {
       return { ok: false, body: { message: "The console server did not answer. Try again in a moment." } };
@@ -50,11 +63,30 @@ export function ForgotPasswordForm() {
     event.preventDefault();
     const { ok, body } = await post({ email }, true);
     if (ok) {
+      setResendTicket(body.resendTicket ?? null);
       setStep("reset");
       setNotice("If that email has an admin account, a 6-digit code is on its way. It expires shortly.");
       return;
     }
     setError(body.message ?? "Couldn't send a reset code.");
+  }
+
+  async function resend() {
+    const onTicket = resendTicket !== null;
+    const { ok, body } = await post(onTicket ? { email, resendTicket } : { email }, !onTicket);
+    if (ok) {
+      setResendTicket(body.resendTicket ?? null);
+      setOtp("");
+      setNotice("A new code is on its way — the previous one stops working.");
+      return;
+    }
+    if (body.code === "TURNSTILE_VERIFICATION_FAILED") {
+      // The ticket ran out or the server lost it: the check it stood in for is due again.
+      setResendTicket(null);
+      setNotice("Complete the check below to send a new code.");
+      return;
+    }
+    setError(body.message ?? "Couldn't send a new code.");
   }
 
   async function submitReset(event: React.FormEvent) {
@@ -100,6 +132,21 @@ export function ForgotPasswordForm() {
               className="mt-1.5 w-full rounded-lg border border-line bg-surface-muted px-3 py-2.5 text-center text-[18px] tracking-[0.4em] outline-none focus:border-ink-faint"
             />
           </label>
+
+          <button
+            type="button"
+            onClick={resend}
+            disabled={pending || (resendTicket === null && !turnstile.token)}
+            className="text-[11px] text-ink-soft underline disabled:opacity-40"
+          >
+            Send a new code
+          </button>
+
+          {resendTicket === null && turnstileConfigured ? (
+            <div className="flex justify-center">
+              <TurnstileWidget key={turnstile.widgetKey} onVerify={turnstile.setToken} />
+            </div>
+          ) : null}
 
           <label className="block">
             <span className="label-caps text-ink-soft">New password</span>
