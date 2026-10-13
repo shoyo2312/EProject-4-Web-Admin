@@ -112,7 +112,7 @@ export function Sidebar({
 
       <nav
         className={cn(
-          "flex-1 overflow-y-auto pb-4",
+          "flex-1 overflow-y-auto pb-4 scrollbar-none [&::-webkit-scrollbar]:hidden",
           collapsed ? "px-2.5" : "px-3",
         )}
       >
