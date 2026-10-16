@@ -24,9 +24,9 @@ mock (default, no backend needed, no login) or live through api-gateway on `:808
 | Section | Routes | What it is |
 |---|---|---|
 | Overview | `/dashboard`, `/analytics` | Platform figures and trends from admin-service and analytics-service |
-| Moderation | `/moderation/reports`, `/moderation/review`, `/moderation/actions` | The report queue and ledger, the videos automatic moderation held for a person, and the audit log |
+| Moderation | `/moderation/reports`, `/moderation/review`, `/moderation/actions`, `/moderation/terms` | The report queue and ledger, the videos automatic moderation held for a person, the audit log, and the terms admins add to text moderation's word list or exempt from it |
 | Management | `/users`, `/videos`, `/comments` | The directories, each account's and video's own page, and one video's comment thread at a time |
-| System | `/settings`, `/trash`, `/notifications` | The classifier's thresholds, videos their owners deleted, and the bell's whole feed |
+| System | `/settings`, `/trash`, `/notifications` | The classifiers' thresholds (frames and text), videos their owners deleted, and the bell's whole feed |
 
 `/system/queues` is marked `SOON` in the sidebar and renders a page listing the backend gap
 that blocks it.

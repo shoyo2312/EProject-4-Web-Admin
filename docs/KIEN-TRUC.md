@@ -50,14 +50,14 @@ GATEWAY_URL=http://localhost:8080
 app/                    → Next.js App Router: routing + page component
   (admin)/              → route group cho khu vực sau đăng nhập (có sidebar/topbar chung)
     dashboard/, analytics/, users/, videos/, comments/,
-    moderation/reports/, moderation/actions/, system/queues/, settings/
+    moderation/reports/, moderation/actions/, moderation/terms/, system/queues/, settings/
   login/, forgot-password/  → trang public (không cần đăng nhập)
   api/                   → route handler nội bộ (session, password-reset, live — SSE báo trang admin tải lại khi dữ liệu đổi)
 proxy.ts                 → gác cổng auth, refresh token, redirect /login (Next 16 đổi tên từ middleware.ts)
 
 lib/
   api/                   → toàn bộ logic gọi API + kiểu dữ liệu (types.ts)
-    users.ts, videos.ts, comments.ts, reports.ts, moderation.ts, analytics.ts
+    users.ts, videos.ts, comments.ts, reports.ts, moderation.ts, terms.ts, analytics.ts
                           → các hàm nghiệp vụ theo domain: listUsers, listVideos, moderateUser, ...
     names.ts             → tra handle/tiêu đề cho các id mà danh sách mang theo
     notifications.ts     → nguồn dữ liệu cho chuông thông báo
@@ -65,7 +65,7 @@ lib/
     client.ts            → wrapper fetch (apiGet/apiPost) tới gateway
     config.ts             → cờ USE_MOCK, tên cookie, GATEWAY_URL
     rollup.ts             → biến đổi dữ liệu thô thành dữ liệu cho biểu đồ
-  mock/                  → dữ liệu giả cho từng domain (users, videos, comments, moderation, analytics)
+  mock/                  → dữ liệu giả cho từng domain (users, videos, comments, moderation, terms, analytics)
   moderation.ts           → hằng số nghiệp vụ dùng chung (preset lý do, action nào có hiệu lực...)
   url.ts                  → hrefWith() — build lại query string
   use-propagation.ts      → hook usePropagation() — chờ hành động kiểm duyệt "ngấm" xuống hệ thống
@@ -169,7 +169,10 @@ liệu nằm đúng trong khung thời gian đang xem, thay vì random rơi ra n
 
 Một số hành động ghi (`moderateUser`, `moderateVideo`, `resolveReport`, `removeComment`) sẽ
 **throw lỗi rõ ràng** khi đang ở mock mode, vì chúng cần ghi audit log + Kafka event ở backend
-thật — không có cách nào giả lập hợp lý trong bộ nhớ.
+thật — không có cách nào giả lập hợp lý trong bộ nhớ. Tương tự với các thao tác của kiểm duyệt chữ:
+thêm/xoá term (`addModerationTerm`, `removeModerationTerm` — danh sách nằm ở admin-service), thử một
+câu (`previewText` — chạy luật và classifier thật) và gỡ hạn chế bình luận (`liftCommentRestriction`
+— strike nằm trong Redis của interaction-service).
 
 ## 8. Xác thực (Authentication)
 
