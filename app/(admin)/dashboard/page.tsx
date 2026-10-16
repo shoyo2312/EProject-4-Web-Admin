@@ -8,19 +8,22 @@ import {
   getDailySignups,
   getEngagementSeries,
   getStatsSummary,
-  listReports,
-  referenceNow,
-} from "@/lib/api/admin";
+} from "@/lib/api/analytics";
+import { getRowNames } from "@/lib/api/names";
+import { listReports } from "@/lib/api/reports";
+import { referenceNow } from "@/lib/api/shared";
 import {
   bucketByGranularity,
   historyUpTo,
   isoDay,
   resolveWindow,
   sliceToWindow,
+  windowRange,
 } from "@/lib/api/window";
 import { getSessionProfile } from "@/lib/api/session";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, plural } from "@/lib/format";
+import { idsToName } from "@/lib/names";
 
 export default async function DashboardPage({
   searchParams,
@@ -41,11 +44,10 @@ export default async function DashboardPage({
       // below has the period before this one to compare itself against.
       getDailySignups(window.fetchDays),
       getDailyAdminStats(window.fetchDays),
-      getEngagementSeries(asOfMs),
-      // Over-fetched, then cut to the picked date: the eight newest reports as of
-      // three weeks ago are not the eight newest today.
-      // Only the newest slice — the dashboard card shows a handful and links to the queue.
-      listReports({ size: 8 }).then((page) => page.content),
+      getEngagementSeries(asOfMs, window.fetchDays),
+      // The card shows a handful and links to the queue: the eight newest as of the picked day,
+      // which three weeks back are not the eight newest today.
+      listReports({ size: 8, to: windowRange(window).to }).then((page) => page.content),
     ]);
     data = { stats, signups, adminStats, series, reports };
   } catch (error) {
@@ -62,23 +64,26 @@ export default async function DashboardPage({
   const { stats, signups, adminStats, series } = data;
   const { periodDays, periodLabel, compareLabel } = window;
 
-  const reports = data.reports
-    .filter((r) => r.createdAt.slice(0, 10) <= window.asOf)
-    .slice(0, 8);
+  const { reports } = data;
+  const wanted = idsToName(reports, reports.map((r) => r.reporterId));
+  const names = await getRowNames(
+    wanted.userIds,
+    wanted.videoIds,
+    reports.map((r) => r.resolvedBy),
+  );
 
   const signupBuckets = bucketByGranularity(
-    sliceToWindow(signups, window),
+    sliceToWindow(signups, window, (day) => ({ day, signups: 0 })),
     window.bucket,
     (a, b) => ({ day: a.day, signups: a.signups + b.signups }),
   );
 
   // Daily and uncut, so each delta compares the period against the period before it —
   // the bucketed series above is only the chart's window, with nothing behind it.
-  const signupCounts = historyUpTo(signups, window).map((d) => d.signups);
-  const dailyStats = historyUpTo(adminStats, window);
-  const reportsCreatedCounts = dailyStats.map((d) => d.reportsCreated);
-  const actionsTakenCounts = dailyStats.map((d) => d.actionsTaken);
-  const takedownCounts = dailyStats.map((d) => d.videosTakenDown);
+  const signupCounts = historyUpTo(signups, window, (d) => d.signups);
+  const reportsCreatedCounts = historyUpTo(adminStats, window, (d) => d.reportsCreated);
+  const actionsTakenCounts = historyUpTo(adminStats, window, (d) => d.actionsTaken);
+  const takedownCounts = historyUpTo(adminStats, window, (d) => d.videosTakenDown);
 
   const cards: KpiCard[] = [
     {
@@ -126,7 +131,11 @@ export default async function DashboardPage({
     <>
       <PageHeader
         title={`Welcome back, ${session.username}`}
-        subtitle={`${stats.pendingReports} reports are waiting for review.`}
+        subtitle={
+          stats.pendingReports === 0
+            ? "Nothing is waiting for review."
+            : `${formatNumber(stats.pendingReports)} ${plural(stats.pendingReports, "report")} waiting for review.`
+        }
         filters={filters}
         csv={{ name: "dashboard-reports", rows: reports }}
       />
@@ -136,7 +145,7 @@ export default async function DashboardPage({
 
         <EngagementTrend series={series} range={window.bucket} />
 
-        <ReportsTable reports={reports} footerHref="/moderation/reports" />
+        <ReportsTable reports={reports} names={names} footerHref="/moderation/reports" />
       </div>
     </>
   );

@@ -9,6 +9,17 @@
 type Cell = unknown;
 
 /**
+ * The listings whose Export button writes every matching row rather than the page on screen — read
+ * server-side by `lib/api/export`. Here so the button can name them without importing that.
+ */
+export const EXPORT_DATASETS = ["users", "videos", "reports", "moderation-actions"] as const;
+
+export type ExportDataset = (typeof EXPORT_DATASETS)[number];
+
+/** The most rows one export writes: a hundred pages at the backends' limit of fifty. */
+export const EXPORT_MAX_ROWS = 5_000;
+
+/**
  * Plain `object`, not `Record<string, unknown>`: the DTOs come back as interfaces,
  * and an interface has no index signature, so it never satisfies a Record type.
  */
@@ -18,10 +29,20 @@ function cellsOf(row: CsvRow): Record<string, Cell> {
   return row as Record<string, Cell>;
 }
 
+/**
+ * Text that opens with one of these is a formula to Excel, Sheets and LibreOffice, so a video
+ * titled `=HYPERLINK(...)` would run when an admin opens the export. Tab and carriage return are
+ * here because Excel drops them and reads what follows.
+ */
+const FORMULA_START = /^[=+\-@\t\r]/;
+
 function serialiseCell(value: Cell): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return value.toISOString();
   if (typeof value === "object") return JSON.stringify(value);
+  // Strings only: a negative count is a number, not something a user typed. The apostrophe is how
+  // the spreadsheets mark a cell as text themselves.
+  if (typeof value === "string" && FORMULA_START.test(value)) return `'${value}`;
   return String(value);
 }
 

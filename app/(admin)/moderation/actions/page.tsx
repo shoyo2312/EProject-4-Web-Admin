@@ -1,36 +1,48 @@
-import { AlertTriangle } from "lucide-react";
 import { ActionsTable } from "@/components/moderation/actions-table";
 import { KpiCards, type KpiCard } from "@/components/dashboard/kpi-cards";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Pager } from "@/components/ui/pager";
-import {
-  LIST_PAGE_SIZE,
-  getDailyAdminStats,
-  listModerationActions,
-  referenceNow,
-} from "@/lib/api/admin";
-import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
+import { getDailyAdminStats } from "@/lib/api/analytics";
+import { listModerationActions } from "@/lib/api/moderation";
+import { getRowNames } from "@/lib/api/names";
+import { LIST_PAGE_SIZE, referenceNow } from "@/lib/api/shared";
+import { historyUpTo, isoDay, parsePage, resolveWindow, windowRange } from "@/lib/api/window";
+import { auditFilters } from "@/lib/list-filters";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
-import { ENFORCED } from "@/lib/moderation";
+import { idsToName } from "@/lib/names";
 
 export default async function AuditLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ p?: string; asOf?: string; page?: string }>;
+  searchParams: Promise<{
+    p?: string;
+    asOf?: string;
+    page?: string;
+    admin?: string;
+    type?: string;
+    sort?: string;
+    dir?: string;
+  }>;
 }) {
   const params = await searchParams;
   const latest = isoDay(referenceNow());
   const window = resolveWindow(params, latest);
   const { asOf, periodDays, periodLabel, compareLabel } = window;
   const pageIndex = parsePage(params.page);
+  // Both come from the query string, where anything can be typed. Dropped rather than passed
+  // on: admin-service answers a non-numeric id or an unknown type with a 400 for the whole page.
+  const { adminId, actionType, sort, ascending } = auditFilters(params);
+  // The log covers the same days as the figures above it, so its total is the "Actions Taken"
+  // card's value — and "what did this admin do yesterday" is the Day period on yesterday.
+  const { from, to } = windowRange(window);
 
   let page;
   let adminStats;
   try {
     [page, adminStats] = await Promise.all([
-      listModerationActions({ page: pageIndex }),
+      listModerationActions({ page: pageIndex, adminId, actionType, from, to, sort, ascending }),
       // The page itself is one slice of the log; the counts above it are the whole of it,
       // which is the only way a percentage over a year means anything.
       getDailyAdminStats(window.fetchDays),
@@ -44,23 +56,22 @@ export default async function AuditLogPage({
     );
   }
 
-  // Append-only, so cutting at the picked date really is the log as it stood then.
-  // ponytail: the cut runs over the page rather than the query — admin-service takes no date
-  // parameter, so a page of newer entries comes back short instead of being skipped.
-  const actions = page.content.filter((a) => a.createdAt.slice(0, 10) <= asOf);
-  const unenforced = actions.filter(
-    (a) => !ENFORCED.includes(a.actionType),
-  ).length;
+  const actions = page.content;
+  // The admin filter is named too, so its chip says who rather than which id.
+  const wanted = idsToName(actions);
+  const names = await getRowNames(wanted.userIds, wanted.videoIds, [
+    ...actions.map((a) => a.adminId),
+    adminId ?? null,
+  ]);
 
   // Daily and uncut, so a delta compares the period against the period before it. Every
   // figure here is a flow — the log records decisions, and a decision is an event, not a
   // standing total — so all four compare period against period rather than against a stock.
-  const daily = historyUpTo(adminStats, window);
   const series = {
-    taken: daily.map((d) => d.actionsTaken),
-    bans: daily.map((d) => d.usersBanned),
-    takedowns: daily.map((d) => d.videosTakenDown),
-    removals: daily.map((d) => d.commentsRemoved),
+    taken: historyUpTo(adminStats, window, (d) => d.actionsTaken),
+    bans: historyUpTo(adminStats, window, (d) => d.usersBanned),
+    takedowns: historyUpTo(adminStats, window, (d) => d.videosTakenDown),
+    removals: historyUpTo(adminStats, window, (d) => d.commentsRemoved),
   };
 
   const card = (label: string, values: number[]): KpiCard => ({
@@ -85,34 +96,27 @@ export default async function AuditLogPage({
         title="Moderation Audit Log"
         subtitle="Every action taken by an admin, in order. Append-only."
         filters={{ period: window.period, asOf, latest }}
-        csv={{ name: "moderation-actions", rows: actions }}
+        csv={{
+          name: "moderation-actions",
+          rows: actions,
+          all: { dataset: "moderation-actions", params, total: page.totalElements },
+        }}
       />
 
       <div className="mb-4">
         <KpiCards cards={cards} />
       </div>
 
-      {unenforced > 0 ? (
-        <div className="mb-4 flex items-start gap-3 rounded-xl border border-pending/30 bg-pending-bg px-4 py-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-pending" />
-          <p className="text-[12px] text-ink-soft">
-            <span className="font-semibold text-ink">
-              {unenforced} of the {actions.length} actions on this page are
-              recorded but not enforced.
-            </span>{" "}
-            Video takedown/restore, user ban/unban and comment removal have
-            consumers today. Warn and product suspension publish to{" "}
-            <code className="rounded bg-surface px-1 py-0.5">
-              admin.moderation-events
-            </code>{" "}
-            with no subscriber in user-service or product-service.
-          </p>
-        </div>
-      ) : null}
-
-      {/* The table's own search, type tabs and sort work over the rows on this page —
-          they are client-side, and the page is what the server sent. */}
-      <ActionsTable actions={actions} />
+      {/* The type and admin filters go to the server with the period. The search box, the
+          enforcement tabs and the sort work over the rows on this page only. */}
+      <ActionsTable
+        actions={actions}
+        names={names}
+        adminId={adminId}
+        actionType={actionType}
+        sort={sort}
+        ascending={ascending}
+      />
 
       <Pager
         page={page.number}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { GATEWAY_URL } from "@/lib/api/config";
+import { GATEWAY_URL, TRUST_PROXY } from "@/lib/api/config";
+import { forwardedHeaders } from "@/lib/api/forwarded";
 import { parseWithLongIdsAsStrings } from "@/lib/api/json";
 import type { ApiResponse } from "@/lib/api/types";
 import {
@@ -14,9 +15,21 @@ import {
   type TokenResponse,
 } from "@/lib/api/session";
 
-async function call<T>(path: string, init: RequestInit): Promise<ApiResponse<T>> {
+/**
+ * One call to the gateway, carrying the browser's identity with it.
+ *
+ * `from` is the request this handler is serving, and its user agent (and, behind a trusted proxy,
+ * its forwarded-for chain) is relayed so auth-service's security log names the person signing in.
+ * Without it every sign-in
+ * was recorded as the device "node" — undici's own user agent — at this server's address.
+ */
+async function call<T>(path: string, init: RequestInit, from: Request): Promise<ApiResponse<T>> {
   const response = await fetch(`${GATEWAY_URL}${path}`, {
     ...init,
+    headers: {
+      ...(init.headers as Record<string, string> | undefined),
+      ...forwardedHeaders(from, TRUST_PROXY),
+    },
     cache: "no-store",
   });
   const text = await response.text();
@@ -25,25 +38,57 @@ async function call<T>(path: string, init: RequestInit): Promise<ApiResponse<T>>
     : ({ success: response.ok, data: null as T, timestamp: "" } as ApiResponse<T>);
 }
 
-const GATEWAY_DOWN = NextResponse.json(
-  {
-    code: "GATEWAY_UNREACHABLE",
-    message: `Cannot reach the gateway at ${GATEWAY_URL}. Start it with 'make run-gateway'.`,
-  },
-  { status: 502 },
-);
+/**
+ * A fresh response per call: a body can be read once, so one shared constant went out empty from
+ * the second failure on.
+ */
+function gatewayDown() {
+  return NextResponse.json(
+    {
+      code: "GATEWAY_UNREACHABLE",
+      message: `Cannot reach the gateway at ${GATEWAY_URL}. Start it with 'make run-gateway'.`,
+    },
+    { status: 502 },
+  );
+}
+
+/**
+ * Ends a session at auth-service: the refresh token is revoked and, when given, the access token
+ * blacklisted. Best effort — whatever auth-service says, the caller goes on to drop its side.
+ */
+async function endSession(
+  tokens: { refreshToken: string; accessToken?: string },
+  from: Request,
+) {
+  try {
+    await call("/api/v1/auth/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(tokens.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : {}),
+      },
+      body: JSON.stringify({ refreshToken: tokens.refreshToken }),
+    }, from);
+  } catch {
+    // Nothing to do about it here; the session is not kept on this side either way.
+  }
+}
 
 /**
  * Turns a fresh token pair into console cookies, after checking the account is actually an ADMIN
  * — a valid non-admin token would sail past the gateway and then 403 on every panel, which reads
  * as a broken app rather than a refusal. Shared by the remembered-device path and the OTP path.
+ *
+ * A refused pair is ended, not just left uncollected: auth-service issued it, and until its
+ * refresh token expires it is a live session for an account that only typed its password here.
  */
-async function establishSession(tokens: TokenResponse) {
+async function establishSession(tokens: TokenResponse, from: Request) {
   const me = await call<AuthUserResponse>("/api/v1/auth/me", {
     headers: { Authorization: `Bearer ${tokens.accessToken}` },
-  });
+  }, from);
 
   if (!me.success || !me.data || me.data.role !== "ADMIN") {
+    await endSession(tokens, from);
     return NextResponse.json(
       { code: "NOT_ADMIN", message: "This account does not have admin access." },
       { status: 403 },
@@ -98,9 +143,9 @@ export async function POST(request: Request) {
           turnstileToken: body.turnstileToken,
           rememberDevice: Boolean(body.rememberDevice),
         }),
-      });
+      }, request);
     } catch {
-      return GATEWAY_DOWN;
+      return gatewayDown();
     }
 
     if (!otpLogin.success || !otpLogin.data) {
@@ -109,7 +154,7 @@ export async function POST(request: Request) {
         { status: 401 },
       );
     }
-    return establishSession(otpLogin.data);
+    return establishSession(otpLogin.data, request);
   }
 
   // ---- Step one: password + Turnstile (+ a remembered-device token, if this browser has one) ----
@@ -131,9 +176,9 @@ export async function POST(request: Request) {
         turnstileToken: body.turnstileToken,
         deviceToken: await getDeviceToken(),
       }),
-    });
+    }, request);
   } catch {
-    return GATEWAY_DOWN;
+    return gatewayDown();
   }
 
   if (login.code === "MFA_REQUIRED") {
@@ -150,24 +195,15 @@ export async function POST(request: Request) {
   }
 
   // Reached only when the device was remembered and auth-service skipped the OTP step.
-  return establishSession(login.data);
+  return establishSession(login.data, request);
 }
 
 /** Sign out — revokes the refresh token server-side, then drops the session cookies. */
-export async function DELETE() {
+export async function DELETE(request: Request) {
   const refreshToken = await getRefreshToken();
 
-  if (refreshToken) {
-    try {
-      await call("/api/v1/auth/logout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-      });
-    } catch {
-      // Best effort: the cookies still go, so this browser is signed out either way.
-    }
-  }
+  // Best effort: the cookies still go, so this browser is signed out either way.
+  if (refreshToken) await endSession({ refreshToken }, request);
 
   await clearSessionCookies();
   return NextResponse.json({ ok: true });

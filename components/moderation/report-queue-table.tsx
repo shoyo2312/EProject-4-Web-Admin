@@ -1,22 +1,21 @@
 "use client";
 
 import { Fragment, useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Gavel } from "lucide-react";
-import {
-  reportTargetDetailAction,
-  resolveQueueAction,
-  type ReportTargetDetail,
-} from "@/app/(admin)/moderation/reports/actions";
+import { reportTargetDetailAction, resolveQueueAction } from "@/app/(admin)/moderation/reports/actions";
 import { TargetBadge } from "@/components/ui/badge";
-import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ResolveForm } from "@/components/moderation/resolve-form";
+import { TargetPreviewLine } from "@/components/moderation/target-preview-line";
+import { VideoThumb } from "@/components/videos/video-thumb";
 import type { ModerationActionType, ReportGroupResponse } from "@/lib/api/types";
-import { formatDate, relativeTime } from "@/lib/format";
+import { formatDateTime, relativeTime } from "@/lib/format";
+import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { useBelowXl } from "@/lib/use-below-xl";
+import { useRowDetail } from "@/lib/use-row-detail";
 import { cn } from "@/lib/utils";
 
 const COLUMNS = 6;
@@ -43,10 +42,13 @@ function severityBand(severity: number) {
 export function ReportQueueTable({
   groups,
   total,
+  names = NO_NAMES,
 }: {
   groups: ReportGroupResponse[];
   /** Every target waiting, not just the ones on this page. */
   total: number;
+  /** Reported accounts and videos by name, resolved by the page in one batch each. */
+  names?: RowNames;
 }) {
   const belowXl = useBelowXl();
 
@@ -57,9 +59,8 @@ export function ReportQueueTable({
         hint={
           total > groups.length
             ? `Top ${groups.length} of ${total} targets waiting — ranked by report count × severity`
-            : "GET /api/v1/admin/reports/queue — one row per target, ranked by report count × severity"
+            : "One row per reported target, ranked by report count × severity. Deciding a row closes every report against it."
         }
-        actions={<CardMenuButton />}
       />
 
       <div className="overflow-x-auto">
@@ -81,6 +82,7 @@ export function ReportQueueTable({
               <QueueRow
                 key={`${group.targetType}:${group.targetId}`}
                 group={group}
+                names={names}
                 belowXl={belowXl}
               />
             ))}
@@ -101,42 +103,30 @@ export function ReportQueueTable({
 
 function QueueRow({
   group,
+  names,
   belowXl,
 }: {
   group: ReportGroupResponse;
+  names: RowNames;
   /** Below xl the reason column is dropped, so the expand row carries it instead. */
   belowXl: boolean;
 }) {
   const router = useRouter();
-  const [detail, setDetail] = useState(false);
-  const [target, setTarget] = useState<ReportTargetDetail | null>(null);
-  const [targetLoading, setTargetLoading] = useState(false);
+  const detail = useRowDetail(() => reportTargetDetailAction(group.targetType, group.targetId));
   const [resolving, setResolving] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
 
   const band = severityBand(group.severity);
 
-  function toggleDetail() {
-    const opening = !detail;
-    setDetail(opening);
-    // Fetched once per row and kept: what the reports point at does not change while the admin
-    // scans the queue, and re-fetching on every toggle would be three calls per click.
-    if (opening && !target && !targetLoading) {
-      setTargetLoading(true);
-      reportTargetDetailAction(group.targetType, group.targetId)
-        .then(setTarget)
-        .finally(() => setTargetLoading(false));
-    }
-  }
-
-  function submit(action: ModerationActionType, reason: string) {
+  function submit(action: ModerationActionType, reason: string, banDays: number | null) {
     startSubmit(async () => {
       const outcome = await resolveQueueAction(
         group.targetType,
         group.targetId,
         action,
         reason,
+        banDays,
       );
       setResult(outcome.message);
       if (outcome.ok) {
@@ -152,11 +142,24 @@ function QueueRow({
   return (
     <Fragment>
       <tr
-        {...expandableRowProps(toggleDetail, detail)}
+        {...expandableRowProps(detail.toggle, detail.open)}
         className="cursor-pointer border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted"
       >
-        <td className="py-3 pl-5 pr-3 whitespace-nowrap">
-          <TargetBadge type={group.targetType} id={group.targetId} />
+        <td className="py-3 pl-5 pr-3">
+          {/* A poster frame for a reported video: the worklist is scanned, not read. */}
+          <span className="inline-flex items-center gap-2.5">
+            {group.targetType === "VIDEO" ? (
+              <VideoThumb
+                src={names.videos[group.targetId]?.thumbnailUrl ?? null}
+                className="h-9 w-6"
+              />
+            ) : null}
+            <TargetBadge
+              type={group.targetType}
+              id={group.targetId}
+              name={targetName(names, group.targetType, group.targetId)}
+            />
+          </span>
         </td>
         <td className="figure px-3 py-3 whitespace-nowrap">
           {group.reportCount}
@@ -200,7 +203,7 @@ function QueueRow({
         </td>
       </tr>
 
-      {detail ? (
+      {detail.open ? (
         <RowDetail colSpan={COLUMNS}>
           {belowXl ? (
             <Field label="Latest reason" wide>
@@ -210,8 +213,8 @@ function QueueRow({
           <Field label="Target">
             {group.targetType} · {group.targetId}
           </Field>
-          <Field label="First reported">{formatDate(group.firstReportedAt)}</Field>
-          <Field label="Last reported">{formatDate(group.lastReportedAt)}</Field>
+          <Field label="First reported">{formatDateTime(group.firstReportedAt)}</Field>
+          <Field label="Last reported">{formatDateTime(group.lastReportedAt)}</Field>
           <Field label="Rank">
             {group.reportCount} × severity {group.severity} = {group.priority}
           </Field>
@@ -220,36 +223,21 @@ function QueueRow({
               such: it means no endpoint will serve it back — a taken-down video, a deleted
               account — which is itself information a moderator needs before acting again. */}
           <Field label="Reported content" wide>
-            {targetLoading && !target ? (
-              <span className="text-ink-faint">Loading target…</span>
-            ) : target?.preview ? (
-              <span className="flex flex-wrap items-baseline gap-x-2">
-                <span>{target.preview.title}</span>
-                {target.preview.detail ? (
-                  <span className="text-[11px] text-ink-faint">· {target.preview.detail}</span>
-                ) : null}
-                {target.preview.href ? (
-                  <Link
-                    href={target.preview.href as never}
-                    className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
-                  >
-                    open →
-                  </Link>
-                ) : null}
-              </span>
-            ) : (
-              <span className="text-ink-faint">
-                Not available — the target is not readable through the console (removed, private,
-                or no longer there).
-              </span>
-            )}
+            <TargetPreviewLine
+              preview={detail.data?.preview ?? null}
+              loading={detail.loading}
+              failed={detail.failed}
+              missing="Not available — the target is not readable through the console (removed, private, or no longer there)."
+            />
           </Field>
 
           <Field label="Moderation history" wide>
             <ModerationHistory
-              reportCount={target?.reportCount ?? null}
-              actions={target?.actions ?? null}
-              loading={targetLoading && !target}
+              reportCount={detail.data?.reportCount ?? null}
+              actions={detail.data?.actions ?? null}
+              handles={detail.data?.handles}
+              loading={detail.loading}
+              onRetry={detail.retry}
             />
           </Field>
         </RowDetail>
@@ -259,8 +247,9 @@ function QueueRow({
         <tr className="border-b border-line bg-surface-muted">
           <td colSpan={COLUMNS} className="px-5 py-3">
             <p className="mb-2 text-[11px] text-ink-faint">
-              Closes all {group.reportCount}{" "}
-              {group.reportCount === 1 ? "report" : "reports"} against this target.
+              {group.reportCount === 1
+                ? "Closes the one report against this target."
+                : `Closes all ${group.reportCount} reports against this target.`}
             </p>
             <ResolveForm
               targetType={group.targetType}

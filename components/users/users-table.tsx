@@ -4,11 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Ban, ShieldCheck } from "lucide-react";
-import {
-  moderateUserAction,
-  userModerationDetailAction,
-  type ModerationDetail,
-} from "@/app/(admin)/users/actions";
+import { moderateUserAction, userModerationDetailAction } from "@/app/(admin)/users/actions";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
 import { Segmented } from "@/components/ui/segmented";
@@ -16,21 +12,18 @@ import { UserStatusBadge } from "@/components/ui/status-badge";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
-import { PRESET_REASONS } from "@/lib/moderation";
+import { USER_STATUS_LABELS, statusTabs } from "@/lib/labels";
+import { BAN_DURATIONS, PRESET_REASONS, banDaysOf, type BanDuration } from "@/lib/moderation";
 import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import { hrefWith } from "@/lib/url";
 import { usePropagation } from "@/lib/use-propagation";
+import { useRowDetail } from "@/lib/use-row-detail";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = UserStatus | "ALL";
 
-const STATUS_FILTERS = [
-  { value: "ALL" as const, label: "All" },
-  { value: "ACTIVE" as const, label: "Active" },
-  { value: "BANNED" as const, label: "Banned" },
-  { value: "LOCKED" as const, label: "Locked" },
-];
+const STATUS_FILTERS = statusTabs(["ACTIVE", "BANNED", "LOCKED"], USER_STATUS_LABELS);
 
 export function UsersTable({
   users,
@@ -59,7 +52,7 @@ export function UsersTable({
     <Card>
       <CardHeader
         title="User Directory"
-        hint="GET /api/v1/auth/admin/users — served by auth-service, which owns status and role"
+        hint="Every account. Click a row for its details; a ban is recorded in the audit log and signs the account out."
         actions={
           <>
             <SearchBox
@@ -113,23 +106,11 @@ function UserRow({
   user: AdminUserResponse;
 }) {
   const [reason, setReason] = useState<string | null>(null);
+  const [duration, setDuration] = useState<BanDuration>("permanent");
   const [result, setResult] = useState<string | null>(null);
-  const [detail, setDetail] = useState(false);
-  const [modHistory, setModHistory] = useState<ModerationDetail | null>(null);
-  const [modLoading, setModLoading] = useState(false);
   const [submitting, startSubmit] = useTransition();
-
   // Opening the row is what triggers the fetch — once, lazily.
-  function toggleDetail() {
-    const opening = !detail;
-    setDetail(opening);
-    if (opening && !modHistory && !modLoading) {
-      setModLoading(true);
-      userModerationDetailAction(user.id)
-        .then(setModHistory)
-        .finally(() => setModLoading(false));
-    }
-  }
+  const detail = useRowDetail(() => userModerationDetailAction(user.id));
   const { pending, stalled, watch } = usePropagation(
     user.status,
     "Still the old status — auth-service has not consumed the event yet. The action is recorded; reload in a moment.",
@@ -144,7 +125,12 @@ function UserRow({
 
   function submit() {
     startSubmit(async () => {
-      const outcome = await moderateUserAction(user.id, action, reason ?? "");
+      const outcome = await moderateUserAction(
+        user.id,
+        action,
+        reason ?? "",
+        action === "ban" ? banDaysOf(duration) : null,
+      );
       setResult(outcome.message);
       if (outcome.ok) {
         setReason(null);
@@ -156,7 +142,7 @@ function UserRow({
   return (
     <>
       <tr
-        {...expandableRowProps(toggleDetail, detail)}
+        {...expandableRowProps(detail.toggle, detail.open)}
         className={cn(
           "border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted",
           "cursor-pointer",
@@ -195,7 +181,10 @@ function UserRow({
             // Disabled until the change lands, so a second click cannot queue the same
             // action twice against a status that has not moved yet.
             disabled={selfDestructive || pending}
-            onClick={() => setReason(reason === null ? "" : null)}
+            onClick={() => {
+              setReason(reason === null ? "" : null);
+              setDuration("permanent");
+            }}
             title={
               selfDestructive
                 ? "Banning an admin account would lock the console"
@@ -219,7 +208,7 @@ function UserRow({
         </td>
       </tr>
 
-      {detail ? (
+      {detail.open ? (
         <RowDetail colSpan={6}>
           <Field label="Email" wide>
             {user.email ?? "— social login"}
@@ -229,14 +218,15 @@ function UserRow({
               : ""}
           </Field>
           <Field label="Role">{user.role}</Field>
-          <Field label="Status">{user.status}</Field>
+          <Field label="Status">{USER_STATUS_LABELS[user.status]}</Field>
           <Field label="Sign-in">
             {user.provider
               ? user.linkedProviders.join(", ")
               : "email / password"}
           </Field>
           <Field label="Joined">{formatDateTime(user.createdAt)}</Field>
-          <Field label="Last login">
+          {/* lastLoginAt moves on every token refresh too, so it is use of the app, not sign-ins. */}
+          <Field label="Last active">
             {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "never"}
           </Field>
           <Field label="Updated">{formatDateTime(user.updatedAt)}</Field>
@@ -252,9 +242,11 @@ function UserRow({
           ) : null}
           <Field label="Moderation history" wide>
             <ModerationHistory
-              reportCount={modHistory?.reportCount ?? null}
-              actions={modHistory?.actions ?? null}
-              loading={modLoading}
+              reportCount={detail.data?.reportCount ?? null}
+              actions={detail.data?.actions ?? null}
+              handles={detail.data?.handles}
+              loading={detail.loading}
+              onRetry={detail.retry}
             />
           </Field>
           <Field label="" wide>
@@ -271,6 +263,14 @@ function UserRow({
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">
           <td colSpan={6} className="px-5 py-3">
+            {/* The same choice the account's own page and a report's resolution offer: a ban
+                from here was always permanent. */}
+            {action === "ban" ? (
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="label-caps text-ink-soft">Duration</span>
+                <Segmented options={BAN_DURATIONS} value={duration} onChange={setDuration} />
+              </div>
+            ) : null}
             <ReasonForm
               presets={presets}
               reason={reason}
@@ -279,7 +279,9 @@ function UserRow({
               onCancel={() => setReason(null)}
               submitting={submitting}
               placeholder={`Reason for ${action}ning @${user.username} — pick one above or write your own`}
-              confirmLabel={`Confirm ${action}`}
+              confirmLabel={
+                action === "ban" && duration !== "permanent" ? `Ban for ${duration}d` : `Confirm ${action}`
+              }
             />
           </td>
         </tr>

@@ -1,35 +1,49 @@
 import { NextResponse } from "next/server";
-import { GATEWAY_URL } from "@/lib/api/config";
+import { GATEWAY_URL, TRUST_PROXY } from "@/lib/api/config";
+import { forwardedHeaders } from "@/lib/api/forwarded";
 import { parseWithLongIdsAsStrings } from "@/lib/api/json";
+import { resetCodeAnswer, type ResetCodeResult } from "@/lib/api/password-reset";
 import type { ApiResponse } from "@/lib/api/types";
 
-async function call(path: string, payload: unknown): Promise<ApiResponse<null>> {
+/**
+ * `from` is the request being served, relayed so the reset lands in auth-service's security log
+ * as the browser that asked for it rather than as this server. See `forwardedHeaders`.
+ */
+async function call<T>(path: string, payload: unknown, from: Request): Promise<ApiResponse<T>> {
   const response = await fetch(`${GATEWAY_URL}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...forwardedHeaders(from, TRUST_PROXY) },
     body: JSON.stringify(payload),
     cache: "no-store",
   });
   const text = await response.text();
   return text
-    ? parseWithLongIdsAsStrings<ApiResponse<null>>(text)
-    : ({ success: response.ok, data: null, timestamp: "" } as ApiResponse<null>);
+    ? parseWithLongIdsAsStrings<ApiResponse<T>>(text)
+    : ({ success: response.ok, data: null, timestamp: "" } as ApiResponse<T>);
 }
 
-const GATEWAY_DOWN = NextResponse.json(
-  {
-    code: "GATEWAY_UNREACHABLE",
-    message: `Cannot reach the gateway at ${GATEWAY_URL}. Start it with 'make run-gateway'.`,
-  },
-  { status: 502 },
-);
+/**
+ * A fresh response per call: a body can be read once, so one shared constant went out empty from
+ * the second failure on.
+ */
+function gatewayDown() {
+  return NextResponse.json(
+    {
+      code: "GATEWAY_UNREACHABLE",
+      message: `Cannot reach the gateway at ${GATEWAY_URL}. Start it with 'make run-gateway'.`,
+    },
+    { status: 502 },
+  );
+}
 
 /**
  * Password reset, mirrored on auth-service's two endpoints — the new password is posted from the
  * browser to this handler and never leaves the server after that, same as the login flow.
  *
- *   - `{ email, turnstileToken }` — step one. Always answers `{ sent: true }`: auth-service does
- *     not say whether the address exists, and neither does this.
+ *   - `{ email, turnstileToken }` — step one. Always answers `{ sent: true, resendTicket }`:
+ *     auth-service does not say whether the address exists, and neither does this.
+ *   - `{ email, resendTicket }` — "Send a new code", on the ticket step one answered. A refused
+ *     ticket is passed on rather than answered `sent`; see `resetCodeAnswer`.
  *   - `{ email, otp, newPassword }` — step two, spending the emailed code. No Turnstile — the OTP
  *     guess limiter is what protects this call.
  */
@@ -39,6 +53,7 @@ export async function POST(request: Request) {
     otp?: string;
     newPassword?: string;
     turnstileToken?: string;
+    resendTicket?: string;
   };
 
   const email = body.email?.trim();
@@ -60,13 +75,13 @@ export async function POST(request: Request) {
 
     let reset: ApiResponse<null>;
     try {
-      reset = await call("/api/v1/auth/reset-password", {
+      reset = await call<null>("/api/v1/auth/reset-password", {
         email,
         otp: body.otp,
         newPassword: body.newPassword,
-      });
+      }, request);
     } catch {
-      return GATEWAY_DOWN;
+      return gatewayDown();
     }
 
     if (!reset.success) {
@@ -78,21 +93,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // ---- Step one: request a code ----
-  if (!body.turnstileToken) {
+  // ---- Step one, or a new code: request one ----
+  if (!body.turnstileToken && !body.resendTicket) {
     return NextResponse.json(
       { code: "INVALID_REQUEST", message: "Complete the verification check." },
       { status: 400 },
     );
   }
 
+  let sent: ResetCodeResult;
   try {
-    await call("/api/v1/auth/forgot-password", { email, turnstileToken: body.turnstileToken });
+    sent = await call("/api/v1/auth/forgot-password", {
+      email,
+      turnstileToken: body.turnstileToken,
+      resendTicket: body.resendTicket,
+    }, request);
   } catch {
-    return GATEWAY_DOWN;
+    return gatewayDown();
   }
 
-  // Deliberately not forwarding a failure here: a bad Turnstile token is the only real error, and
-  // surfacing "no such account" would be an enumeration oracle.
-  return NextResponse.json({ sent: true });
+  const answer = resetCodeAnswer(sent, Boolean(body.resendTicket));
+  return NextResponse.json(answer.body, { status: answer.status });
 }

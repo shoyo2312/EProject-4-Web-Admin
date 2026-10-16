@@ -50,18 +50,22 @@ GATEWAY_URL=http://localhost:8080
 app/                    → Next.js App Router: routing + page component
   (admin)/              → route group cho khu vực sau đăng nhập (có sidebar/topbar chung)
     dashboard/, analytics/, users/, videos/, comments/,
-    moderation/reports/, moderation/actions/, system/queues/, settings/
+    moderation/reports/, moderation/actions/, moderation/terms/, system/queues/, settings/
   login/, forgot-password/  → trang public (không cần đăng nhập)
-  api/                   → route handler nội bộ (session, password-reset)
-middleware.ts            → gác cổng auth, refresh token, redirect /login
+  api/                   → route handler nội bộ (session, password-reset, live — SSE báo trang admin tải lại khi dữ liệu đổi)
+proxy.ts                 → gác cổng auth, refresh token, redirect /login (Next 16 đổi tên từ middleware.ts)
 
 lib/
   api/                   → toàn bộ logic gọi API + kiểu dữ liệu (types.ts)
-    admin.ts             → các hàm nghiệp vụ: listUsers, listVideos, moderateUser, ...
+    users.ts, videos.ts, comments.ts, reports.ts, moderation.ts, terms.ts, analytics.ts
+                          → các hàm nghiệp vụ theo domain: listUsers, listVideos, moderateUser, ...
+    names.ts             → tra handle/tiêu đề cho các id mà danh sách mang theo
+    notifications.ts     → nguồn dữ liệu cho chuông thông báo
+    shared.ts            → LIST_PAGE_SIZE, mockPage, referenceNow — dùng chung cho các domain
     client.ts            → wrapper fetch (apiGet/apiPost) tới gateway
     config.ts             → cờ USE_MOCK, tên cookie, GATEWAY_URL
     rollup.ts             → biến đổi dữ liệu thô thành dữ liệu cho biểu đồ
-  mock/                  → dữ liệu giả cho từng domain (users, videos, comments, moderation, analytics)
+  mock/                  → dữ liệu giả cho từng domain (users, videos, comments, moderation, terms, analytics)
   moderation.ts           → hằng số nghiệp vụ dùng chung (preset lý do, action nào có hiệu lực...)
   url.ts                  → hrefWith() — build lại query string
   use-propagation.ts      → hook usePropagation() — chờ hành động kiểm duyệt "ngấm" xuống hệ thống
@@ -74,15 +78,15 @@ components/
                           → component gắn với từng domain nghiệp vụ
 ```
 
-**Quy tắc chọn nơi đặt code:** logic gọi API luôn nằm trong `lib/api/admin.ts`, không gọi
-`fetch` trực tiếp trong component. Hằng số nghiệp vụ dùng ở nhiều nơi (ví dụ preset lý do ban)
+**Quy tắc chọn nơi đặt code:** logic gọi API luôn nằm trong file domain tương ứng ở `lib/api/`
+(`users.ts`, `videos.ts`...), không gọi `fetch` trực tiếp trong component. Hằng số nghiệp vụ dùng ở nhiều nơi (ví dụ preset lý do ban)
 nằm trong `lib/moderation.ts`, không lặp lại trong từng component.
 
 ## 4. Luồng dữ liệu của một trang (ví dụ: `/users`)
 
 1. **`app/(admin)/users/page.tsx`** là **Server Component** (mặc định trong App Router, không
    có `"use client"`). Nó đọc query string (`?q=...&status=...&page=...`) từ `searchParams`.
-2. Nó gọi `listUsers({ q, status, page })` trong `lib/api/admin.ts`.
+2. Nó gọi `listUsers({ q, status, page })` trong `lib/api/users.ts`.
 3. Hàm đó kiểm tra `USE_MOCK`:
    - Nếu `true` → lọc/phân trang trực tiếp trên mảng `mockUsers` trong bộ nhớ.
    - Nếu `false` → gọi `apiGet()` tới gateway (`/api/v1/auth/admin/users?...`).
@@ -141,12 +145,14 @@ thông báo thay vì chờ vô hạn.
 
 **Không phải hành động nào cũng có hiệu lực thật** — mảng `ENFORCED` trong `lib/moderation.ts`
 liệt kê các loại action có consumer thực sự ở downstream (`TAKEDOWN_VIDEO`, `RESTORE_VIDEO`,
-`BAN_USER`, `UNBAN_USER`, `REMOVE_COMMENT`). Các loại khác chỉ được ghi log, chưa có ai lắng nghe.
+`PURGE_VIDEO`, `BAN_USER`, `UNBAN_USER`, `REMOVE_COMMENT`, `WARN_USER` — cảnh cáo do
+notification-service gửi tới tài khoản, chủ video hoặc tác giả comment). Còn lại duy nhất
+`DISMISS_REPORT`: admin-service chỉ ghi log, không publish sự kiện nào.
 
 ## 7. Mock mode hoạt động thế nào
 
 `lib/api/config.ts` export `USE_MOCK = process.env.ADMIN_USE_MOCK !== "false"` — **mặc định là
-`true`**. Mọi hàm nghiệp vụ trong `lib/api/admin.ts` đều có dạng:
+`true`**. Mọi hàm nghiệp vụ trong các file domain ở `lib/api/` đều có dạng:
 
 ```ts
 export async function listVideos(options) {
@@ -163,18 +169,21 @@ liệu nằm đúng trong khung thời gian đang xem, thay vì random rơi ra n
 
 Một số hành động ghi (`moderateUser`, `moderateVideo`, `resolveReport`, `removeComment`) sẽ
 **throw lỗi rõ ràng** khi đang ở mock mode, vì chúng cần ghi audit log + Kafka event ở backend
-thật — không có cách nào giả lập hợp lý trong bộ nhớ.
+thật — không có cách nào giả lập hợp lý trong bộ nhớ. Tương tự với các thao tác của kiểm duyệt chữ:
+thêm/xoá term (`addModerationTerm`, `removeModerationTerm` — danh sách nằm ở admin-service), thử một
+câu (`previewText` — chạy luật và classifier thật) và gỡ hạn chế bình luận (`liftCommentRestriction`
+— strike nằm trong Redis của interaction-service).
 
 ## 8. Xác thực (Authentication)
 
-`middleware.ts` chạy trước mọi request:
+`proxy.ts` chạy trước mọi request:
 
 - Nếu `USE_MOCK = true` → bỏ qua hoàn toàn việc kiểm tra đăng nhập (để `npm run dev` không bị kẹt
   ở trang login mà không có backend để đăng nhập vào).
 - Nếu `USE_MOCK = false`:
   - Có 2 cookie: `admin_session` (access token, sống 15 phút) và `admin_refresh` (refresh token,
     sống 7 ngày).
-  - Khi access token hết hạn nhưng refresh token còn → middleware tự động gọi
+  - Khi access token hết hạn nhưng refresh token còn → proxy tự động gọi
     `/api/v1/auth/refresh` để lấy access token mới **trước khi** request được xử lý tiếp, tránh
     tình trạng "tự động đăng xuất" dù refresh token vẫn còn hạn.
   - Trang `/login` và `/forgot-password` luôn truy cập được kể cả khi chưa đăng nhập.
@@ -191,6 +200,10 @@ lặp code:
 | `components/ui/status-badge.tsx` | Hiển thị badge trạng thái user/video — có `VideoStatusBadge`, `UserStatusBadge` |
 | `components/ui/search-box.tsx` | Ô tìm kiếm có debounce sẵn (350ms) |
 | `components/ui/pager.tsx` | Phân trang, dùng chung cho mọi bảng danh sách |
+| `components/ui/sortable-header.tsx` | Tiêu đề cột sắp xếp phía server — ghi `sort`/`dir` vào URL, không sắp xếp các dòng đã tải |
+| `components/ui/avatar.tsx` | Ảnh đại diện, tự rơi về chữ viết tắt khi không có ảnh hoặc ảnh lỗi |
+| `components/layout/back-link.tsx` | Link "← quay lại" ở đầu các trang chi tiết |
+| `lib/labels.ts` (`statusTabs`) | Tên hiển thị của mọi trạng thái, và các tab lọc trạng thái dựng từ chúng — tab và badge luôn cùng tên |
 | `lib/moderation.ts` (`PRESET_REASONS`) | Danh sách lý do gợi ý khi ban/takedown/xoá bình luận — **một nguồn duy nhất**, không hardcode lại trong component |
 | `lib/format.ts` | Format số, ngày tháng hiển thị |
 
@@ -206,9 +219,10 @@ chỉ cần sửa ở đây và TypeScript sẽ báo lỗi mọi chỗ dùng sai
 1. Thêm route trong `app/(admin)/<ten-trang>/page.tsx`.
 2. Thêm mục menu vào `NAV_GROUPS` trong `components/layout/nav-config.ts`, và breadcrumb vào
    `ROUTE_TITLES` cùng file.
-3. Nếu cần gọi API mới: thêm type vào `lib/api/types.ts`, thêm hàm vào `lib/api/admin.ts` theo
+3. Nếu cần gọi API mới: thêm type vào `lib/api/types.ts`, thêm hàm vào file domain ở `lib/api/` theo
    đúng pattern `if (USE_MOCK) {...} else { apiGet/apiPost(...) }`, thêm data giả tương ứng vào
-   `lib/mock/`.
+   `lib/mock/`. Logic thuần mới trong `lib/` có test trong thư mục `__tests__/` cạnh nó
+   (`*.test.mjs`, chạy bằng `npm test`).
 4. Ưu tiên tái sử dụng component trong `components/ui/` trước khi viết mới.
 5. Nếu trang có filter/sort/phân trang: đưa state vào query string, dùng `hrefWith`, không dùng
    `useState` cho các giá trị đó.
@@ -217,3 +231,11 @@ chỉ cần sửa ở đây và TypeScript sẽ báo lỗi mọi chỗ dùng sai
 
 Menu "Queues & DLQ" (`/system/queues`) chưa có `ready: true` — nghĩa là chưa có endpoint backend
 tương ứng, màn hình hiện chỉ là placeholder. Đừng ngạc nhiên nếu nó không hoạt động đầy đủ.
+
+**Thùng rác (`/trash`) — chưa có thông báo cho admin.** Video bị chủ xoá nằm trong thùng rác 30
+ngày (`video.trash.retention` ở video-service), hết hạn thì tự động xoá vĩnh viễn; admin cũng có
+thể xoá tay (`PURGE_VIDEO`, ghi vào audit log). Việc **gửi mail/thông báo cho admin khi video bị
+xoá tự động** chưa làm — sẽ gộp vào mục thông báo chung của admin khi mục đó được xây. Nguồn sự
+kiện là `VideoPurgedEvent` (video-service phát, media-worker đang tiêu thụ); event hiện không phân
+biệt xoá tự động với xoá tay, nên khi làm cần thêm cờ đó vào event, hoặc bỏ qua các video đã có
+action `PURGE_VIDEO` trong `moderation_actions`.

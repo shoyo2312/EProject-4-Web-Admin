@@ -2,69 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  decorateCommentPage,
   getComments,
-  getUserProfiles,
   listCommentReplies,
   listComments,
   removeComment,
-} from "@/lib/api/admin";
-import type {
-  AdminCommentFilter,
-  AdminCommentPage,
-  AdminCommentResponse,
-  UserProfileResponse,
-} from "@/lib/api/types";
-
-export interface ModerationResult {
-  ok: boolean;
-  message: string;
-}
-
-/**
- * A page of comments with everything needed to read it: interaction-service stores ids only, so
- * without the two lookups beside it a reply renders as "#32383488 replying to #2252800".
- */
-export interface CommentPageView {
-  items: AdminCommentResponse[];
-  /** userId → profile, for the authors on the page and the users their replies point at. */
-  authors: Record<string, UserProfileResponse>;
-  /**
-   * commentId → the comment a reply on this page answers. The Replies and Removed views are flat,
-   * so the parent is usually not on the page beside its reply. May be missing an id: a parent
-   * older than what is loaded still resolves, but one whose row is gone does not.
-   */
-  parents: Record<string, AdminCommentResponse>;
-  nextCursor: string | null;
-  hasMore: boolean;
-}
-
-/**
- * Fills a raw page out with its authors and parent comments. Both lookups are best-effort — a row
- * falls back to the bare id rather than failing the page, because the thing being moderated is the
- * comment text and it is already in hand.
- */
-export async function decoratePage(
-  videoId: string,
-  page: AdminCommentPage,
-): Promise<CommentPageView> {
-  const onPage = new Set(page.items.map((c) => c.commentId));
-  const missingParents = [
-    ...new Set(page.items.flatMap((c) => (c.parentId && !onPage.has(c.parentId) ? [c.parentId] : []))),
-  ];
-
-  const parentList = missingParents.length
-    ? await getComments(videoId, missingParents).catch(() => [])
-    : [];
-  const parents = Object.fromEntries(parentList.map((c) => [c.commentId, c]));
-
-  const authors = await getUserProfiles([
-    ...page.items.map((c) => c.userId),
-    ...page.items.flatMap((c) => c.replyToUserId ?? []),
-    ...parentList.map((c) => c.userId),
-  ]).catch(() => ({}));
-
-  return { items: page.items, authors, parents, nextCursor: page.nextCursor, hasMore: page.hasMore };
-}
+} from "@/lib/api/comments";
+import type { AdminCommentFilter } from "@/lib/api/types";
+import type { CommentPageView } from "@/lib/comments";
+import type { ModerationResult } from "@/lib/moderation";
 
 /** The next page of the listing, for the Load more button. */
 export async function loadCommentsAction(
@@ -72,7 +18,7 @@ export async function loadCommentsAction(
   filter: AdminCommentFilter,
   cursor: string,
 ): Promise<CommentPageView> {
-  return decoratePage(videoId, await listComments(videoId, { filter, cursor }));
+  return decorateCommentPage(videoId, await listComments(videoId, { filter, cursor }));
 }
 
 /**
@@ -84,7 +30,16 @@ export async function loadRepliesAction(
   commentId: string,
   cursor: string | null,
 ): Promise<CommentPageView> {
-  return decoratePage(videoId, await listCommentReplies(videoId, commentId, cursor));
+  return decorateCommentPage(videoId, await listCommentReplies(videoId, commentId, cursor));
+}
+
+/**
+ * Whether a comment is removed yet, read by id. For the rows a page refresh does not reach: the
+ * comments paged in with Load more and the replies in an opened thread are client state.
+ */
+export async function commentRemovedAction(videoId: string, commentId: string): Promise<boolean> {
+  const [comment] = await getComments(videoId, [commentId]);
+  return Boolean(comment?.deletedAt);
 }
 
 /**
@@ -97,6 +52,8 @@ export async function removeCommentAction(
   videoId: string,
   commentId: string,
   reason: string,
+  /** Waiting for the video's owner: never counted, so no total moves when it goes. */
+  held = false,
 ): Promise<ModerationResult> {
   if (!reason.trim()) {
     return { ok: false, message: "A reason is required — it goes into the audit log." };
@@ -111,7 +68,8 @@ export async function removeCommentAction(
   revalidatePath("/comments");
   return {
     ok: true,
-    message:
-      "Removal recorded. The comment leaves the thread once interaction-service consumes the event, and the video's comment count drops with it.",
+    message: held
+      ? "Removal recorded. The comment was never public, so no count changes; it leaves the creator's queue once interaction-service consumes the event."
+      : "Removal recorded. The comment leaves the thread once interaction-service consumes the event, and the video's comment count drops with it.",
   };
 }

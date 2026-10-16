@@ -1,7 +1,14 @@
 import "server-only";
 
 import { cookies } from "next/headers";
-import { DEVICE_COOKIE, REFRESH_COOKIE, SESSION_COOKIE, USE_MOCK } from "./config";
+import {
+  DEVICE_COOKIE,
+  PROFILE_COOKIE,
+  REFRESH_COOKIE,
+  SESSION_COOKIE,
+  USE_MOCK,
+  sessionCookies,
+} from "./config";
 import { CURRENT_ADMIN } from "@/lib/mock/session";
 
 export interface AdminSession {
@@ -55,28 +62,14 @@ export function toSession(user: AuthUserResponse): AdminSession {
  */
 export async function setSessionCookies(tokens: TokenResponse) {
   const jar = await cookies();
-  const secure = process.env.NODE_ENV === "production";
-
-  jar.set(SESSION_COOKIE, tokens.accessToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",
-    maxAge: Math.floor(tokens.expiresInMillis / 1000),
-  });
-  jar.set(REFRESH_COOKIE, tokens.refreshToken, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure,
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  });
+  for (const cookie of sessionCookies(tokens)) jar.set(cookie.name, cookie.value, cookie.options);
 }
 
 export async function clearSessionCookies() {
   const jar = await cookies();
   jar.delete(SESSION_COOKIE);
   jar.delete(REFRESH_COOKIE);
+  jar.delete(PROFILE_COOKIE);
 }
 
 export async function getRefreshToken() {
@@ -103,11 +96,9 @@ export async function setDeviceToken(deviceToken: string) {
   });
 }
 
-const SESSION_PROFILE_COOKIE = "admin_profile";
-
 export async function setSessionProfile(session: AdminSession) {
   const jar = await cookies();
-  jar.set(SESSION_PROFILE_COOKIE, JSON.stringify(session), {
+  jar.set(PROFILE_COOKIE, JSON.stringify(session), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -127,7 +118,7 @@ export async function getSessionProfile(): Promise<AdminSession> {
     };
   }
 
-  const raw = (await cookies()).get(SESSION_PROFILE_COOKIE)?.value;
+  const raw = (await cookies()).get(PROFILE_COOKIE)?.value;
   if (!raw) {
     return { userId: "", username: "Unknown", role: "ADMIN", initials: "?" };
   }

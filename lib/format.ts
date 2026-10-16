@@ -15,6 +15,14 @@ export function formatCompact(value: number) {
   return String(value);
 }
 
+/**
+ * The noun for a count — "report" for 1, "reports" for anything else, zero included. Only the
+ * word, so each call site keeps its own number formatting: "1.2k comments", "1 follower".
+ */
+export function plural(count: number, noun: string, pluralNoun = `${noun}s`): string {
+  return count === 1 ? noun : pluralNoun;
+}
+
 /** "03 minutes 07 seconds" — uploads are capped under 10 minutes, so minutes always fits in 2 digits. */
 export function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -39,15 +47,29 @@ export function formatCount(n: number): string {
   return String(n);
 }
 
+/** 33%, 4.5%, 0.4% — a decimal only under 10%, where a whole percent would round a real rate to 0%. */
+export function formatPercent(part: number, whole: number): string {
+  // An em dash, not 0%: with nothing to divide by there is no rate, and 0% would claim one.
+  if (whole <= 0) return "—";
+  const p = (part / whole) * 100;
+  return `${p >= 10 ? Math.round(p) : p.toFixed(1).replace(/\.0$/, "")}%`;
+}
+
 /** Snowflake ids are long; the table only needs enough to eyeball-match a row. */
 export function shortId(id: string, keep = 6) {
   return id.length <= keep ? id : `${id.slice(0, keep)}…`;
 }
 
-/** "12 days" / "less than a day" left in the 30-day trash window before video-service purges the video — see video.trash.retention on the backend. */
-export function daysUntilPurge(deletedAtIso: string, retentionDays = 30, now = Date.now()) {
+/**
+ * "12 days" / "less than a day" left in the trash before video-service purges the video.
+ * `retentionDays` is `TRASH_RETENTION_DAYS` and `now` is `referenceNow()` at every call site, so
+ * the countdown agrees with the bell's warning and, in mock mode, with the mock clock.
+ */
+export function daysUntilPurge(deletedAtIso: string, retentionDays: number, now: number) {
   const daysLeft = retentionDays - (now - new Date(deletedAtIso).getTime()) / 86_400_000;
-  return daysLeft < 1 ? "less than a day" : `${Math.ceil(daysLeft)} days`;
+  if (daysLeft < 1) return "less than a day";
+  const days = Math.ceil(daysLeft);
+  return `${days} ${plural(days, "day")}`;
 }
 
 export function relativeTime(iso: string, now = Date.now()) {
@@ -60,6 +82,18 @@ export function relativeTime(iso: string, now = Date.now()) {
   const days = Math.round(hours / 24);
   if (days < 30) return `${days}d ago`;
   return formatDate(iso);
+}
+
+/**
+ * How long until an instant, the way `relativeTime` says how long since one: "45m", "5h", "6d".
+ * Rounded up under the hour, so something with seconds to go never reads "0m".
+ */
+export function timeLeft(iso: string, now: number) {
+  const minutes = Math.ceil((new Date(iso).getTime() - now) / 60_000);
+  if (minutes < 60) return `${Math.max(minutes, 1)}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
 }
 
 /**

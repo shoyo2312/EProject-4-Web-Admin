@@ -8,6 +8,7 @@ import { AlertTriangle, ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { isTurnstileConfigured } from "@/lib/auth/turnstile";
 import { useTurnstileToken } from "@/lib/auth/use-turnstile-token";
+import { internalPath } from "@/lib/url";
 
 type Step = "credentials" | "otp";
 
@@ -31,7 +32,7 @@ export function LoginForm() {
   const turnstileConfigured = isTurnstileConfigured();
 
   function land() {
-    router.replace(params.get("next") ?? "/dashboard");
+    router.replace(internalPath(params.get("next")) ?? "/dashboard");
     router.refresh();
   }
 
@@ -46,6 +47,9 @@ export function LoginForm() {
       });
       const body = (await response.json()) as { message?: string; mfaRequired?: boolean };
       return { ok: response.ok, body };
+    } catch {
+      // No answer, or one that is not JSON: the server or the connection failed, not the password.
+      return { ok: false, body: { message: "The console server did not answer. Try again in a moment." } };
     } finally {
       // The token is single-use; every attempt gets a fresh widget.
       turnstile.consume();

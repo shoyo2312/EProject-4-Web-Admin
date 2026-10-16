@@ -1,25 +1,25 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { ErrorState } from "@/components/layout/error-state";
+import { BackLink } from "@/components/layout/back-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { EnforcePanel } from "@/components/moderation/enforce-panel";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
-import { AvatarBody } from "@/components/users/avatar-body";
+import { CommentRestriction } from "@/components/users/comment-restriction";
 import { UserUploads } from "@/components/users/user-uploads";
+import { Avatar } from "@/components/ui/avatar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
 import { UserStatusBadge } from "@/components/ui/status-badge";
-import {
-  getAdminUser,
-  getReportCount,
-  getStrikeCount,
-  getUserProfiles,
-  listTargetActions,
-  listVideos,
-} from "@/lib/api/admin";
+import { getStrikeCount, listTargetActions } from "@/lib/api/moderation";
+import { getAdminHandles, getUserProfiles } from "@/lib/api/names";
+import { getReportCount } from "@/lib/api/reports";
+import { referenceNow } from "@/lib/api/shared";
+import { getAdminUser, getCommentRestriction } from "@/lib/api/users";
+import { listVideos } from "@/lib/api/videos";
 import { formatCount, formatDateTime } from "@/lib/format";
 import type {
   AdminUserResponse,
+  CommentRestrictionResponse,
   ModerationActionResponse,
   UserProfileResponse,
 } from "@/lib/api/types";
@@ -49,10 +49,11 @@ export default async function UserDetailPage({
   let strikes: number;
   let profile: UserProfileResponse | undefined;
   let uploads: Awaited<ReturnType<typeof listVideos>> | null;
+  let restriction: CommentRestrictionResponse | null;
   try {
     user = await getAdminUser(id);
-    // Not fetched before the account is known to exist: four calls thrown away on every bad id.
-    [reportCount, actions, strikes, profile, uploads] = user
+    // Not fetched before the account is known to exist: six calls thrown away on every bad id.
+    [reportCount, actions, strikes, profile, uploads, restriction] = user
       ? await Promise.all([
           getReportCount("USER", id),
           listTargetActions("USER", id),
@@ -62,12 +63,15 @@ export default async function UserDetailPage({
           // over this one page rather than the account's whole history. Fine at admin-console
           // scale; add a real aggregate if an account with hundreds of uploads makes it lie.
           listVideos({ ownerIds: [id], size: 100 }),
+          // Non-fatal: with interaction-service down, its card says so and the rest still loads.
+          getCommentRestriction(id).catch(() => null),
         ])
-      : [0, [], 0, undefined, null];
+      : [0, [], 0, undefined, null, null];
   } catch (error) {
     return (
       <>
-        <DetailHeader title="Account" />
+        <BackLink href="/users">All accounts</BackLink>
+        <PageHeader title="Account" />
         <ErrorState error={error} />
       </>
     );
@@ -76,32 +80,28 @@ export default async function UserDetailPage({
   if (!user) {
     return (
       <>
-        <DetailHeader title="Account" />
+        <BackLink href="/users">All accounts</BackLink>
+        <PageHeader title="Account" />
         <Card className="px-5 py-10 text-center text-[12px] text-ink-faint">
-          No account reachable at id <span className="figure">{id}</span>. Either nothing is
-          registered there, or the account has no user-service profile — the directory is
-          searched by handle, so an account without one cannot be opened by id yet.
+          No account at id <span className="figure">{id}</span>. Either nothing is registered
+          there, or the account has been deleted.
         </Card>
       </>
     );
   }
 
+  // Who took each action, by @handle. Non-fatal: the history falls back to id tails.
+  const adminHandles = await getAdminHandles(actions.map((a) => a.adminId));
   const action = user.status === "BANNED" ? "unban" : "ban";
   const totalLikes = (uploads?.content ?? []).reduce((sum, v) => sum + v.likeCount, 0);
 
   return (
     <>
-      <Link
-        href="/users"
-        className="mb-3 inline-flex items-center gap-1.5 text-[11px] text-ink-soft underline-offset-4 hover:underline"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        All accounts
-      </Link>
+      <BackLink href="/users">All accounts</BackLink>
 
       <div className="mb-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Avatar avatarUrl={profile?.avatarUrl ?? null} username={user.username} />
+          <Avatar src={profile?.avatarUrl} initials={user.username.slice(0, 2)} size="lg" />
           <div>
             <h1 className="text-[26px] leading-tight font-bold tracking-tight">
               @{user.username}
@@ -126,7 +126,7 @@ export default async function UserDetailPage({
         <Card>
           <CardHeader
             title="Account"
-            hint="GET /api/v1/auth/admin/users — served by auth-service, which owns status and role"
+            hint="The account record: status, role, how it signs in, and when it last did."
           />
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
             <Field label="Handle">@{user.username}</Field>
@@ -155,8 +155,10 @@ export default async function UserDetailPage({
                 : "email / password"}
             </Field>
             {/* The one field that says whether a banned account is still being reached for, and
-                whether a quiet account was ever really in use at all. */}
-            <Field label="Last login">
+                whether a quiet account was ever really in use at all. "Active" rather than
+                "login": lastLoginAt moves on every token refresh, so it tracks use of the app,
+                not sign-ins. */}
+            <Field label="Last active">
               {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "never"}
             </Field>
             <Field label="Joined">{formatDateTime(user.createdAt)}</Field>
@@ -189,12 +191,33 @@ export default async function UserDetailPage({
 
         <Card>
           <CardHeader
+            title="Commenting"
+            hint="interaction-service's own record, apart from the strikes above. A strike is a comment the word list refused or an admin removed. By default 3 within a day restrict commenting — for an hour, then a day, then a week — and 30 days without a restriction start the steps over."
+          />
+          <div className="px-5 py-4">
+            {restriction ? (
+              <CommentRestriction
+                restriction={restriction}
+                subject={`@${user.username}`}
+                now={referenceNow()}
+              />
+            ) : (
+              <p className="text-[12px] text-ink-faint">
+                interaction-service did not answer, so the comment strikes cannot be read right
+                now. Nothing about the account has changed.
+              </p>
+            )}
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
             title={`Uploads by @${user.username}`}
-            hint="GET /api/v1/videos/admin?ownerId= — served by video-service"
+            hint="Everything this account uploaded, taken-down and deleted videos included."
             actions={
               uploads && uploads.totalElements > INLINE_UPLOADS ? (
                 <Link
-                  href={{ pathname: "/videos", query: { q: user.username } } as never}
+                  href={{ pathname: "/videos", query: { owner: user.id } } as never}
                   className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
                 >
                   All {uploads.totalElements} →
@@ -206,28 +229,46 @@ export default async function UserDetailPage({
         </Card>
 
         <Card>
-          <CardHeader title="Moderation history" />
+          <CardHeader
+            title="Moderation history"
+            actions={
+              <Link
+                href={`/users/${user.id}/activity` as never}
+                className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+              >
+                Full activity →
+              </Link>
+            }
+          />
           <div className="px-5 py-4">
-            <ModerationHistory reportCount={reportCount} actions={actions} loading={false} />
+            <ModerationHistory
+              reportCount={reportCount}
+              actions={actions}
+              handles={adminHandles}
+              loading={false}
+            />
           </div>
         </Card>
 
         <Card>
           <CardHeader
             title="Decision"
-            hint="Writes a moderation action and publishes it; auth-service applies it and revokes live sessions"
+            hint="Recorded in the audit log straight away. Bans and sign-outs take effect within seconds; a warning arrives as a notification."
           />
           <div className="px-5 py-4">
             <EnforcePanel
               kind="user"
               targetId={user.id}
-              action={action}
+              actions={[action, "warn", "revokeSessions"]}
               subject={`@${user.username}`}
               // An admin banning an admin account can lock the console: the bootstrap account
-              // is provisioned at startup and there may be no second one to undo it.
-              blockedReason={
-                user.role === "ADMIN" && action === "ban"
-                  ? "Banning an admin account would lock the console — there may be no second admin to undo it."
+              // is provisioned at startup and there may be no second one to undo it. Signing one
+              // out cannot — an admin who is signed out signs back in.
+              blocked={
+                user.role === "ADMIN"
+                  ? {
+                      ban: "Banning an admin account would lock the console — there may be no second admin to undo it.",
+                    }
                   : undefined
               }
             />
@@ -235,31 +276,6 @@ export default async function UserDetailPage({
         </Card>
       </div>
     </>
-  );
-}
-
-function DetailHeader({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <>
-      <Link
-        href="/users"
-        className="mb-3 inline-flex items-center gap-1.5 text-[11px] text-ink-soft underline-offset-4 hover:underline"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        All accounts
-      </Link>
-      <PageHeader title={title} subtitle={subtitle} />
-    </>
-  );
-}
-
-/** Round avatar image, or the handle's initials over a neutral fill when there is none — also
- * the fallback once a broken CDN url 404s, which a bare `<img>` cannot recover from itself. */
-function Avatar({ avatarUrl, username }: { avatarUrl: string | null; username: string }) {
-  return (
-    <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-surface-muted text-[16px] font-semibold text-ink-soft uppercase">
-      <AvatarBody avatarUrl={avatarUrl} initials={username.slice(0, 2)} />
-    </span>
   );
 }
 

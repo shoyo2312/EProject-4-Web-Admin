@@ -123,6 +123,8 @@ export interface TimeWindow {
    * the chart's stretch, or two periods so a figure has something to compare against.
    */
   fetchDays: number;
+  /** Days ending at `asOf` that the fetch covers in full — how long a daily series can be. */
+  historyDays: number;
 }
 
 export function resolveWindow(
@@ -134,6 +136,7 @@ export function resolveWindow(
   const periodDays = PERIOD_DAYS[period];
   const chart = CHART[period];
   const gap = daysBetween(asOf, latest);
+  const fetchDays = Math.min(gap + Math.max(chart.days, periodDays * 2), API_MAX_DAYS);
   return {
     period,
     bucket: chart.bucket,
@@ -142,28 +145,69 @@ export function resolveWindow(
     periodLabel: PERIOD_LABEL[period],
     chartDays: chart.days,
     compareLabel: COMPARE_LABEL[period],
-    fetchDays: Math.min(gap + Math.max(chart.days, periodDays * 2), API_MAX_DAYS),
+    fetchDays,
+    historyDays: Math.max(fetchDays - gap, 0),
   };
 }
 
-/** Trims a daily series to the chart window: everything up to `asOf`, at most `chartDays` of it. */
-export function sliceToWindow<T extends { day: string }>(
-  rows: T[],
-  window: TimeWindow,
-): T[] {
-  return rows.filter((r) => r.day <= window.asOf).slice(-window.chartDays);
+/**
+ * The period as instants, for an endpoint that filters by time: from the start of its first day
+ * to the start of the day after `asOf`, end exclusive. UTC days, like the daily series — so the
+ * rows it returns are exactly the days the period's KPI figures sum.
+ */
+export function windowRange(window: TimeWindow): { from: string; to: string } {
+  const end = Date.parse(`${window.asOf}T00:00:00Z`) + DAY_MS;
+  return {
+    from: new Date(end - window.periodDays * DAY_MS).toISOString(),
+    to: new Date(end).toISOString(),
+  };
 }
 
 /**
- * The part of a daily series a delta is computed over: everything up to `asOf`, uncut, so the
- * two periods behind it are still there. Cutting to the window first would leave nothing to
+ * The `length` calendar days ending at `asOf`, oldest first.
+ *
+ * The daily endpoints send no row for a day on which nothing happened, so a series is laid on
+ * these rather than taken row by row. Counting rows instead, the last thirty of a sparse series
+ * reach back months — a chart titled "last 30d" drawing ninety days under a figure that sums
+ * thirty — and a weekly bucket of seven rows is not a week.
+ */
+function calendarDays(asOf: string, length: number): string[] {
+  const end = Date.parse(`${asOf}T00:00:00Z`);
+  return Array.from({ length }, (_, i) => isoDay(end - (length - 1 - i) * DAY_MS));
+}
+
+/**
+ * A daily series cut to the chart window: one row per calendar day up to `asOf`, at most
+ * `chartDays` of them, with `empty` standing in for a day that sent no row. Never longer than
+ * the fetch covers — a day past it is unknown, not zero.
+ */
+export function sliceToWindow<T extends { day: string }>(
+  rows: T[],
+  window: TimeWindow,
+  empty: (day: string) => T,
+): T[] {
+  const byDay = new Map(rows.map((r) => [r.day, r]));
+  return calendarDays(window.asOf, Math.min(window.chartDays, window.historyDays)).map(
+    (day) => byDay.get(day) ?? empty(day),
+  );
+}
+
+/**
+ * The daily series a delta is computed over: one value per calendar day up to `asOf`, uncut, so
+ * the two periods behind it are still there. Cutting to the window first would leave nothing to
  * compare against.
+ *
+ * A day that sent no row is 0. Without it `sumLast(values, 7)` is the last seven *active* days
+ * however far back they reach — a library whose four videos span ten days reads as all four
+ * uploaded this week, and its growth as undefined.
  */
 export function historyUpTo<T extends { day: string }>(
   rows: T[],
   window: TimeWindow,
-): T[] {
-  return rows.filter((r) => r.day <= window.asOf);
+  pick: (row: T) => number,
+): number[] {
+  const byDay = new Map(rows.map((r) => [r.day, pick(r)]));
+  return calendarDays(window.asOf, window.historyDays).map((day) => byDay.get(day) ?? 0);
 }
 
 /**
@@ -194,6 +238,31 @@ export function bucketByGranularity<T extends { day: string }>(
     byMonth.set(key, current ? merge(current, row) : row);
   }
   return [...byMonth.values()];
+}
+
+/**
+ * A daily series bucketed like the charts, averaged instead of summed — for a figure that is a
+ * daily level rather than a daily flow. A week of 100 active users a day is a week of 100, not of
+ * 700. A bucket shorter than the rest (the first, when the window does not divide evenly) is
+ * averaged over the days it has.
+ */
+export function bucketMean<T extends { day: string }>(
+  rows: T[],
+  granularity: Granularity,
+  pick: (row: T) => number,
+): { day: string; value: number }[] {
+  const buckets = bucketByGranularity(
+    rows.map((row) => ({ day: row.day, total: pick(row), days: 1 })),
+    granularity,
+    (a, b) => ({ day: a.day, total: a.total + b.total, days: a.days + b.days }),
+  );
+  return buckets.map((bucket) => ({ day: bucket.day, value: Math.round(bucket.total / bucket.days) }));
+}
+
+/** Whether a day falls inside the period the page's figures cover — the days ending at `asOf`. */
+export function inPeriod(day: string, window: TimeWindow): boolean {
+  const start = isoDay(Date.parse(`${window.asOf}T00:00:00Z`) - (window.periodDays - 1) * DAY_MS);
+  return day >= start && day <= window.asOf;
 }
 
 /**

@@ -6,7 +6,7 @@ import { MessageSquareOff } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
 import type { AdminVideoResponse } from "@/lib/api/types";
-import { formatCompact } from "@/lib/format";
+import { formatCompact, plural } from "@/lib/format";
 import { hrefWith } from "@/lib/url";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +45,7 @@ export function VideoPicker({
     <Card className="flex h-full flex-col">
       <CardHeader
         title="Pick a video"
-        hint="Threads are read per video — Cassandra partitions comments by video id"
+        hint="Comments are read one video at a time. Search a title, or open one from a report."
       />
 
       <div className="border-b border-line px-4 py-3">
@@ -79,7 +79,7 @@ export function VideoPicker({
                   </span>
                 ) : (
                   // Null only happens with comments off, which the branch above covers.
-                  `${formatCompact(video.commentCount ?? 0)} comments`
+                  `${formatCompact(video.commentCount ?? 0)} ${plural(video.commentCount ?? 0, "comment")}`
                 )}
               </span>
             </span>

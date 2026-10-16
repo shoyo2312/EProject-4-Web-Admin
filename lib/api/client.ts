@@ -87,6 +87,10 @@ export function apiPost<T>(path: string, payload?: unknown) {
   });
 }
 
+export function apiDelete<T>(path: string) {
+  return request<T>(path, { method: "DELETE" });
+}
+
 /** Login is the one call made without a session — there isn't one yet. */
 export function apiPostAnonymous<T>(path: string, payload: unknown) {
   return request<T>(path, {
@@ -95,4 +99,14 @@ export function apiPostAnonymous<T>(path: string, payload: unknown) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+}
+
+/** The gateway's STOMP endpoint. A socket handshake cannot carry a header, so the token goes in the URL. */
+export async function gatewaySocketUrl(): Promise<string | null> {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const url = new URL(`${GATEWAY_URL}/ws`);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.searchParams.set("token", token);
+  return url.toString();
 }

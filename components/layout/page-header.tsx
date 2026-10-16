@@ -16,9 +16,9 @@ export function PageHeader({
    */
   filters?: HeaderFilterConfig;
   /**
-   * The rows this page already fetched. Export runs entirely in the browser off
-   * that data, so what downloads is exactly what the page is showing — no second
-   * request that could come back with a different page of results.
+   * The rows this page already fetched, written in the browser — what downloads is exactly
+   * what is on screen. A paged listing passes `all` as well, and then every row its filters
+   * match is read on the server instead.
    */
   csv?: CsvExport;
 }) {

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/card";
+import { VideoThumb } from "@/components/videos/video-thumb";
 import type { TopVideoResponse } from "@/lib/api/types";
-import { formatCompact, formatNumber } from "@/lib/format";
+import { formatCompact, formatNumber, formatPercent } from "@/lib/format";
+import type { RowNames } from "@/lib/names";
 
 /**
  * The most-watched videos of the window.
@@ -11,16 +13,26 @@ import { formatCompact, formatNumber } from "@/lib/format";
  * shown beside it for the same reason — it is what separates a video that held an audience from
  * one that merely collected them.
  *
- * Ids rather than titles: this comes from ClickHouse, which stores what was watched and not what
- * it was called, and there is no batch title lookup to ask. The link goes to the video's page,
- * where the title is the heading.
+ * ClickHouse stores what was watched, not what it was called, so the page names the rows from
+ * one batch lookup. That lookup only sees videos that are public right now — one taken down since
+ * keeps its id here, and its own page, one click away, still reads it.
  */
-export function TopVideos({ rows, days }: { rows: TopVideoResponse[]; days: number }) {
+export function TopVideos({
+  rows,
+  period,
+  names,
+}: {
+  rows: TopVideoResponse[];
+  /** The days the list covers, in the words the page header uses. */
+  period: string;
+  /** Titles and posters by video id; owner @handles by user id. */
+  names: RowNames;
+}) {
   return (
     <Card className="min-w-0">
       <CardHeader
         title="Most watched"
-        hint={`GET /api/v1/analytics/videos/top?days=${days} — ordered by time spent watching`}
+        hint={`Ranked by total time watched over ${period}, not by views — a three-second bounce counts as a view too.`}
       />
 
       {rows.length === 0 ? (
@@ -49,15 +61,32 @@ export function TopVideos({ rows, days }: { rows: TopVideoResponse[]; days: numb
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, index) => (
+              {rows.map((row, index) => {
+                const video = names.videos[row.videoId];
+                const owner = video ? names.handles[video.userId] : undefined;
+                return (
                 <tr key={row.videoId} className="border-b border-line last:border-0">
                   <td className="figure px-5 py-2.5 text-ink-faint">{index + 1}</td>
                   <td className="px-3 py-2.5">
                     <Link
                       href={`/videos/${row.videoId}` as never}
-                      className="figure underline-offset-4 hover:underline"
+                      className="group flex items-center gap-3"
                     >
-                      {row.videoId}
+                      <VideoThumb src={video?.thumbnailUrl ?? null} className="h-10 w-7" />
+                      <span className="min-w-0">
+                        {video?.title ? (
+                          <span className="block max-w-[360px] truncate font-medium underline-offset-4 group-hover:underline">
+                            {video.title}
+                          </span>
+                        ) : (
+                          <span className="figure block underline-offset-4 group-hover:underline">
+                            {row.videoId}
+                          </span>
+                        )}
+                        <span className="block text-[11px] text-ink-faint">
+                          {video ? (owner ?? "") : "not public right now"}
+                        </span>
+                      </span>
                     </Link>
                   </td>
                   <td className="figure px-3 py-2.5 text-right">{hours(row.watchedMs)}</td>
@@ -66,10 +95,11 @@ export function TopVideos({ rows, days }: { rows: TopVideoResponse[]; days: numb
                     {formatCompact(row.viewers)}
                   </td>
                   <td className="figure px-5 py-2.5 text-right text-ink-soft">
-                    {percent(row.completions, row.views)}
+                    {formatPercent(row.completions, row.views)}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -82,9 +112,4 @@ export function TopVideos({ rows, days }: { rows: TopVideoResponse[]; days: numb
 function hours(ms: number): string {
   const minutes = ms / 60_000;
   return minutes < 90 ? `${Math.round(minutes)}m` : `${(minutes / 60).toFixed(1)}h`;
-}
-
-function percent(part: number, whole: number): string {
-  // An em dash, not 0%: no views is no answer about how many of them finished.
-  return whole === 0 ? "—" : `${Math.round((part / whole) * 100)}%`;
 }

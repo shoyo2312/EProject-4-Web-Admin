@@ -1,6 +1,7 @@
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { Sparkbars } from "@/components/charts/sparkbars";
 import { Card } from "@/components/ui/card";
+import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export interface KpiCard {
@@ -16,6 +17,8 @@ export interface KpiCard {
    * colour are a claim about a trend, and there is no trend to claim.
    */
   delta?: number | null;
+  /** "count" draws the delta as an amount added ("+4") — for a period that started from zero. */
+  deltaUnit?: "percent" | "count";
   deltaLabel?: string;
   /** Omitted when nothing measures this figure over time, for the same reason as `delta`. */
   spark?: number[];
@@ -37,14 +40,14 @@ export function KpiCards({ cards }: { cards: KpiCard[] }) {
             <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3">
               <div className="min-w-0">
                 <p className="label-caps text-ink-soft">{card.label}</p>
-                <p className="mt-2 flex items-baseline gap-1.5">
+                {/* The unit wraps under the figure rather than truncating: "Average, last 3…"
+                    drops exactly the part that says what the number covers. */}
+                <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
                   <span className="figure text-[26px] leading-none font-bold">
                     {card.value}
                   </span>
                   {card.unit ? (
-                    <span className="truncate text-[11px] text-ink-faint">
-                      {card.unit}
-                    </span>
+                    <span className="text-[11px] text-ink-faint">{card.unit}</span>
                   ) : null}
                 </p>
               </div>
@@ -67,7 +70,7 @@ export function KpiCards({ cards }: { cards: KpiCard[] }) {
                 <span className="text-[11px] text-ink-faint">
                   <span className={good ? "text-success" : "text-danger"}>
                     {rising ? "+" : ""}
-                    {delta}%
+                    {card.deltaUnit === "count" ? formatNumber(delta) : `${delta}%`}
                   </span>{" "}
                   {card.deltaLabel}
                 </span>

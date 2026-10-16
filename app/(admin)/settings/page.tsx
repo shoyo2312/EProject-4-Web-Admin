@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
-import { getModerationSettings } from "@/lib/api/admin";
+import { getModerationSettings } from "@/lib/api/moderation";
 import type { ModerationSettingsResponse } from "@/lib/api/types";
 
 /**
@@ -37,15 +38,29 @@ export default async function SettingsPage() {
         <Card>
           <CardHeader
             title="Automatic moderation"
-            hint="GET /api/v1/admin/settings/moderation — admin-service reading moderation-service's /config"
+            hint="Read live from the classifier's own configuration. Changing a value means redeploying that service, not editing it here."
           />
           {moderation.reachable ? (
             <Thresholds values={moderation.values} />
           ) : (
             <p className="px-5 py-8 text-center text-[12px] text-ink-faint">
-              moderation-service did not answer. Nothing is broken on this screen — uploads are
-              still being screened by whatever that container was started with; this is only the
-              page that reads it back.
+              The moderation classifier did not answer. Uploads are still being screened with
+              whatever it was started with — only reading the values back failed.
+            </p>
+          )}
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Text classifier"
+            hint="The hate-speech model behind the word list, for comments and for captions. Read from the same configuration as the thresholds above, and changed the same way: by redeploying moderation-service."
+          />
+          {moderation.reachable ? (
+            <TextClassifier values={moderation.values} />
+          ) : (
+            <p className="px-5 py-8 text-center text-[12px] text-ink-faint">
+              moderation-service did not answer. Comments and captions are still screened — if
+              the classifier cannot be reached, by the word list alone.
             </p>
           )}
         </Card>
@@ -54,14 +69,16 @@ export default async function SettingsPage() {
           <CardHeader title="Not configurable from here yet" />
           <ul className="list-disc space-y-1.5 py-4 pr-5 pl-10 text-[12px] text-ink-soft">
             <li>
-              Admin accounts — auth-service has one ROLE_ADMIN and no endpoint to grant or revoke
-              it.
+              Admin accounts — there is a single admin role, and no way yet to grant or revoke
+              it from the console.
             </li>
+            <li>How long the audit log is kept — fixed by a nightly cleanup job.</li>
             <li>
-              Forcing an admin&apos;s sessions to end (auth:blacklist:user:&#123;userId&#125; is
-              written by the ban path only).
+              Whether a service acts on what text moderation finds — <code>TEXT_MODERATION_ENFORCE</code>{" "}
+              and <code>TEXT_CLASSIFIER_ENFORCE</code>, set on interaction-service and video-service
+              and reported nowhere. Switched off, a verdict is still recorded on the comment or
+              the video, and nothing is held or refused.
             </li>
-            <li>Audit retention: fixed at admin-service&apos;s nightly cron.</li>
           </ul>
         </Card>
       </div>
@@ -125,6 +142,57 @@ function Thresholds({ values }: { values: ModerationSettingsResponse["values"] }
         </>
       ) : null}
     </dl>
+  );
+}
+
+/**
+ * The text classifier, from the same /config. A moderation-service older than it reports none of
+ * these keys, which is "not known" rather than "off".
+ */
+function TextClassifier({ values }: { values: ModerationSettingsResponse["values"] }) {
+  if (values.textEnabled === undefined) {
+    return (
+      <p className="px-5 py-8 text-center text-[12px] text-ink-faint">
+        This moderation-service does not report a text classifier — it predates one.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3 px-5 py-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[12px] xl:grid-cols-4">
+        {values.textEnabled === true ? (
+          <>
+            <Field label="Holds at">
+              <span className="figure">{show(values.textHateHoldAt)}</span>
+              <span className="text-ink-faint"> — a hate score this high holds the text; offence alone never does</span>
+            </Field>
+            <Field label="Texts per request">
+              <span className="figure">{show(values.textMaxTexts)}</span>
+              <span className="text-ink-faint"> (cap)</span>
+            </Field>
+            <Field label="Model">{show(values.textModel)}</Field>
+            <Field label="Model version">{show(values.textModelVersion)}</Field>
+            <Field label="Pinned revision" wide>
+              <span className="figure break-all">{show(values.textModelRevision)}</span>
+            </Field>
+          </>
+        ) : (
+          <Field label="Status" wide>
+            <span className="text-ink-faint">
+              off — comments and captions are screened by the word list alone
+            </span>
+          </Field>
+        )}
+      </dl>
+      <p className="text-[11px] text-ink-faint">
+        The word list in front of it is edited under{" "}
+        <Link href="/moderation/terms" className="text-ink-soft underline-offset-4 hover:underline">
+          Moderation → Terms
+        </Link>
+        , and is live within a minute.
+      </p>
+    </div>
   );
 }
 

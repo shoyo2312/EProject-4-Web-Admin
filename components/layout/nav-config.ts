@@ -4,13 +4,17 @@ import {
   LayoutDashboard,
   MessageSquare,
   Radio,
+  ScanEye,
   Settings,
+  Trash2,
   TrendingUp,
   Users,
   Video,
+  WholeWord,
 } from "lucide-react";
 import type { Route } from "next";
 import type { LucideIcon } from "lucide-react";
+import { ancestors } from "@/lib/url";
 
 export interface NavItem {
   label: string;
@@ -40,7 +44,9 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Moderation",
     items: [
       { label: "Reports Queue", href: "/moderation/reports", icon: Flag, ready: true },
+      { label: "Video Review", href: "/moderation/review", icon: ScanEye, ready: true },
       { label: "Audit Log", href: "/moderation/actions", icon: FileClock, ready: true },
+      { label: "Terms", href: "/moderation/terms", icon: WholeWord, ready: true },
     ],
   },
   {
@@ -56,6 +62,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "Queues & DLQ", href: "/system/queues", icon: Radio },
       { label: "Settings", href: "/settings", icon: Settings, ready: true },
+      { label: "Trash", href: "/trash", icon: Trash2, ready: true },
     ],
   },
 ];
@@ -64,25 +71,30 @@ export const NAV_GROUPS: NavGroup[] = [
 export const ROUTE_TITLES: Record<string, { section: string; page: string }> = {
   "/dashboard": { section: "Dashboard", page: "Overview" },
   "/analytics": { section: "Dashboard", page: "Analytics" },
+  "/notifications": { section: "Dashboard", page: "Notifications" },
   "/moderation/reports": { section: "Moderation", page: "Reports Queue" },
+  "/moderation/review": { section: "Moderation", page: "Video Review" },
   "/moderation/actions": { section: "Moderation", page: "Audit Log" },
+  "/moderation/terms": { section: "Moderation", page: "Terms" },
   "/users": { section: "Management", page: "Users" },
   "/videos": { section: "Management", page: "Videos" },
   "/comments": { section: "Management", page: "Comments" },
   "/system/queues": { section: "System", page: "Queues & DLQ" },
   "/settings": { section: "System", page: "Settings" },
+  "/trash": { section: "System", page: "Trash" },
 };
 
 /**
- * The breadcrumb for a path, falling back to its parent's.
+ * The breadcrumb for a path, falling back to the nearest named page above it.
  *
- * A detail route — /users/123, /videos/abc — has no entry of its own and never will: the id is
- * a row, not a page worth naming here. Without the fallback it hits the default and the
- * breadcrumb reads "Dashboard / Overview" while the screen is showing an account.
+ * A detail route — /users/123, /videos/abc, /users/123/activity — has no entry of its own and
+ * never will: the id is a row, not a page worth naming here. Without the fallback it hits the
+ * default and the breadcrumb reads "Dashboard / Overview" while the screen is showing an account.
  */
 export function resolveCrumb(pathname: string): { section: string; page: string } {
-  const exact = ROUTE_TITLES[pathname];
-  if (exact) return exact;
-  const parent = pathname.slice(0, pathname.lastIndexOf("/"));
-  return ROUTE_TITLES[parent] ?? { section: "Dashboard", page: "Overview" };
+  for (const path of ancestors(pathname)) {
+    const crumb = ROUTE_TITLES[path];
+    if (crumb) return crumb;
+  }
+  return { section: "Dashboard", page: "Overview" };
 }

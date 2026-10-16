@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 /**
@@ -26,9 +26,19 @@ const GIVE_UP_AT = 9000;
  * While it has not landed the row stays `pending` — the badge is dimmed and the button disabled,
  * so the same action cannot be queued twice against a state that has not moved. After
  * {@link GIVE_UP_AT} the wait is abandoned and `stalled` carries the message to show instead.
+ *
+ * `reread` runs beside each refresh, for a row the server page does not carry: one paged in on the
+ * client or opened in a thread never changes when the page is re-rendered, so it has to look
+ * itself up to see the action land.
  */
-export function usePropagation<T>(current: T, stalledMessage: string) {
+export function usePropagation<T>(current: T, stalledMessage: string, reread?: () => void) {
   const router = useRouter();
+  // Held in a ref so that a caller passing an inline arrow does not restart the timers on every
+  // one of its renders.
+  const rereadRef = useRef(reread);
+  useEffect(() => {
+    rereadRef.current = reread;
+  });
   /** Boxed so that a `null`/`false` state is still distinguishable from "nothing in flight". */
   const [awaiting, setAwaiting] = useState<{ value: T } | null>(null);
   const [stalled, setStalled] = useState<string | null>(null);
@@ -41,7 +51,14 @@ export function usePropagation<T>(current: T, stalledMessage: string) {
     const timers: ReturnType<typeof setTimeout>[] = [];
 
     if (pending) {
-      REFRESH_AT.forEach((ms) => timers.push(setTimeout(() => router.refresh(), ms)));
+      REFRESH_AT.forEach((ms) =>
+        timers.push(
+          setTimeout(() => {
+            router.refresh();
+            rereadRef.current?.();
+          }, ms),
+        ),
+      );
       timers.push(
         setTimeout(() => {
           setAwaiting(null);

@@ -12,7 +12,7 @@ export function ErrorState({ error }: { error: unknown }) {
   // A 401 here means the token was accepted by the gate (cookie still within its
   // maxAge) but rejected by the gateway — revoked server-side by a ban, a replay,
   // or a password reset. There is nothing to retry: send the operator back to
-  // sign in. `?expired` tells middleware to clear the dead cookie rather than
+  // sign in. `?expired` tells the proxy to clear the dead cookie rather than
   // bounce straight back to /dashboard. redirect() throws, so it runs before any
   // of the markup below and past the page's own try/catch (which already ran).
   if (

@@ -3,23 +3,13 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { UsersTable } from "@/components/users/users-table";
 import { Pager } from "@/components/ui/pager";
-import {
-  LIST_PAGE_SIZE,
-  getDailyAdminStats,
-  getDailySignups,
-  listUsers,
-  referenceNow,
-} from "@/lib/api/admin";
+import { getDailyAdminStats, getDailySignups } from "@/lib/api/analytics";
+import { LIST_PAGE_SIZE, referenceNow } from "@/lib/api/shared";
+import { listUsers } from "@/lib/api/users";
 import { historyUpTo, isoDay, parsePage, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, growthPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
-import type { UserStatus } from "@/lib/api/types";
-
-const STATUSES: UserStatus[] = ["ACTIVE", "BANNED", "LOCKED"];
-
-function parseStatus(value: string | undefined): UserStatus | undefined {
-  return STATUSES.includes(value as UserStatus) ? (value as UserStatus) : undefined;
-}
+import { userFilters } from "@/lib/list-filters";
 
 export default async function UsersPage({
   searchParams,
@@ -27,8 +17,8 @@ export default async function UsersPage({
   searchParams: Promise<{ q?: string; status?: string; p?: string; asOf?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const { q, status, page: pageParam } = params;
-  const filter = parseStatus(status);
+  const { q, status: filter } = userFilters(params);
+  const pageParam = params.page;
   const latest = isoDay(referenceNow());
   const window = resolveWindow(params, latest);
   const { asOf, periodDays, periodLabel, compareLabel } = window;
@@ -71,8 +61,8 @@ export default async function UsersPage({
   const unverified = users.filter((u) => !u.emailVerified).length;
 
   // Daily and uncut, so a delta compares the period against the period before it.
-  const signupCounts = historyUpTo(signups, window).map((d) => d.signups);
-  const banCounts = historyUpTo(adminStats, window).map((d) => d.usersBanned);
+  const signupCounts = historyUpTo(signups, window, (d) => d.signups);
+  const banCounts = historyUpTo(adminStats, window, (d) => d.usersBanned);
 
   const newUsers = sumLast(signupCounts, periodDays);
   // A directory total is cumulative, so it has no series to compare against — what it grew by
@@ -124,7 +114,11 @@ export default async function UsersPage({
         title="Users"
         subtitle="Every account on the platform. Banning writes a moderation action and revokes live sessions."
         filters={{ period: window.period, asOf, latest }}
-        csv={{ name: "users", rows: users }}
+        csv={{
+          name: "users",
+          rows: users,
+          all: { dataset: "users", params, total: page.totalElements },
+        }}
       />
 
       <div className="space-y-4">

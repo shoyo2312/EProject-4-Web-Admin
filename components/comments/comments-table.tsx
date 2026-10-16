@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CornerDownRight, Heart, MessageSquare, Trash2 } from "lucide-react";
+import { CornerDownRight, Heart, MessageSquare, Trash2, X } from "lucide-react";
 import {
+  commentRemovedAction,
   loadCommentsAction,
   loadRepliesAction,
   removeCommentAction,
-  type CommentPageView,
 } from "@/app/(admin)/comments/actions";
+import { CommentModeration } from "@/components/comments/comments-table/comment-moderation";
+import { Avatar } from "@/components/ui/avatar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
 import { ReasonForm } from "@/components/moderation/reason-form";
@@ -18,6 +21,7 @@ import type {
   AdminCommentResponse,
   UserProfileResponse,
 } from "@/lib/api/types";
+import { appendPage, refreshFirstPage, type CommentPageView } from "@/lib/comments";
 import { formatCompact, relativeTime, shortId } from "@/lib/format";
 import { hrefWith } from "@/lib/url";
 import { usePropagation } from "@/lib/use-propagation";
@@ -27,30 +31,22 @@ const FILTER_OPTIONS: readonly { value: AdminCommentFilter; label: string }[] = 
   { value: "THREAD", label: "Thread" },
   { value: "REPLIES", label: "Replies" },
   { value: "REMOVED", label: "Removed" },
+  { value: "HELD", label: "Held" },
 ];
 
 const FILTER_HINTS: Record<AdminCommentFilter, string> = {
   THREAD: "Top-level comments, newest first — replies open per comment",
   REPLIES: "Every reply on this video, whichever comment it hangs under",
   REMOVED: "Everything already taken down, top-level and replies alike",
+  HELD: "Waiting for the creator's approval, top-level and replies alike — never public yet",
 };
 
 const EMPTY_MESSAGE: Record<AdminCommentFilter, string> = {
   THREAD: "No comments on this video.",
   REPLIES: "Nobody has replied to a comment on this video.",
   REMOVED: "Nothing has been removed from this video.",
+  HELD: "Nothing on this video is waiting for approval.",
 };
-
-/** Appends a freshly-loaded page to what is already on screen. */
-function merge(current: CommentPageView, next: CommentPageView): CommentPageView {
-  return {
-    items: [...current.items, ...next.items],
-    authors: { ...current.authors, ...next.authors },
-    parents: { ...current.parents, ...next.parents },
-    nextCursor: next.nextCursor,
-    hasMore: next.hasMore,
-  };
-}
 
 function displayName(profile: UserProfileResponse | undefined, userId: string) {
   return profile?.displayName ?? profile?.username ?? `#${shortId(userId.slice(-8), 8)}`;
@@ -61,12 +57,18 @@ export function CommentsTable({
   videoId,
   filter,
   videoTitle,
+  linked,
 }: {
   /** The first page, rendered on the server. Later pages are appended client-side. */
   page: CommentPageView;
   videoId: string;
   filter: AdminCommentFilter;
   videoTitle: string;
+  /**
+   * The comment the link named, looked up by id: undefined when it named none, null when the
+   * lookup failed, and a page with no item when this video has no comment by that id.
+   */
+  linked?: CommentPageView | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -75,15 +77,14 @@ export function CommentsTable({
   const [rendered, setRendered] = useState(page);
   const [loading, startLoading] = useTransition();
 
-  // The server sends a fresh first page after a removal lands. Anything paged in beyond it is
-  // dropped on that refresh rather than stitched back on: the list is ordered by id, so a rebuilt
-  // first page and a held-over tail would show the same comment twice.
+  // The server sends a fresh first page on every refresh: after a removal, and on any admin event
+  // the live stream relays. It is laid over what is on screen, so the pages loaded below it stay.
   //
-  // Adjusted during render rather than in an effect — React's own way of resetting state when a
+  // Adjusted during render rather than in an effect — React's own way of updating state when a
   // prop changes, and it repaints once instead of twice.
   if (rendered !== page) {
     setRendered(page);
-    setView(page);
+    setView((current) => refreshFirstPage(current, page));
   }
 
   function selectFilter(next: AdminCommentFilter) {
@@ -97,7 +98,7 @@ export function CommentsTable({
     const cursor = view.nextCursor;
     startLoading(async () => {
       const next = await loadCommentsAction(videoId, filter, cursor);
-      setView((current) => merge(current, next));
+      setView((current) => appendPage(current, next));
     });
   }
 
@@ -108,6 +109,14 @@ export function CommentsTable({
         hint={FILTER_HINTS[filter]}
         actions={<Segmented options={FILTER_OPTIONS} value={filter} onChange={selectFilter} />}
       />
+
+      {linked !== undefined ? (
+        <LinkedComment
+          linked={linked}
+          videoId={videoId}
+          dismissHref={hrefWith(pathname, params, { comment: null })}
+        />
+      ) : null}
 
       <div className="divide-y divide-line">
         {view.items.map((comment) => (
@@ -149,29 +158,49 @@ export function CommentsTable({
   );
 }
 
-/** Handle, avatar and name for one user, or the id when user-service had nothing for it. */
-function Avatar({
-  profile,
-  userId,
+/**
+ * The comment a report or a notification pointed at, above the thread rather than somewhere in it,
+ * with the same remove action a row of the thread has. It may also be on the page below; this copy
+ * is the one the link was about, so it stays until dismissed.
+ */
+function LinkedComment({
+  linked,
+  videoId,
+  dismissHref,
 }: {
-  profile: UserProfileResponse | undefined;
-  userId: string;
+  linked: CommentPageView | null;
+  videoId: string;
+  dismissHref: string;
 }) {
-  const name = displayName(profile, userId);
+  const comment = linked?.items[0];
   return (
-    <span
-      className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-surface-muted text-[10px] font-semibold text-ink-soft uppercase"
-      aria-hidden
-    >
-      {profile?.avatarUrl ? (
-        // A plain img: avatars come from arbitrary CDN hosts that next/image would have to be
-        // configured for one by one, and a broken avatar must not fail a moderation row.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={profile.avatarUrl} alt="" className="h-full w-full object-cover" />
+    <section className="border-b border-line bg-pending-bg/40">
+      <div className="flex items-center justify-between gap-2 px-5 pt-3">
+        <span className="label-caps text-ink-soft">Linked comment</span>
+        <Link
+          href={dismissHref as never}
+          title="Show the thread only"
+          className="inline-flex items-center gap-1 text-[11px] text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+        >
+          Dismiss
+          <X className="h-3 w-3" />
+        </Link>
+      </div>
+      {comment && linked ? (
+        <CommentRow
+          comment={comment}
+          videoId={videoId}
+          authors={linked.authors}
+          parents={linked.parents}
+        />
       ) : (
-        name.replace(/^[#@]/, "").slice(0, 2)
+        <p className="px-5 pt-1 pb-3 text-[12px] text-ink-faint">
+          {linked
+            ? "This video has no comment with that id. The link may name a comment on another video."
+            : "Couldn't load the linked comment. The thread below is still current."}
+        </p>
       )}
-    </span>
+    </section>
   );
 }
 
@@ -234,10 +263,21 @@ function CommentRow({
   const [replies, setReplies] = useState<CommentPageView | null>(null);
   const [loadingReplies, startLoadingReplies] = useTransition();
 
-  const removed = comment.deletedAt !== null;
+  // Set when a lookup by id finds the comment removed. A reply in an opened thread, or a comment
+  // paged in with Load more, is client state that re-rendering the page never updates.
+  const [removedSince, setRemovedSince] = useState(false);
+  const removed = comment.deletedAt !== null || removedSince;
   const { pending, stalled, watch } = usePropagation(
     removed,
     "Still listed — interaction-service has not consumed the event yet. The removal is recorded; reload in a moment.",
+    () => {
+      commentRemovedAction(comment.videoId, comment.commentId)
+        .then((gone) => {
+          if (gone) setRemovedSince(true);
+        })
+        // The next look, or the stalled message after the last, covers a lookup that failed.
+        .catch(() => {});
+    },
   );
 
   const isReply = comment.parentId !== null;
@@ -250,7 +290,12 @@ function CommentRow({
 
   function submit() {
     startSubmit(async () => {
-      const outcome = await removeCommentAction(comment.videoId, comment.commentId, reason ?? "");
+      const outcome = await removeCommentAction(
+        comment.videoId,
+        comment.commentId,
+        reason ?? "",
+        comment.status === "HELD",
+      );
       setResult(outcome.message);
       if (outcome.ok) {
         setReason(null);
@@ -275,7 +320,7 @@ function CommentRow({
     if (!cursor) return;
     startLoadingReplies(async () => {
       const next = await loadRepliesAction(videoId, comment.commentId, cursor);
-      setReplies((current) => (current ? merge(current, next) : next));
+      setReplies((current) => (current ? appendPage(current, next) : next));
     });
   }
 
@@ -307,7 +352,10 @@ function CommentRow({
         ) : null}
 
         <div className="flex items-start gap-3">
-          <Avatar profile={author} userId={comment.userId} />
+          <Avatar
+            src={author?.avatarUrl}
+            initials={displayName(author, comment.userId).replace(/^[#@]/, "").slice(0, 2)}
+          />
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -333,6 +381,7 @@ function CommentRow({
             >
               {comment.content}
             </p>
+            <CommentModeration comment={comment} />
 
             <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-faint">
               {/* Kept, quiet: nobody reads the id, but an audit row or a support ticket names it. */}
@@ -402,6 +451,10 @@ function CommentRow({
               placeholder="Reason for removing this comment — pick one above or write your own"
               confirmLabel="Confirm removal"
             />
+            <p className="mt-2 text-[11px] text-ink-faint">
+              A removal is a strike against its author: enough strikes in a day and they cannot
+              comment for a while.
+            </p>
           </div>
         ) : null}
 

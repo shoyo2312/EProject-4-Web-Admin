@@ -7,15 +7,23 @@ import { formatNumber } from "@/lib/format";
  * unlikes off against likes, which hides the case that matters — likes flat, unlikes
  * climbing.
  */
-export function EngagementMix({ rows }: { rows: EngagementMixRow[] }) {
+export function EngagementMix({
+  rows,
+  period,
+}: {
+  rows: EngagementMixRow[];
+  /** "Last 30d" and friends — the same days the figures above cover. */
+  period: string;
+}) {
   return (
     <Card className="flex min-w-0 flex-col">
       <CardHeader
         title="Engagement Mix"
-        hint="GET /api/v1/analytics/engagement/daily?days=365, totalled by event type"
+        hint="Every event type over the same days as the figures above — unlikes and uploads included, which the trend leaves out."
+        actions={<span className="text-[11px] text-ink-faint">{period}</span>}
       />
 
-      <div className="flex flex-1 flex-col justify-center gap-4 p-5">
+      <div className="flex flex-1 flex-col gap-4 p-5">
         {rows.length === 0 ? (
           <p className="text-[12px] text-ink-faint">
             No engagement events recorded yet.

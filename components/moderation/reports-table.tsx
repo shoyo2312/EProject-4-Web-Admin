@@ -1,31 +1,32 @@
 "use client";
 
-import { Fragment, useMemo, useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ChevronsUpDown, Gavel, Search } from "lucide-react";
-import {
-  reportTargetDetailAction,
-  resolveReportAction,
-  type ReportTargetDetail,
-} from "@/app/(admin)/moderation/reports/actions";
+import { Gavel } from "lucide-react";
+import { reportTargetDetailAction, resolveReportAction } from "@/app/(admin)/moderation/reports/actions";
 import { StatusBadge, TargetBadge } from "@/components/ui/badge";
-import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
+import { SearchBox } from "@/components/ui/search-box";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ResolveForm } from "@/components/moderation/resolve-form";
-import type { ReportSortField } from "@/lib/moderation";
+import { TargetPreviewLine } from "@/components/moderation/target-preview-line";
+import type { ReportSortField } from "@/lib/list-filters";
 import type {
   ModerationActionType,
   ReportResponse,
   ReportStatus,
   ReportTargetType,
 } from "@/lib/api/types";
-import { MOCK_REPORTER_HANDLES } from "@/lib/mock/moderation";
-import { formatDate, relativeTime, shortId } from "@/lib/format";
+import { formatDateTime, relativeTime, shortId } from "@/lib/format";
+import { REPORT_STATUS_LABELS, statusTabs } from "@/lib/labels";
+import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { hrefWith } from "@/lib/url";
 import { useBelowXl } from "@/lib/use-below-xl";
+import { useRowDetail } from "@/lib/use-row-detail";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = ReportStatus | "ALL";
@@ -37,6 +38,7 @@ type TargetFilter = ReportTargetType | "ALL";
  * nothing and draws no controls, because there is nothing there worth filtering.
  */
 export interface ReportsFilter {
+  query: string;
   status: StatusFilter;
   targetType: TargetFilter;
   sort: ReportSortField;
@@ -45,12 +47,7 @@ export interface ReportsFilter {
 
 const COLUMNS = 7;
 
-const STATUS_FILTERS = [
-  { value: "ALL" as const, label: "All" },
-  { value: "PENDING" as const, label: "Pending" },
-  { value: "RESOLVED" as const, label: "Resolved" },
-  { value: "DISMISSED" as const, label: "Dismissed" },
-];
+const STATUS_FILTERS = statusTabs(["PENDING", "RESOLVED", "DISMISSED"], REPORT_STATUS_LABELS);
 
 const TARGET_FILTERS = [
   { value: "ALL" as const, label: "Any" },
@@ -61,12 +58,15 @@ const TARGET_FILTERS = [
 
 export function ReportsTable({
   reports,
+  names = NO_NAMES,
   title = "Reports Queue",
   limit,
   footerHref,
   filter,
 }: {
   reports: ReportResponse[];
+  /** Reporters, resolvers and targets by name, resolved by the page in one batch each. */
+  names?: RowNames;
   /** The ledger sits under the real queue on the Reports page, where both titles would read alike. */
   title?: string;
   /** Dashboard shows a slice; the Reports Queue page shows everything. */
@@ -80,58 +80,19 @@ export function ReportsTable({
   filter?: ReportsFilter;
 }) {
   const belowXl = useBelowXl();
-  const [query, setQuery] = useState("");
-
-  /**
-   * Status, target and ordering are the server's answer already. The box is the one control
-   * that cannot be: admin-service's listing takes no search term, so this narrows the rows on
-   * screen and says so — hence "on this page" rather than "Search reports", which is what a
-   * moderator would reasonably read as "in the ledger".
-   *
-   * ponytail: a `q` on `GET /api/v1/admin/reports` matching the reason and the target id is
-   * what would make it a real search. Worth it the first time someone has to find one report
-   * by id across pages.
-   */
-  const rows = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const matching = needle
-      ? reports.filter((report) => {
-          const handle = MOCK_REPORTER_HANDLES[report.reporterId] ?? "";
-          return (
-            report.id.includes(needle)
-            || report.targetId.includes(needle)
-            || report.targetType.toLowerCase().includes(needle)
-            || report.reason.toLowerCase().includes(needle)
-            || handle.toLowerCase().includes(needle)
-          );
-        })
-      : reports;
-    return limit ? matching.slice(0, limit) : matching;
-  }, [reports, query, limit]);
+  const rows = limit ? reports.slice(0, limit) : reports;
+  const order = filter && { field: filter.sort, ascending: filter.ascending };
 
   return (
     <Card>
       <CardHeader
         title={title}
-        hint="GET /api/v1/admin/reports — resolve writes a moderation action and emits a Kafka event"
-        actions={
-          filter ? (
-            <>
-              <label className="flex w-[180px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 lg:w-[240px]">
-                <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Filter rows on this page..."
-                  className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
-                />
-              </label>
-              <LedgerControls filter={filter} />
-            </>
-          ) : (
-            <CardMenuButton />
-          )
+        hint={
+          filter
+            ? "Every report filed in the selected period. Resolving one records the decision in the audit log and closes that report."
+            : "The newest reports. Resolving one records the decision in the audit log and closes that report."
         }
+        actions={filter ? <LedgerControls filter={filter} /> : null}
       />
 
       <div className="overflow-x-auto">
@@ -141,19 +102,19 @@ export function ReportsTable({
               <SortableHeader
                 label="ID"
                 sortKey="id"
-                filter={filter}
+                sort={order}
                 className="hidden pl-5 xl:table-cell"
               />
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reporter</th>
               <SortableHeader
                 label="Target"
                 sortKey="targetType"
-                filter={filter}
+                sort={order}
                 className="pl-5 xl:pl-3"
               />
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reason</th>
-              <SortableHeader label="Status" sortKey="status" filter={filter} />
-              <SortableHeader label="Created" sortKey="createdAt" filter={filter} />
+              <SortableHeader label="Status" sortKey="status" sort={order} />
+              <SortableHeader label="Created" sortKey="createdAt" sort={order} />
               <th className="label-caps px-5 py-3 text-right text-ink-soft">
                 Actions
               </th>
@@ -161,7 +122,7 @@ export function ReportsTable({
           </thead>
           <tbody>
             {rows.map((report) => (
-              <ReportRow key={report.id} report={report} belowXl={belowXl} />
+              <ReportRow key={report.id} report={report} names={names} belowXl={belowXl} />
             ))}
 
             {rows.length === 0 ? (
@@ -191,41 +152,26 @@ export function ReportsTable({
 
 function ReportRow({
   report,
+  names,
   belowXl,
 }: {
   report: ReportResponse;
+  names: RowNames;
   /** Below xl the secondary columns are dropped, so the expand row carries them instead. */
   belowXl: boolean;
 }) {
   const router = useRouter();
-  const [detail, setDetail] = useState(false);
-  const [target, setTarget] = useState<ReportTargetDetail | null>(null);
-  const [targetLoading, setTargetLoading] = useState(false);
+  const detail = useRowDetail(() => reportTargetDetailAction(report.targetType, report.targetId));
   const [resolving, setResolving] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
 
   const pending = report.status === "PENDING";
-  const reporter = MOCK_REPORTER_HANDLES[report.reporterId]
-    ? `@${MOCK_REPORTER_HANDLES[report.reporterId]}`
-    : `#${report.reporterId.slice(-6)}`;
+  const reporter = names.handles[report.reporterId] ?? `#${report.reporterId.slice(-6)}`;
 
-  function toggleDetail() {
-    const opening = !detail;
-    setDetail(opening);
-    // Fetched once per row and kept: what a report points at does not change while the admin
-    // scans the queue, and re-fetching on every toggle would be three calls per click.
-    if (opening && !target && !targetLoading) {
-      setTargetLoading(true);
-      reportTargetDetailAction(report.targetType, report.targetId)
-        .then(setTarget)
-        .finally(() => setTargetLoading(false));
-    }
-  }
-
-  function submit(action: ModerationActionType, reason: string) {
+  function submit(action: ModerationActionType, reason: string, banDays: number | null) {
     startSubmit(async () => {
-      const outcome = await resolveReportAction(report.id, action, reason);
+      const outcome = await resolveReportAction(report.id, action, reason, banDays);
       setResult(outcome.message);
       if (outcome.ok) {
         setResolving(false);
@@ -240,7 +186,7 @@ function ReportRow({
   return (
     <Fragment>
       <tr
-        {...expandableRowProps(toggleDetail, detail)}
+        {...expandableRowProps(detail.toggle, detail.open)}
         className={cn(
           "cursor-pointer border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted",
           // Closed reports recede — the queue is about what still needs work
@@ -250,13 +196,13 @@ function ReportRow({
         <td className="figure hidden py-3 pl-5 pr-3 whitespace-nowrap xl:table-cell">
           #{shortId(report.id.slice(-8), 8)}
         </td>
-        <td className="hidden px-3 py-3 whitespace-nowrap xl:table-cell">
-          {/* Live data carries only a reporterId — user-service has no batch
-              handle lookup yet, so fall back to the id tail. */}
-          {reporter}
-        </td>
-        <td className="py-3 pl-5 pr-3 whitespace-nowrap xl:pl-3">
-          <TargetBadge type={report.targetType} id={report.targetId} />
+        <td className="hidden px-3 py-3 whitespace-nowrap xl:table-cell">{reporter}</td>
+        <td className="py-3 pl-5 pr-3 xl:pl-3">
+          <TargetBadge
+            type={report.targetType}
+            id={report.targetId}
+            name={targetName(names, report.targetType, report.targetId)}
+          />
         </td>
         <td className="hidden max-w-[260px] truncate px-3 py-3 xl:table-cell" title={report.reason}>
           {report.reason}
@@ -288,7 +234,7 @@ function ReportRow({
         </td>
       </tr>
 
-      {detail ? (
+      {detail.open ? (
         <RowDetail colSpan={COLUMNS}>
           {/* The columns the table drops below xl, so nothing is unreachable on a narrow screen. */}
           {belowXl ? (
@@ -303,48 +249,35 @@ function ReportRow({
           <Field label="Target">
             {report.targetType} · {report.targetId}
           </Field>
-          <Field label="Created">{formatDate(report.createdAt)}</Field>
+          <Field label="Created">{formatDateTime(report.createdAt)}</Field>
           {report.resolvedBy ? (
-            <Field label="Resolved by">#{report.resolvedBy.slice(-8)}</Field>
+            <Field label="Resolved by">
+              {names.handles[report.resolvedBy] ?? `#${report.resolvedBy.slice(-8)}`}
+            </Field>
           ) : null}
           {report.resolvedAt ? (
-            <Field label="Resolved at">{formatDate(report.resolvedAt)}</Field>
+            <Field label="Resolved at">{formatDateTime(report.resolvedAt)}</Field>
           ) : null}
 
           {/* What is actually being judged. A target with no preview is still worth showing as
               such: it means no endpoint will serve it back — a taken-down video, a deleted
               account — which is itself information a moderator needs before acting again. */}
           <Field label="Reported content" wide>
-            {targetLoading && !target ? (
-              <span className="text-ink-faint">Loading target…</span>
-            ) : target?.preview ? (
-              <span className="flex flex-wrap items-baseline gap-x-2">
-                <span>{target.preview.title}</span>
-                {target.preview.detail ? (
-                  <span className="text-[11px] text-ink-faint">· {target.preview.detail}</span>
-                ) : null}
-                {target.preview.href ? (
-                  <Link
-                    href={target.preview.href as never}
-                    className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
-                  >
-                    open →
-                  </Link>
-                ) : null}
-              </span>
-            ) : (
-              <span className="text-ink-faint">
-                Not available — the target is not readable through the console (removed, private,
-                or no longer there).
-              </span>
-            )}
+            <TargetPreviewLine
+              preview={detail.data?.preview ?? null}
+              loading={detail.loading}
+              failed={detail.failed}
+              missing="Not available — the target is not readable through the console (removed, private, or no longer there)."
+            />
           </Field>
 
           <Field label="Moderation history" wide>
             <ModerationHistory
-              reportCount={target?.reportCount ?? null}
-              actions={target?.actions ?? null}
-              loading={targetLoading && !target}
+              reportCount={detail.data?.reportCount ?? null}
+              actions={detail.data?.actions ?? null}
+              handles={detail.data?.handles}
+              loading={detail.loading}
+              onRetry={detail.retry}
             />
           </Field>
         </RowDetail>
@@ -397,6 +330,13 @@ function LedgerControls({ filter }: { filter: ReportsFilter }) {
 
   return (
     <div className={cn("flex flex-wrap items-center gap-2", navigating && "opacity-50")}>
+      {/* The search is the server's too, like every other control here: narrowing the page on
+          screen would answer "the matches among these twenty-five" while reading as the ledger. */}
+      <SearchBox
+        query={filter.query}
+        onCommit={(term) => go("q", term || null)}
+        placeholder="Search reason or id..."
+      />
       <Segmented
         options={TARGET_FILTERS}
         value={filter.targetType}
@@ -408,82 +348,5 @@ function LedgerControls({ filter }: { filter: ReportsFilter }) {
         onChange={(value) => go("status", value === "ALL" ? null : value)}
       />
     </div>
-  );
-}
-
-/**
- * A plain header when the table has no `filter`, and a navigating one when it does. Sorting a
- * page client-side could only reorder the twenty-five rows that already won, which is a
- * different list from "the oldest reports on the platform" while looking exactly like it.
- */
-function SortableHeader({
-  label,
-  sortKey,
-  filter,
-  className,
-}: {
-  label: string;
-  sortKey: ReportSortField;
-  filter?: ReportsFilter;
-  className?: string;
-}) {
-  if (!filter) {
-    return (
-      <th className={cn("label-caps px-3 py-3 text-ink-soft", className)}>{label}</th>
-    );
-  }
-  return (
-    <th
-      className={cn("px-3 py-3", className)}
-      aria-sort={
-        filter.sort === sortKey
-          ? filter.ascending
-            ? "ascending"
-            : "descending"
-          : "none"
-      }
-    >
-      <SortButton label={label} sortKey={sortKey} filter={filter} />
-    </th>
-  );
-}
-
-function SortButton({
-  label,
-  sortKey,
-  filter,
-}: {
-  label: string;
-  sortKey: ReportSortField;
-  filter: ReportsFilter;
-}) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const params = useSearchParams();
-  const active = filter.sort === sortKey;
-
-  function toggle() {
-    // A fresh column starts descending — newest, highest, last — and only clicking the column
-    // that is already active flips it.
-    const href = hrefWith(pathname, params, {
-      sort: sortKey,
-      dir: active && !filter.ascending ? "asc" : null,
-      page: null,
-    });
-    router.replace(href as never);
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      className={cn(
-        "label-caps flex items-center gap-1 transition-colors hover:text-ink",
-        active ? "text-ink" : "text-ink-soft",
-      )}
-    >
-      {label}
-      <ChevronsUpDown className="h-3 w-3" />
-    </button>
   );
 }

@@ -44,6 +44,24 @@ export function growthPercent(total: number, inflow: number): number | null {
   return Math.round((inflow / before) * 100);
 }
 
+export interface Change {
+  value: number;
+  unit: "percent" | "count";
+}
+
+/**
+ * `growthPercent`, or — when the total started the period at exactly zero — the inflow as a
+ * plain count. A library whose every video arrived this month has no percentage, but "+4 vs
+ * last month" is still true. A negative starting size stays null: that is two counts taken
+ * over different sets, and a count built from it is as wrong as a percentage would be.
+ */
+export function growthChange(total: number, inflow: number): Change | null {
+  const percent = growthPercent(total, inflow);
+  if (percent !== null) return { value: percent, unit: "percent" };
+  if (inflow > 0 && total === inflow) return { value: inflow, unit: "count" };
+  return null;
+}
+
 /** Eight buckets is what Sparkbars is drawn for; more than that and they stop reading. */
 export function spark(values: number[], size: number): number[] {
   const window = values.slice(-size);

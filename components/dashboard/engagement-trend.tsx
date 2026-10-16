@@ -1,5 +1,5 @@
-import { MosaicChart } from "@/components/charts/mosaic-chart";
-import { Card, CardHeader, CardMenuButton } from "@/components/ui/card";
+import { LineChart } from "@/components/charts/line-chart";
+import { Card, CardHeader } from "@/components/ui/card";
 import type { MosaicRange, MosaicSeries } from "@/lib/api/rollup";
 import { formatNumber } from "@/lib/format";
 
@@ -27,8 +27,7 @@ export function EngagementTrend({
     <Card className="min-w-0">
       <CardHeader
         title="Engagement Trend"
-        hint="Rolled up from GET /api/v1/analytics/engagement/daily?days=365"
-        actions={<CardMenuButton />}
+        hint="Likes (net of unlikes), and comments and shares together, per bar."
       />
       <div className="p-5">
         <div className="mb-4 flex items-center justify-between gap-4">
@@ -44,7 +43,7 @@ export function EngagementTrend({
           </p>
         </div>
 
-        <MosaicChart
+        <LineChart
           buckets={buckets}
           primaryLabel="Likes"
           secondaryLabel="Comments & Shares"

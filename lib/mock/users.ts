@@ -1,4 +1,4 @@
-import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
+import type { AdminUserResponse, CommentRestrictionResponse, UserStatus } from "@/lib/api/types";
 import { MOCK_NOW, between, pick, seededRandom } from "./random";
 
 const HANDLES = [
@@ -13,6 +13,10 @@ const STATUSES: UserStatus[] = ["ACTIVE", "ACTIVE", "ACTIVE", "ACTIVE", "BANNED"
 
 const DAY_MS = 24 * 60 * 60_000;
 
+function userId(i: number): string {
+  return String(7_300_000_000_000_000_000n + BigInt(i * 4096));
+}
+
 /**
  * 60 accounts, seeded so server render and client hydration agree. Two deliberate shapes the
  * real data has and a naive fixture would not: an account with no email at all (social login,
@@ -24,7 +28,7 @@ export const mockUsers: AdminUserResponse[] = (() => {
     const handle = `${pick(rand, HANDLES)}${i > HANDLES.length ? i : ""}`;
     const social = i % 11 === 0;
     return {
-      id: String(7_300_000_000_000_000_000n + BigInt(i * 4096)),
+      id: userId(i),
       username: handle,
       email: social ? null : `${handle.replace(/[._]/g, "")}@example.com`,
       role: i === 0 ? ("ADMIN" as const) : ("USER" as const),
@@ -48,3 +52,23 @@ export const mockUsers: AdminUserResponse[] = (() => {
     };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 })();
+
+/**
+ * Where a few accounts stand with the comment strikes, in the shapes the account page has to
+ * explain: restricted right now, on a second restriction in a row; strikes counting toward one;
+ * and a restriction that has run out while the step has not reset yet. Every other account is
+ * clean.
+ */
+const COMMENT_STANDINGS: Record<string, Omit<CommentRestrictionResponse, "userId">> = {
+  [userId(3)]: {
+    restrictedUntil: new Date(MOCK_NOW + 5 * 60 * 60_000).toISOString(),
+    strikes: 0,
+    step: 2,
+  },
+  [userId(5)]: { restrictedUntil: null, strikes: 2, step: 0 },
+  [userId(8)]: { restrictedUntil: null, strikes: 1, step: 1 },
+};
+
+export function mockCommentRestriction(id: string): CommentRestrictionResponse {
+  return { userId: id, ...(COMMENT_STANDINGS[id] ?? { restrictedUntil: null, strikes: 0, step: 0 }) };
+}

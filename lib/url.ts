@@ -23,3 +23,31 @@ export function hrefWith(
   const query = next.toString();
   return query ? `${pathname}?${query}` : pathname;
 }
+
+/**
+ * A path and every path above it, deepest first: "/users/1/activity", "/users/1", "/users".
+ * The root is left out — nothing is named after it.
+ */
+export function ancestors(pathname: string): string[] {
+  const segments = pathname.split("/").filter(Boolean);
+  return segments.map((_, i) => `/${segments.slice(0, segments.length - i).join("/")}`);
+}
+
+/**
+ * A `?next=` value as a path on this origin, or null when it is not one.
+ *
+ * Resolved against a placeholder origin rather than checked for a leading "/", because the URL
+ * parser is what the browser will apply: "//evil.example", "/\evil.example" and "/\t/evil.example"
+ * all start with a slash and all leave the site.
+ */
+export function internalPath(next: string | null): string | null {
+  if (!next) return null;
+  const base = "http://internal.invalid";
+  let url: URL;
+  try {
+    url = new URL(next, base);
+  } catch {
+    return null;
+  }
+  return url.origin === base ? `${url.pathname}${url.search}${url.hash}` : null;
+}

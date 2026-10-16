@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
  * Presentational: the parent owns the reason string (null while the form is closed) and the
  * submit, because the parent is what knows which target this is and what to do afterwards.
  *
- * Distinct from `ResolveForm`, which also picks an *action* — that form closes a report and so
- * has to offer DISMISS_REPORT beside the enforcement. Here the action is already settled by
- * which button was pressed, and the only question left is why.
+ * Here the action is already settled by which button was pressed, and the only question left is
+ * why. `ResolveForm` puts a choice of action above it, because closing a report has to offer
+ * DISMISS_REPORT beside the enforcement.
  */
 export function ReasonForm({
   presets,
@@ -23,6 +23,7 @@ export function ReasonForm({
   submitting,
   placeholder,
   confirmLabel,
+  submitOnEnter,
 }: {
   presets: readonly string[];
   reason: string;
@@ -32,6 +33,11 @@ export function ReasonForm({
   submitting: boolean;
   placeholder: string;
   confirmLabel: string;
+  /**
+   * Enter in the reason box confirms. Opt-in, for the review screen, where every other step is a
+   * key too; the directory forms leave Enter inert, so a stray one cannot ban an account.
+   */
+  submitOnEnter?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -76,6 +82,13 @@ export function ReasonForm({
           autoFocus
           value={reason}
           onChange={(e) => onReason(e.target.value)}
+          onKeyDown={(e) => {
+            // isComposing: Enter also commits a word in an input method (Vietnamese Telex among
+            // them), and that Enter is not a confirmation.
+            if (!submitOnEnter || e.key !== "Enter" || e.nativeEvent.isComposing) return;
+            e.preventDefault();
+            if (reason.trim() && !submitting) onSubmit();
+          }}
           placeholder={placeholder}
           className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-[11px] outline-none placeholder:text-ink-faint"
         />

@@ -20,7 +20,7 @@ export type ReportStatus = "PENDING" | "RESOLVED" | "DISMISSED";
  * "removed" applied to the rows on screen would mean "removed among the twenty loaded", which
  * reads as "removed in this thread" and is not.
  */
-export type AdminCommentFilter = "THREAD" | "REPLIES" | "REMOVED";
+export type AdminCommentFilter = "THREAD" | "REPLIES" | "REMOVED" | "HELD";
 
 /**
  * GET /api/v1/interactions/admin/videos/{videoId}/comments — served by interaction-service.
@@ -50,7 +50,33 @@ export interface AdminCommentResponse {
   createdAt: string;
   /** Non-null once removed — by its author, the video owner, or an admin. */
   deletedAt: string | null;
+  /** HELD while it waits for the video's owner to approve it — such a comment was never public. */
+  status: AdminCommentStatus;
+  /**
+   * Every flag text moderation raised on it, most severe first, "; " between them — see
+   * lib/text-flags. Null when nothing fired. A posted comment with one is something a filter let
+   * through: a link its owner waived, a classifier note.
+   */
+  moderationReason: string | null;
 }
+
+/** interaction-service — entity/CommentStatus.java. Rows written before held comments read VISIBLE. */
+export type AdminCommentStatus = "VISIBLE" | "HELD";
+
+/** moderation-lib — Category.java: what text moderation files a flag under. */
+export type TextCategory =
+  | "PROFANITY"
+  | "INSULT"
+  | "HATE"
+  | "SEXUAL"
+  | "VIOLENCE"
+  | "SCAM"
+  | "SPAM"
+  | "PERSONAL_INFO"
+  | "CREATOR_FILTER";
+
+/** video-service — CaptionModeration.Field: which part of a caption a flag was found in. */
+export type CaptionField = "TITLE" | "DESCRIPTION" | "TAGS";
 
 /**
  * One cursor-paged page of comments. The cursor is Cassandra's own paging state, base64'd — it is
@@ -62,6 +88,28 @@ export interface AdminCommentPage {
   hasMore: boolean;
 }
 
+/**
+ * GET /api/v1/interactions/admin/users/{userId}/comment-restriction — interaction-service
+ * CommentRestrictionResponse: where an account stands with the comment strikes.
+ *
+ * A strike is a comment the rules refused or an admin removed; enough of them within a day stop
+ * the account commenting for a while, each restriction in a row longer than the last. Kept in
+ * Redis and failing open, so an unreachable store reads as a clean record — which is also how the
+ * service treats the account then.
+ */
+export interface CommentRestrictionResponse {
+  userId: string;
+  /** When the current restriction ends; null when there is none. */
+  restrictedUntil: string | null;
+  /** Strikes counting toward the next restriction. A restriction starting resets them to 0. */
+  strikes: number;
+  /**
+   * Restrictions in a row: back to 0 after 30 days (the step window) without one. The next
+   * restriction lasts the duration after this many — 1 hour, a day, a week by default.
+   */
+  step: number;
+}
+
 /** admin-service — entity/ReportTargetType.java */
 export type ReportTargetType = "USER" | "VIDEO" | "COMMENT";
 
@@ -71,8 +119,10 @@ export type ModerationActionType =
   | "UNBAN_USER"
   | "TAKEDOWN_VIDEO"
   | "RESTORE_VIDEO"
+  | "PURGE_VIDEO"
   | "REMOVE_COMMENT"
   | "WARN_USER"
+  | "REVOKE_SESSIONS"
   | "DISMISS_REPORT";
 
 /** auth-service — entity/UserRole.java */
@@ -112,6 +162,43 @@ export interface AdminUserResponse {
   /** First linked social provider, or null for an email/password account. */
   provider: AuthProvider | null;
   linkedProviders: AuthProvider[];
+}
+
+/**
+ * What auth-service records in `auth_security_events`. Names match the Java enum; an unknown
+ * one is possible if the service ships a new kind before the console does, so the timeline
+ * falls back rather than assuming this list is complete.
+ */
+export type SecurityEventType =
+  | "LOGIN_SUCCEEDED"
+  | "LOGIN_FAILED"
+  | "LOGOUT"
+  | "PASSWORD_RESET_REQUESTED"
+  | "PASSWORD_RESET_COMPLETED"
+  | "EMAIL_CHANGED"
+  | "EMAIL_VERIFIED"
+  | "MFA_CHALLENGED"
+  | "DEVICE_REMEMBERED"
+  | "SESSIONS_REVOKED";
+
+/**
+ * GET /api/v1/auth/admin/users/{id}/security-events — one entry of an account's security log.
+ *
+ * Token refreshes are not in here, and neither are bans: refreshes because a client makes one
+ * every fifteen minutes, bans because they are moderation decisions already recorded with their
+ * admin and reason in admin-service's audit log.
+ */
+export interface SecurityEventResponse {
+  id: string;
+  eventType: SecurityEventType;
+  /** The address api-gateway resolved, or null when nothing HTTP caused the entry. */
+  ipAddress: string | null;
+  userAgent: string | null;
+  /** "Chrome on macOS" — null when the agent named nothing recognised. */
+  deviceLabel: string | null;
+  /** A short phrase: the new address, why sessions were revoked. Never a secret. */
+  detail: string | null;
+  createdAt: string;
 }
 
 /** GET /api/v1/users?ids= — user-service UserProfileResponse. Used to name a video's owner. */
@@ -177,12 +264,30 @@ export interface AdminVideoResponse {
   /** When the owner deleted the video. Null for a video that has never been deleted. */
   deletedAt: string | null;
   /**
-   * When the VideoDeletedEvent for this row was acknowledged by the broker. Null both for a
-   * live video and for one deleted so recently the outbox poll (every 5s) hasn't caught up yet.
+   * When the VideoPurgedEvent went out — media-worker erases the media on it, so from here on
+   * nothing plays. Null for a live video and for a deleted one still in the trash.
    */
-  deleteEventPublishedAt: string | null;
+  purgeEventPublishedAt: string | null;
   /** What the classifier scored. Admin reads only — the public API withholds it. */
   moderation: ModerationSummary | null;
+  /**
+   * What text moderation made of the title, description and tags at publish. Admin reads only,
+   * like `moderation`. Null for an upload published before captions were screened.
+   */
+  textModeration: TextModerationSummary | null;
+}
+
+/** video-service — TextModerationResponse. */
+export interface TextModerationSummary {
+  /** Never REJECTED in practice: a caption that bad refuses the publish, and nothing is stored. */
+  verdict: ModerationSummary["verdict"];
+  /** "DESCRIPTION:SPAM:link:bit.ly" — field, category, what fired — classifier notes included. */
+  flags: string[];
+  /** `rules-<list>+admin-<revision>`, then `+<model version>` when the classifier answered. */
+  version: string;
+  /** False when the verdict was only recorded, not acted on — the rules were measuring. */
+  enforced: boolean;
+  checkedAt: string;
 }
 
 /** The classifier's account of a video, the only explanation an auto-removed one carries. */
@@ -315,6 +420,17 @@ export interface TopVideoResponse {
 }
 
 /**
+ * GET /api/v1/analytics/engagement/videos/{videoId} — VideoEngagementSummaryResponse. All-time,
+ * counted from the event stream: likes net of unlikes, comments net of deleted ones.
+ */
+export interface VideoEngagementSummaryResponse {
+  videoId: string;
+  likes: number;
+  comments: number;
+  shares: number;
+}
+
+/**
  * GET /api/v1/admin/settings/moderation — admin-service proxying moderation-service's /config.
  *
  * `values` is passed through untyped on purpose: admin-service does not read it either, so a
@@ -323,6 +439,80 @@ export interface TopVideoResponse {
 export interface ModerationSettingsResponse {
   values: Record<string, string | number | boolean | string[]>;
   reachable: boolean;
+}
+
+/**
+ * moderation-lib — AdminTerm.Action. HOLD and REJECT add a term at severity 2 and 3; EXEMPT takes a
+ * term out of the list every service ships with, for a false positive until the next release.
+ */
+export type ModerationTermAction = "HOLD" | "REJECT" | "EXEMPT";
+
+/** GET /api/v1/admin/moderation/terms — ModerationTermResponse. Live terms only, newest first. */
+export interface ModerationTermResponse {
+  id: string;
+  /** As the admin typed it, sanitized to one line. How it is written decides how it matches. */
+  term: string;
+  /** Null for EXEMPT, which flags nothing. */
+  category: TextCategory | null;
+  action: ModerationTermAction;
+  note: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+/** POST /api/v1/admin/moderation/terms — AddModerationTermRequest. */
+export interface AddModerationTermRequest {
+  term: string;
+  /** Required for HOLD and REJECT, never CREATOR_FILTER; ignored for EXEMPT. */
+  category: TextCategory | null;
+  action: ModerationTermAction;
+  note: string | null;
+}
+
+/** GET /api/v1/admin/moderation/terms/summary — ModerationTermSummaryResponse. */
+export interface ModerationTermSummaryResponse {
+  /** The `version:` line of the list the services ship with. */
+  shippedVersion: string;
+  shippedTerms: number;
+  /** Moved by every add and every removal; 0 before the first. */
+  revision: number;
+  /** Live admin terms, EXEMPT included. */
+  adminTerms: number;
+  /** What a verdict made with this list records: `rules-<shipped>+admin-<revision>`. */
+  version: string;
+}
+
+/** moderation-lib — Surface: where a text would be shown, which changes what a link means. */
+export type TextSurface = "COMMENT" | "VIDEO_TITLE" | "VIDEO_DESCRIPTION" | "VIDEO_TAGS";
+
+/** moderation-lib — Decision, least severe first. */
+export type TextDecision = "ALLOW" | "HOLD" | "REJECT";
+
+/** moderation-lib — Flag.Source: who raised a flag, which decides which switch it answers to. */
+export type TextFlagSource = "RULES" | "MODEL" | "CREATOR";
+
+/** moderation-lib — Flag, as the preview returns it: whole, where stored records keep only `CATEGORY:rule`. */
+export interface TextFlagResponse {
+  category: TextCategory;
+  /** 3 refuses the text, 2 sends it to a person, 1 is a note that decides nothing. */
+  severity: number;
+  /** What fired: `term:<term>`, `link:<domain>`, `phone`, `model:<label>:<score>`… */
+  rule: string;
+  source: TextFlagSource;
+}
+
+/**
+ * POST /api/v1/admin/moderation/text-preview — TextPreviewResponse. What screening makes of a text
+ * right now, before any service's switches: whether a service acts on a HOLD or a REJECT is its
+ * own enforce setting, and a video owner's comment filters come on top.
+ */
+export interface TextPreviewResponse {
+  decision: TextDecision;
+  /** Everything that fired, most severe first, notes included. */
+  flags: TextFlagResponse[];
+  version: string;
+  /** False when the classifier is off or did not answer: the decision is then the rules' alone. */
+  classifierAnswered: boolean;
 }
 
 /** common-lib ApiResponse<T> — every service wraps its payload in this */

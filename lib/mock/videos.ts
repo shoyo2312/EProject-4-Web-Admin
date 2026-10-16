@@ -2,9 +2,11 @@ import type {
   AdminVideoResponse,
   DailyVideoStatsResponse,
   ModerationSummary,
+  TextModerationSummary,
   VideoStatus,
   VideoVisibility,
 } from "@/lib/api/types";
+import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import { MOCK_NOW, between, pick, seededRandom } from "./random";
 
 const TITLES = [
@@ -62,6 +64,17 @@ function moderationFor(status: VideoStatus, i: number, checkedAt: string): Moder
     case "REJECTED":
       return { ...base, verdict: "REJECTED", maxScore: 0.94, suspiciousFrames: 4, totalFrames: 10 };
     case "PENDING_REVIEW":
+      if (heldForCaption(status, i)) {
+        // The frames passed; media-worker held it for the caption and kept their scores.
+        return {
+          ...base,
+          verdict: "REVIEW",
+          maxScore: 0.06,
+          suspiciousFrames: 0,
+          totalFrames: 10,
+          reason: "Caption held for review by text moderation",
+        };
+      }
       return i % 4 === 0
         ? {
             ...base,
@@ -82,6 +95,40 @@ function moderationFor(status: VideoStatus, i: number, checkedAt: string): Moder
   }
 }
 
+/** A held upload whose caption, not its frames, is what text moderation stopped. */
+function heldForCaption(status: VideoStatus, i: number): boolean {
+  return status === "PENDING_REVIEW" && i % 4 === 1;
+}
+
+const TEXT_RULES = "rules-2026.10.13+admin-3";
+
+/**
+ * What text moderation left on the caption. Most of these uploads predate it; the two shapes the
+ * console has to explain are a caption that held its video on its own, and a passed one carrying a
+ * classifier's note — recorded, deciding nothing.
+ */
+function textModerationFor(status: VideoStatus, i: number, checkedAt: string): TextModerationSummary | null {
+  if (heldForCaption(status, i)) {
+    return {
+      verdict: "REVIEW",
+      flags: ["DESCRIPTION:SPAM:link:bit.ly", "DESCRIPTION:PERSONAL_INFO:phone"],
+      version: `${TEXT_RULES}+hsd-v1`,
+      enforced: true,
+      checkedAt,
+    };
+  }
+  if (status === "PUBLISHED" && i % 6 === 2) {
+    return {
+      verdict: "APPROVED",
+      flags: ["TITLE:HATE:model:HATE:0.82"],
+      version: `${TEXT_RULES}+hsd-v1`,
+      enforced: true,
+      checkedAt,
+    };
+  }
+  return null;
+}
+
 /**
  * 48 uploads, seeded so server render and client hydration agree. Shapes a naive fixture would
  * miss but the real data has: a FAILED video carrying its failure reason, a PROCESSING one with
@@ -96,12 +143,18 @@ export const mockVideos: AdminVideoResponse[] = (() => {
     const commentsDisabled = i % 9 === 4;
     const createdAt = new Date(MOCK_NOW - between(rand, 1, 240) * DAY_MS).toISOString();
     const views = ready ? between(rand, 120, 480_000) : 0;
+    // Owner-deleted rows: two still in the trash (one about to run out), one already purged.
+    const deletedDaysAgo = ({ 3: 2, 7: 28, 12: 40 } as Record<number, number | undefined>)[i];
 
     return {
       id: String(7_310_000_000_000_000_000n + BigInt(i * 2048)),
       userId: String(7_300_000_000_000_000_000n + BigInt(between(rand, 0, 59) * 4096)),
       title: `${pick(rand, TITLES)}${i > TITLES.length ? ` #${i}` : ""}`,
-      description: i % 5 === 0 ? null : "Shot on a phone, edited on a train.",
+      description: heldForCaption(status, i)
+        ? "Cheap followers at bit.ly/f0ll0w — text 0912 345 678"
+        : i % 5 === 0
+          ? null
+          : "Shot on a phone, edited on a train.",
       thumbnailUrl: ready ? `https://cdn.example.com/thumbs/${i}.jpg` : null,
       previewUrl: null,
       hlsUrl: ready ? `https://cdn.example.com/hls/${i}/master.m3u8` : null,
@@ -122,10 +175,14 @@ export const mockVideos: AdminVideoResponse[] = (() => {
       failureReason:
         status === "FAILED" ? "ffmpeg: moov atom not found — upload truncated" : null,
       takedownReason: status === "TAKEN_DOWN" ? pick(rand, TAKEDOWN_REASONS) : null,
-      // One row stands in for an owner-deleted video, which the admin listing now includes.
-      deletedAt: i === 3 ? new Date(MOCK_NOW - 2 * DAY_MS).toISOString() : null,
-      deleteEventPublishedAt: i === 3 ? new Date(MOCK_NOW - 2 * DAY_MS + 5_000).toISOString() : null,
+      deletedAt:
+        deletedDaysAgo != null ? new Date(MOCK_NOW - deletedDaysAgo * DAY_MS).toISOString() : null,
+      purgeEventPublishedAt:
+        deletedDaysAgo != null && deletedDaysAgo > TRASH_RETENTION_DAYS
+          ? new Date(MOCK_NOW - (deletedDaysAgo - TRASH_RETENTION_DAYS) * DAY_MS).toISOString()
+          : null,
       moderation: moderationFor(status, i, createdAt),
+      textModeration: textModerationFor(status, i, createdAt),
     };
   }).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 })();

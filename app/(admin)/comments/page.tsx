@@ -5,19 +5,17 @@ import { KpiCards, type KpiCard } from "@/components/dashboard/kpi-cards";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
-import {
-  getDailyAdminStats,
-  listComments,
-  listVideos,
-  referenceNow,
-} from "@/lib/api/admin";
+import { getDailyAdminStats } from "@/lib/api/analytics";
+import { decorateCommentPage, getComments, listComments } from "@/lib/api/comments";
+import { referenceNow } from "@/lib/api/shared";
+import { getVideo, listVideos } from "@/lib/api/videos";
 import { historyUpTo, isoDay, resolveWindow } from "@/lib/api/window";
 import { deltaPercent, spark, sumLast } from "@/lib/series";
 import { formatNumber } from "@/lib/format";
 import type { AdminCommentFilter } from "@/lib/api/types";
-import { decoratePage, type CommentPageView } from "./actions";
+import type { CommentPageView } from "@/lib/comments";
 
-const FILTERS: AdminCommentFilter[] = ["THREAD", "REPLIES", "REMOVED"];
+const FILTERS: AdminCommentFilter[] = ["THREAD", "REPLIES", "REMOVED", "HELD"];
 
 export default async function CommentsPage({
   searchParams,
@@ -25,6 +23,8 @@ export default async function CommentsPage({
   searchParams: Promise<{
     q?: string;
     videoId?: string;
+    /** A comment to pin above the thread — where a report or a notification on one lands. */
+    comment?: string;
     filter?: string;
     p?: string;
     asOf?: string;
@@ -42,22 +42,43 @@ export default async function CommentsPage({
   let videos;
   let adminStats;
   let comments: CommentPageView | null = null;
+  let linked: CommentPageView | null | undefined;
   try {
-    // Platform-wide, unlike everything else on this page: interaction-service stores comments
-    // partitioned by video, so there is no comment series to trend — the one dated record of
-    // comment moderation is the audit log.
-    adminStats = await getDailyAdminStats(window.fetchDays);
-    // The picker is a search box, not a directory: the matches that fit the rail, and the
-    // admin narrows with q rather than paging to find a video.
-    videos = (await listVideos({ q, size: 50 })).content;
-    // Only a video that is actually in the list may be opened: a videoId left in the URL from a
-    // previous search would otherwise render a thread with nothing selected beside it.
+    const [stats, matches] = await Promise.all([
+      // Platform-wide, unlike everything else on this page: interaction-service stores comments
+      // partitioned by video, so there is no comment series to trend — the one dated record of
+      // comment moderation is the audit log.
+      getDailyAdminStats(window.fetchDays),
+      // The picker is a search box, not a directory: the matches that fit the rail, and the
+      // admin narrows with q rather than paging to find a video.
+      listVideos({ q, size: 50 }),
+    ]);
+    adminStats = stats;
+    videos = matches.content;
+    // A video linked to directly — from its own page, or a report on one of its comments — is
+    // older than the fifty the rail holds once the platform has more, so it is looked up by id and
+    // joins the top of the rail.
+    if (videoId && !q && !videos.some((v) => v.id === videoId)) {
+      const linked = await getVideo(videoId);
+      if (linked) videos = [linked, ...videos];
+    }
+    // Only a video that is actually in the list may be opened: a videoId beside a search it does
+    // not match would otherwise render a thread with nothing selected beside it.
     const selected = videoId && videos.some((v) => v.id === videoId) ? videoId : null;
     // Only the first page. The rest is pulled in by the table as the admin asks for it — a thread
     // can run to thousands, and before this it was read as one slab and silently cut off at 50.
     comments = selected
-      ? await decoratePage(selected, await listComments(selected, { filter: selectedFilter }))
+      ? await decorateCommentPage(selected, await listComments(selected, { filter: selectedFilter }))
       : null;
+    // The comment a link named, by id: a thread is paged newest first, so a reported comment from
+    // last month would otherwise be any number of Load more clicks down. A failed lookup is null
+    // rather than a failed page — the thread is still worth showing.
+    if (selected && params.comment) {
+      const found = await getComments(selected, [params.comment]).catch(() => null);
+      linked = found
+        ? await decorateCommentPage(selected, { items: found, nextCursor: null, hasMore: false })
+        : null;
+    }
   } catch (error) {
     return (
       <>
@@ -70,7 +91,7 @@ export default async function CommentsPage({
   const selected = videos.find((v) => v.id === videoId && comments !== null) ?? null;
 
   // Daily and uncut, so the delta compares the period against the period before it.
-  const removalCounts = historyUpTo(adminStats, window).map((d) => d.commentsRemoved);
+  const removalCounts = historyUpTo(adminStats, window, (d) => d.commentsRemoved);
 
   const cards: KpiCard[] = [
     {
@@ -122,14 +143,15 @@ export default async function CommentsPage({
             videoId={selected.id}
             filter={selectedFilter}
             videoTitle={selected.title}
+            linked={linked}
           />
         ) : (
           <Card className="flex flex-col items-center justify-center gap-2 px-6 py-20 text-center">
             <MessageSquare className="h-5 w-5 text-ink-faint" />
             <p className="text-[12px] text-ink-soft">Pick a video to read its thread.</p>
             <p className="max-w-sm text-[11px] text-ink-faint">
-              There is no platform-wide comment feed: interaction-service stores comments
-              partitioned by video, so a thread is only reachable through the video it is on.
+              Comments are read one video at a time — there is no feed of every comment on the
+              platform. Reported comments open straight from the Reports Queue.
             </p>
           </Card>
         )}

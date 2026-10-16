@@ -1,4 +1,5 @@
 import type { UserStatus, VideoStatus } from "@/lib/api/types";
+import { USER_STATUS_LABELS, VIDEO_STATUS_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 const OK = "border-success/25 bg-success-bg text-success";
@@ -45,7 +46,7 @@ function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md border px-2 text-[11px] font-medium",
+        "inline-flex items-center rounded-md border px-2 text-[11px] font-medium whitespace-nowrap",
         dense ? "py-0.5" : "py-1",
         style,
         dimmed && "opacity-50",
@@ -67,7 +68,7 @@ export function VideoStatusBadge({
 }) {
   return (
     <Pill style={VIDEO_STATUS_STYLES[status]} dense={dense} dimmed={dimmed}>
-      {status}
+      {VIDEO_STATUS_LABELS[status]}
     </Pill>
   );
 }
@@ -83,7 +84,7 @@ export function UserStatusBadge({
 }) {
   return (
     <Pill style={USER_STATUS_STYLES[status]} dense={dense} dimmed={dimmed}>
-      {status}
+      {USER_STATUS_LABELS[status]}
     </Pill>
   );
 }

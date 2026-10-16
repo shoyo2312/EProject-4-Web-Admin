@@ -70,6 +70,8 @@ function thread(videoId: string): AdminCommentResponse[] {
       hasReplies: false,
       createdAt: new Date(base + i * between(rand, 60_000, 4 * 3_600_000)).toISOString(),
       deletedAt: rand() < 0.12 ? new Date(base + (i + 1) * 3_600_000).toISOString() : null,
+      status: "VISIBLE",
+      moderationReason: null,
     });
   }
 
@@ -79,6 +81,22 @@ function thread(videoId: string): AdminCommentResponse[] {
     const replies = built.filter((c) => c.parentId === comment.commentId);
     comment.replyCount = replies.filter((c) => c.deletedAt === null).length;
     comment.hasReplies = replies.length > 0;
+  }
+
+  // What text moderation left on them, decided off the text rather than the generator so the
+  // thread itself stays as it was. The spam link waits for the creator — unless something already
+  // hangs under it, which a held comment can never have, so that owner waived links — and the
+  // hostile one went up with a classifier's note on it.
+  for (const comment of built) {
+    if (comment.content.includes("example-spam.test")) {
+      comment.moderationReason = "SPAM:link:example-spam.test";
+      if (!comment.hasReplies) {
+        comment.status = "HELD";
+        comment.likeCount = 0;
+      }
+    } else if (comment.content.startsWith("you have no idea")) {
+      comment.moderationReason = "HATE:model:HATE:0.82";
+    }
   }
 
   // Newest first, matching the clustering order Cassandra returns them in.
@@ -104,13 +122,14 @@ export function mockCommentPage(
   size: number,
 ): AdminCommentPage {
   const all = thread(videoId);
-  const rows =
-    filter === "THREAD"
-      ? all.filter((c) => c.parentId === null)
-      : filter === "REPLIES"
-        ? all.filter((c) => c.parentId !== null)
-        : all.filter((c) => c.deletedAt !== null);
-  return slice(rows, cursor, size);
+  const keep: Record<AdminCommentFilter, (c: AdminCommentResponse) => boolean> = {
+    // A held comment has no row in the thread's index, so the service's thread view never shows it.
+    THREAD: (c) => c.parentId === null && c.status !== "HELD",
+    REPLIES: (c) => c.parentId !== null,
+    REMOVED: (c) => c.deletedAt !== null,
+    HELD: (c) => c.status === "HELD" && c.deletedAt === null,
+  };
+  return slice(all.filter(keep[filter]), cursor, size);
 }
 
 /** One comment's replies, oldest first — the order the conversation happened in. */

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { ReasonForm } from "@/components/moderation/reason-form";
+import { Segmented } from "@/components/ui/segmented";
 import type { ModerationActionType, ReportTargetType } from "@/lib/api/types";
+import { BAN_DURATIONS, banDaysOf, type BanDuration } from "@/lib/moderation";
 import { cn } from "@/lib/utils";
 
 /**
@@ -9,6 +12,11 @@ import { cn } from "@/lib/utils";
  * purpose: the decision carries the target's own targetType, so offering BAN_USER against a
  * VIDEO would write an audit row no consumer can apply. RESTORE_VIDEO and UNBAN_USER are absent
  * for the same reason — a report is never the thing that undoes an action.
+ *
+ * WARN_USER is the one every target offers: the warning carries the reported target and
+ * notification-service finds the person behind it — the account itself, the video's owner, the
+ * comment's author. It leaves the target up and still closes every report standing against it,
+ * so it is instead of a takedown or a removal, not on top of one.
  */
 export const ACTIONS_BY_TARGET: Record<
   ReportTargetType,
@@ -16,10 +24,12 @@ export const ACTIONS_BY_TARGET: Record<
 > = {
   VIDEO: [
     { value: "TAKEDOWN_VIDEO", label: "Take down video" },
+    { value: "WARN_USER", label: "Warn owner" },
     { value: "DISMISS_REPORT", label: "Dismiss report" },
   ],
   COMMENT: [
     { value: "REMOVE_COMMENT", label: "Remove comment" },
+    { value: "WARN_USER", label: "Warn author" },
     { value: "DISMISS_REPORT", label: "Dismiss report" },
   ],
   USER: [
@@ -50,9 +60,10 @@ const DISMISS_PRESETS = [
 ] as const;
 
 /**
- * The decision form shared by the queue and the report ledger: pick an action, pick or write the
- * reason, confirm. Both surfaces write the same audit row from it, so it lives here rather than
- * being typed out twice and drifting — the presets are the wording that ends up in the log.
+ * The decision form shared by the queue and the report ledger: pick an action, then the reason
+ * strip every enforcement uses. Both surfaces write the same audit row from it, so it lives here
+ * rather than being typed out twice and drifting — the presets are the wording that ends up in
+ * the log.
  */
 export function ResolveForm({
   targetType,
@@ -65,7 +76,8 @@ export function ResolveForm({
   /** The reporter's own scenario label, offered as the first preset for an enforcement. */
   reporterReason: string;
   submitting: boolean;
-  onSubmit: (action: ModerationActionType, reason: string) => void;
+  /** `banDays` is null for a permanent ban and for every action that is not a ban. */
+  onSubmit: (action: ModerationActionType, reason: string, banDays: number | null) => void;
   onCancel: () => void;
 }) {
   const choices = ACTIONS_BY_TARGET[targetType];
@@ -73,8 +85,10 @@ export function ResolveForm({
   // initial state and reopening a row starts clean — no reset effect to keep in step.
   const [action, setAction] = useState<ModerationActionType>(choices[0].value);
   const [reason, setReason] = useState("");
+  const [duration, setDuration] = useState<BanDuration>("permanent");
 
   const dismissing = action === "DISMISS_REPORT";
+  const banning = action === "BAN_USER";
   const presets = dismissing
     ? [...DISMISS_PRESETS]
     : // The reporter's own words first: most enforcements agree with the report, and retyping
@@ -102,62 +116,29 @@ export function ResolveForm({
         ))}
       </div>
 
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        {presets.map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            aria-pressed={reason === preset}
-            // Clicking the highlighted chip is how an admin says "not that one", so it clears
-            // the box rather than putting back what they just rejected.
-            onClick={() => setReason((current) => (current === preset ? "" : preset))}
-            className={cn(
-              "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
-              reason === preset
-                ? "border-ink bg-ink text-surface"
-                : "border-line bg-surface text-ink-soft hover:bg-canvas",
-            )}
-          >
-            {preset}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setReason("")}
-          className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] text-ink-faint transition-colors hover:bg-canvas"
-        >
-          Other…
-        </button>
-      </div>
+      {banning ? (
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className="label-caps text-ink-soft">Duration</span>
+          <Segmented options={BAN_DURATIONS} value={duration} onChange={setDuration} />
+        </div>
+      ) : null}
 
-      <div className="flex items-center gap-2">
-        <input
-          autoFocus
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Reason — the audit row is this string and nothing else, so write what you saw"
-          className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-[11px] outline-none placeholder:text-ink-faint"
-        />
-        <button
-          type="button"
-          onClick={() => onSubmit(action, reason)}
-          disabled={submitting || !reason.trim()}
-          className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
-        >
-          {submitting
-            ? "Submitting..."
-            : dismissing
-              ? "Confirm dismissal"
-              : "Confirm action"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
-        >
-          Cancel
-        </button>
-      </div>
+      <ReasonForm
+        presets={presets}
+        reason={reason}
+        onReason={setReason}
+        onSubmit={() => onSubmit(action, reason, banning ? banDaysOf(duration) : null)}
+        onCancel={onCancel}
+        submitting={submitting}
+        placeholder="Reason — the audit row is this string and nothing else, so write what you saw"
+        confirmLabel={
+          dismissing
+            ? "Confirm dismissal"
+            : banning && duration !== "permanent"
+              ? `Ban for ${duration}d`
+              : "Confirm action"
+        }
+      />
     </>
   );
 }

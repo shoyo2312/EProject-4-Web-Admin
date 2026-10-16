@@ -1,35 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  getReportCount,
-  listTargetActions,
-  moderateUser,
-} from "@/lib/api/admin";
-import type { ModerationActionResponse } from "@/lib/api/types";
+import { getModerationDetail, type ModerationDetail } from "@/lib/api/moderation";
+import { liftCommentRestriction, moderateUser } from "@/lib/api/users";
+import type { ModerationResult } from "@/lib/moderation";
 
-export interface ModerationResult {
-  ok: boolean;
-  message: string;
-}
-
-export interface ModerationDetail {
-  reportCount: number;
-  actions: ModerationActionResponse[];
-}
-
-/**
- * The report count and the moderation-action log for one account, fetched together. Called from
- * the table's expandable row so nothing loads until an admin opens it.
- */
-export async function userModerationDetailAction(
-  userId: string,
-): Promise<ModerationDetail> {
-  const [reportCount, actions] = await Promise.all([
-    getReportCount("USER", userId),
-    listTargetActions("USER", userId),
-  ]);
-  return { reportCount, actions };
+/** One account's report count and moderation history, for its row in the users table. */
+export async function userModerationDetailAction(userId: string): Promise<ModerationDetail> {
+  return getModerationDetail("USER", userId);
 }
 
 /**
@@ -39,7 +17,7 @@ export async function userModerationDetailAction(
  */
 export async function moderateUserAction(
   userId: string,
-  action: "ban" | "unban",
+  action: "ban" | "unban" | "warn" | "revokeSessions",
   reason: string,
   /** Days until the ban lapses; null is permanent. auth-service lifts it on a sweep. */
   banDays: number | null = null,
@@ -55,13 +33,49 @@ export async function moderateUserAction(
   }
 
   revalidatePath("/users");
+  return { ok: true, message: recordedMessage(action, banDays) };
+}
+
+function recordedMessage(
+  action: "ban" | "unban" | "warn" | "revokeSessions",
+  banDays: number | null,
+): string {
+  switch (action) {
+    case "ban":
+      return banDays === null
+        ? "Ban recorded. Sessions are revoked once auth-service consumes the event."
+        : `Ban recorded for ${banDays} day${banDays === 1 ? "" : "s"}. It lifts on its own once the deadline passes.`;
+    case "unban":
+      return "Unban recorded. The account can sign in again once the event is consumed.";
+    case "warn":
+      return "Warning recorded. The account is notified once notification-service consumes the event.";
+    case "revokeSessions":
+      return "Sign-out recorded. Every session ends once auth-service consumes the event; the account stays active.";
+  }
+}
+
+/**
+ * No reason asked for, because none would be kept: this is not a decision against the account, so
+ * admin-service records nothing and the Audit Log never shows it — interaction-service logs the
+ * admin's id beside the account's. Unlike everything above, it applies at once; there is no event
+ * to wait for.
+ */
+export async function liftCommentRestrictionAction(
+  userId: string,
+  /** Whether a restriction was in force, or only strikes counting toward one. */
+  restricted: boolean,
+): Promise<ModerationResult> {
+  try {
+    await liftCommentRestriction(userId);
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+  }
+
+  revalidatePath(`/users/${userId}`);
   return {
     ok: true,
-    message:
-      action === "ban"
-        ? banDays === null
-          ? "Ban recorded. Sessions are revoked once auth-service consumes the event."
-          : `Ban recorded for ${banDays} day${banDays === 1 ? "" : "s"}. It lifts on its own once the deadline passes.`
-        : "Unban recorded. The account can sign in again once the event is consumed.",
+    message: restricted
+      ? "Restriction lifted — the account can comment again now, with no strikes against it. interaction-service logged it under your id; the Audit Log does not show it."
+      : "Strikes cleared — the next restriction, if any, starts again from the shortest. interaction-service logged it under your id; the Audit Log does not show it.",
   };
 }
