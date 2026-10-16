@@ -20,7 +20,7 @@ export type ReportStatus = "PENDING" | "RESOLVED" | "DISMISSED";
  * "removed" applied to the rows on screen would mean "removed among the twenty loaded", which
  * reads as "removed in this thread" and is not.
  */
-export type AdminCommentFilter = "THREAD" | "REPLIES" | "REMOVED";
+export type AdminCommentFilter = "THREAD" | "REPLIES" | "REMOVED" | "HELD";
 
 /**
  * GET /api/v1/interactions/admin/videos/{videoId}/comments — served by interaction-service.
@@ -50,7 +50,18 @@ export interface AdminCommentResponse {
   createdAt: string;
   /** Non-null once removed — by its author, the video owner, or an admin. */
   deletedAt: string | null;
+  /** HELD while it waits for the video's owner to approve it — such a comment was never public. */
+  status: AdminCommentStatus;
+  /**
+   * Every flag text moderation raised on it, most severe first, "; " between them — see
+   * lib/text-flags. Null when nothing fired. A posted comment with one is something a filter let
+   * through: a link its owner waived, a classifier note.
+   */
+  moderationReason: string | null;
 }
+
+/** interaction-service — entity/CommentStatus.java. Rows written before held comments read VISIBLE. */
+export type AdminCommentStatus = "VISIBLE" | "HELD";
 
 /** moderation-lib — Category.java: what text moderation files a flag under. */
 export type TextCategory =

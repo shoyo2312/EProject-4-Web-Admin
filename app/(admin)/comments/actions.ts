@@ -52,6 +52,8 @@ export async function removeCommentAction(
   videoId: string,
   commentId: string,
   reason: string,
+  /** Waiting for the video's owner: never counted, so no total moves when it goes. */
+  held = false,
 ): Promise<ModerationResult> {
   if (!reason.trim()) {
     return { ok: false, message: "A reason is required — it goes into the audit log." };
@@ -66,7 +68,8 @@ export async function removeCommentAction(
   revalidatePath("/comments");
   return {
     ok: true,
-    message:
-      "Removal recorded. The comment leaves the thread once interaction-service consumes the event, and the video's comment count drops with it.",
+    message: held
+      ? "Removal recorded. The comment was never public, so no count changes; it leaves the creator's queue once interaction-service consumes the event."
+      : "Removal recorded. The comment leaves the thread once interaction-service consumes the event, and the video's comment count drops with it.",
   };
 }

@@ -10,6 +10,7 @@ import {
   loadRepliesAction,
   removeCommentAction,
 } from "@/app/(admin)/comments/actions";
+import { CommentModeration } from "@/components/comments/comments-table/comment-moderation";
 import { Avatar } from "@/components/ui/avatar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Segmented } from "@/components/ui/segmented";
@@ -30,18 +31,21 @@ const FILTER_OPTIONS: readonly { value: AdminCommentFilter; label: string }[] = 
   { value: "THREAD", label: "Thread" },
   { value: "REPLIES", label: "Replies" },
   { value: "REMOVED", label: "Removed" },
+  { value: "HELD", label: "Held" },
 ];
 
 const FILTER_HINTS: Record<AdminCommentFilter, string> = {
   THREAD: "Top-level comments, newest first — replies open per comment",
   REPLIES: "Every reply on this video, whichever comment it hangs under",
   REMOVED: "Everything already taken down, top-level and replies alike",
+  HELD: "Waiting for the creator's approval, top-level and replies alike — never public yet",
 };
 
 const EMPTY_MESSAGE: Record<AdminCommentFilter, string> = {
   THREAD: "No comments on this video.",
   REPLIES: "Nobody has replied to a comment on this video.",
   REMOVED: "Nothing has been removed from this video.",
+  HELD: "Nothing on this video is waiting for approval.",
 };
 
 function displayName(profile: UserProfileResponse | undefined, userId: string) {
@@ -286,7 +290,12 @@ function CommentRow({
 
   function submit() {
     startSubmit(async () => {
-      const outcome = await removeCommentAction(comment.videoId, comment.commentId, reason ?? "");
+      const outcome = await removeCommentAction(
+        comment.videoId,
+        comment.commentId,
+        reason ?? "",
+        comment.status === "HELD",
+      );
       setResult(outcome.message);
       if (outcome.ok) {
         setReason(null);
@@ -372,6 +381,7 @@ function CommentRow({
             >
               {comment.content}
             </p>
+            <CommentModeration comment={comment} />
 
             <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-faint">
               {/* Kept, quiet: nobody reads the id, but an audit row or a support ticket names it. */}
@@ -441,6 +451,10 @@ function CommentRow({
               placeholder="Reason for removing this comment — pick one above or write your own"
               confirmLabel="Confirm removal"
             />
+            <p className="mt-2 text-[11px] text-ink-faint">
+              A removal is a strike against its author: enough strikes in a day and they cannot
+              comment for a while.
+            </p>
           </div>
         ) : null}
 

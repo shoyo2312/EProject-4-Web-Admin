@@ -15,7 +15,7 @@ import { formatNumber } from "@/lib/format";
 import type { AdminCommentFilter } from "@/lib/api/types";
 import type { CommentPageView } from "@/lib/comments";
 
-const FILTERS: AdminCommentFilter[] = ["THREAD", "REPLIES", "REMOVED"];
+const FILTERS: AdminCommentFilter[] = ["THREAD", "REPLIES", "REMOVED", "HELD"];
 
 export default async function CommentsPage({
   searchParams,
