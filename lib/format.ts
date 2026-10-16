@@ -85,6 +85,18 @@ export function relativeTime(iso: string, now = Date.now()) {
 }
 
 /**
+ * How long until an instant, the way `relativeTime` says how long since one: "45m", "5h", "6d".
+ * Rounded up under the hour, so something with seconds to go never reads "0m".
+ */
+export function timeLeft(iso: string, now: number) {
+  const minutes = Math.ceil((new Date(iso).getTime() - now) / 60_000);
+  if (minutes < 60) return `${Math.max(minutes, 1)}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
+}
+
+/**
  * DD/MM/YYYY everywhere, with the locale pinned rather than left to the viewer's
  * browser: 06/09 has to mean one date whoever opens the console, and a chart axis
  * that silently swaps day and month is a misreading nobody notices.

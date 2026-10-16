@@ -1,4 +1,9 @@
-import type { ModerationActionType, ReportTargetType, VideoStatus } from "@/lib/api/types";
+import type {
+  CommentRestrictionResponse,
+  ModerationActionType,
+  ReportTargetType,
+  VideoStatus,
+} from "@/lib/api/types";
 
 /** What a moderation server action answers: whether it was recorded, and the sentence to show. */
 export interface ModerationResult {
@@ -218,3 +223,26 @@ export const PRESET_REASONS: Record<
     "Off-platform solicitation",
   ],
 };
+
+/**
+ * An account's comment strikes as its page reads them: until when it cannot comment, if at all,
+ * and what lifting would clear — the restriction itself, or only the strikes and the step that
+ * bring the next one sooner and make it longer. Null when there is nothing to clear.
+ *
+ * Measured against `now` rather than trusting the field alone: the page can be read after the
+ * restriction it was rendered with has run out.
+ */
+export function commentStanding(
+  restriction: CommentRestrictionResponse,
+  now: number,
+): { restrictedUntil: string | null; lifts: "restriction" | "strikes" | null } {
+  const restrictedUntil =
+    restriction.restrictedUntil && Date.parse(restriction.restrictedUntil) > now
+      ? restriction.restrictedUntil
+      : null;
+  if (restrictedUntil) return { restrictedUntil, lifts: "restriction" };
+  return {
+    restrictedUntil,
+    lifts: restriction.strikes > 0 || restriction.step > 0 ? "strikes" : null,
+  };
+}

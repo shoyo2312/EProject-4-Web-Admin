@@ -87,6 +87,10 @@ export function apiPost<T>(path: string, payload?: unknown) {
   });
 }
 
+export function apiDelete<T>(path: string) {
+  return request<T>(path, { method: "DELETE" });
+}
+
 /** Login is the one call made without a session — there isn't one yet. */
 export function apiPostAnonymous<T>(path: string, payload: unknown) {
   return request<T>(path, {

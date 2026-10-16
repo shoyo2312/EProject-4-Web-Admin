@@ -4,6 +4,7 @@ import { BackLink } from "@/components/layout/back-link";
 import { PageHeader } from "@/components/layout/page-header";
 import { EnforcePanel } from "@/components/moderation/enforce-panel";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
+import { CommentRestriction } from "@/components/users/comment-restriction";
 import { UserUploads } from "@/components/users/user-uploads";
 import { Avatar } from "@/components/ui/avatar";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -12,11 +13,13 @@ import { UserStatusBadge } from "@/components/ui/status-badge";
 import { getStrikeCount, listTargetActions } from "@/lib/api/moderation";
 import { getAdminHandles, getUserProfiles } from "@/lib/api/names";
 import { getReportCount } from "@/lib/api/reports";
-import { getAdminUser } from "@/lib/api/users";
+import { referenceNow } from "@/lib/api/shared";
+import { getAdminUser, getCommentRestriction } from "@/lib/api/users";
 import { listVideos } from "@/lib/api/videos";
 import { formatCount, formatDateTime } from "@/lib/format";
 import type {
   AdminUserResponse,
+  CommentRestrictionResponse,
   ModerationActionResponse,
   UserProfileResponse,
 } from "@/lib/api/types";
@@ -46,10 +49,11 @@ export default async function UserDetailPage({
   let strikes: number;
   let profile: UserProfileResponse | undefined;
   let uploads: Awaited<ReturnType<typeof listVideos>> | null;
+  let restriction: CommentRestrictionResponse | null;
   try {
     user = await getAdminUser(id);
-    // Not fetched before the account is known to exist: four calls thrown away on every bad id.
-    [reportCount, actions, strikes, profile, uploads] = user
+    // Not fetched before the account is known to exist: six calls thrown away on every bad id.
+    [reportCount, actions, strikes, profile, uploads, restriction] = user
       ? await Promise.all([
           getReportCount("USER", id),
           listTargetActions("USER", id),
@@ -59,8 +63,10 @@ export default async function UserDetailPage({
           // over this one page rather than the account's whole history. Fine at admin-console
           // scale; add a real aggregate if an account with hundreds of uploads makes it lie.
           listVideos({ ownerIds: [id], size: 100 }),
+          // Non-fatal: with interaction-service down, its card says so and the rest still loads.
+          getCommentRestriction(id).catch(() => null),
         ])
-      : [0, [], 0, undefined, null];
+      : [0, [], 0, undefined, null, null];
   } catch (error) {
     return (
       <>
@@ -181,6 +187,27 @@ export default async function UserDetailPage({
               </Field>
             ) : null}
           </dl>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Commenting"
+            hint="interaction-service's own record, apart from the strikes above. A strike is a comment the word list refused or an admin removed. By default 3 within a day restrict commenting — for an hour, then a day, then a week — and 30 days without a restriction start the steps over."
+          />
+          <div className="px-5 py-4">
+            {restriction ? (
+              <CommentRestriction
+                restriction={restriction}
+                subject={`@${user.username}`}
+                now={referenceNow()}
+              />
+            ) : (
+              <p className="text-[12px] text-ink-faint">
+                interaction-service did not answer, so the comment strikes cannot be read right
+                now. Nothing about the account has changed.
+              </p>
+            )}
+          </div>
         </Card>
 
         <Card>

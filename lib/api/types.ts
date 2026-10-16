@@ -88,6 +88,28 @@ export interface AdminCommentPage {
   hasMore: boolean;
 }
 
+/**
+ * GET /api/v1/interactions/admin/users/{userId}/comment-restriction — interaction-service
+ * CommentRestrictionResponse: where an account stands with the comment strikes.
+ *
+ * A strike is a comment the rules refused or an admin removed; enough of them within a day stop
+ * the account commenting for a while, each restriction in a row longer than the last. Kept in
+ * Redis and failing open, so an unreachable store reads as a clean record — which is also how the
+ * service treats the account then.
+ */
+export interface CommentRestrictionResponse {
+  userId: string;
+  /** When the current restriction ends; null when there is none. */
+  restrictedUntil: string | null;
+  /** Strikes counting toward the next restriction. A restriction starting resets them to 0. */
+  strikes: number;
+  /**
+   * Restrictions in a row: back to 0 after 30 days (the step window) without one. The next
+   * restriction lasts the duration after this many — 1 hour, a day, a week by default.
+   */
+  step: number;
+}
+
 /** admin-service — entity/ReportTargetType.java */
 export type ReportTargetType = "USER" | "VIDEO" | "COMMENT";
 

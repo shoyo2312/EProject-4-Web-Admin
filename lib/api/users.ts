@@ -1,17 +1,18 @@
 import "server-only";
 
-import { ApiError, apiGet, apiPost } from "./client";
+import { ApiError, apiDelete, apiGet, apiPost } from "./client";
 import { USE_MOCK } from "./config";
 import { LIST_PAGE_SIZE, mockPage } from "./shared";
 import type {
   AdminUserResponse,
+  CommentRestrictionResponse,
   ModerationActionResponse,
   Page,
   SecurityEventResponse,
   UserStatus,
 } from "./types";
 import { mockSecurityEvents } from "@/lib/mock/security-events";
-import { mockUsers } from "@/lib/mock/users";
+import { mockCommentRestriction, mockUsers } from "@/lib/mock/users";
 
 /**
  * The directory is served by auth-service, under /api/v1/auth/** rather than /api/v1/admin/**:
@@ -124,4 +125,29 @@ export async function moderateUser(
     `/api/v1/admin/users/${userId}/${path}`,
     { reason, banDays },
   );
+}
+
+/**
+ * Where an account stands with the comment strikes. interaction-service, not admin-service: the
+ * strikes live in its Redis, and nothing else knows them.
+ */
+export async function getCommentRestriction(userId: string): Promise<CommentRestrictionResponse> {
+  if (USE_MOCK) return mockCommentRestriction(userId);
+  return apiGet<CommentRestrictionResponse>(
+    `/api/v1/interactions/admin/users/${userId}/comment-restriction`,
+  );
+}
+
+/**
+ * Ends a commenting restriction and clears the strikes and the step behind it — for when a bad
+ * term restricted accounts that did nothing wrong. Straight to interaction-service, which logs it
+ * under the admin's id: it is not a decision against anyone, so there is no audit row and no event.
+ */
+export async function liftCommentRestriction(userId: string): Promise<void> {
+  if (USE_MOCK) {
+    throw new Error(
+      "Clearing comment strikes requires the live backend (ADMIN_USE_MOCK=false) — they live in interaction-service's Redis.",
+    );
+  }
+  await apiDelete<null>(`/api/v1/interactions/admin/users/${userId}/comment-restriction`);
 }

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getModerationDetail, type ModerationDetail } from "@/lib/api/moderation";
-import { moderateUser } from "@/lib/api/users";
+import { liftCommentRestriction, moderateUser } from "@/lib/api/users";
 import type { ModerationResult } from "@/lib/moderation";
 
 /** One account's report count and moderation history, for its row in the users table. */
@@ -52,4 +52,30 @@ function recordedMessage(
     case "revokeSessions":
       return "Sign-out recorded. Every session ends once auth-service consumes the event; the account stays active.";
   }
+}
+
+/**
+ * No reason asked for, because none would be kept: this is not a decision against the account, so
+ * admin-service records nothing and the Audit Log never shows it — interaction-service logs the
+ * admin's id beside the account's. Unlike everything above, it applies at once; there is no event
+ * to wait for.
+ */
+export async function liftCommentRestrictionAction(
+  userId: string,
+  /** Whether a restriction was in force, or only strikes counting toward one. */
+  restricted: boolean,
+): Promise<ModerationResult> {
+  try {
+    await liftCommentRestriction(userId);
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
+  }
+
+  revalidatePath(`/users/${userId}`);
+  return {
+    ok: true,
+    message: restricted
+      ? "Restriction lifted — the account can comment again now, with no strikes against it. interaction-service logged it under your id; the Audit Log does not show it."
+      : "Strikes cleared — the next restriction, if any, starts again from the shortest. interaction-service logged it under your id; the Audit Log does not show it.",
+  };
 }
