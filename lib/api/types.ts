@@ -52,6 +52,21 @@ export interface AdminCommentResponse {
   deletedAt: string | null;
 }
 
+/** moderation-lib — Category.java: what text moderation files a flag under. */
+export type TextCategory =
+  | "PROFANITY"
+  | "INSULT"
+  | "HATE"
+  | "SEXUAL"
+  | "VIOLENCE"
+  | "SCAM"
+  | "SPAM"
+  | "PERSONAL_INFO"
+  | "CREATOR_FILTER";
+
+/** video-service — CaptionModeration.Field: which part of a caption a flag was found in. */
+export type CaptionField = "TITLE" | "DESCRIPTION" | "TAGS";
+
 /**
  * One cursor-paged page of comments. The cursor is Cassandra's own paging state, base64'd — it is
  * passed back untouched and never parsed here.

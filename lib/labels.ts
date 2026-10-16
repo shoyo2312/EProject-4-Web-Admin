@@ -1,7 +1,9 @@
 import type {
+  CaptionField,
   ModerationActionType,
   ModerationSummary,
   ReportStatus,
+  TextCategory,
   UserStatus,
   VideoStatus,
 } from "@/lib/api/types";
@@ -51,6 +53,33 @@ export const MODERATION_VERDICT_LABELS: Record<ModerationSummary["verdict"], str
   APPROVED: "Passed",
   REVIEW: "Held for review",
   REJECTED: "Auto-removed",
+};
+
+/** What text moderation files a flag under, as a moderator reads it on a comment or a caption. */
+export const TEXT_CATEGORY_LABELS: Record<TextCategory, string> = {
+  PROFANITY: "Profanity",
+  INSULT: "Insult",
+  HATE: "Hate",
+  SEXUAL: "Sexual",
+  VIOLENCE: "Violence",
+  SCAM: "Scam",
+  SPAM: "Spam",
+  PERSONAL_INFO: "Personal info",
+  CREATOR_FILTER: "Creator's filter",
+};
+
+/**
+ * A category by name. Flags arrive as text, so one the moderation side adds before this console
+ * knows it is shown as its own name rather than as nothing.
+ */
+export function categoryLabel(category: string): string {
+  return (TEXT_CATEGORY_LABELS as Record<string, string | undefined>)[category] ?? category;
+}
+
+export const CAPTION_FIELD_LABELS: Record<CaptionField, string> = {
+  TITLE: "Title",
+  DESCRIPTION: "Description",
+  TAGS: "Tags",
 };
 
 /**
