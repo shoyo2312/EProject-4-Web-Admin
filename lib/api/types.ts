@@ -237,6 +237,24 @@ export interface AdminVideoResponse {
   purgeEventPublishedAt: string | null;
   /** What the classifier scored. Admin reads only — the public API withholds it. */
   moderation: ModerationSummary | null;
+  /**
+   * What text moderation made of the title, description and tags at publish. Admin reads only,
+   * like `moderation`. Null for an upload published before captions were screened.
+   */
+  textModeration: TextModerationSummary | null;
+}
+
+/** video-service — TextModerationResponse. */
+export interface TextModerationSummary {
+  /** Never REJECTED in practice: a caption that bad refuses the publish, and nothing is stored. */
+  verdict: ModerationSummary["verdict"];
+  /** "DESCRIPTION:SPAM:link:bit.ly" — field, category, what fired — classifier notes included. */
+  flags: string[];
+  /** `rules-<list>+admin-<revision>`, then `+<model version>` when the classifier answered. */
+  version: string;
+  /** False when the verdict was only recorded, not acted on — the rules were measuring. */
+  enforced: boolean;
+  checkedAt: string;
 }
 
 /** The classifier's account of a video, the only explanation an auto-removed one carries. */

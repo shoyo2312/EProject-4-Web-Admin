@@ -187,7 +187,7 @@ function VideoRow({
     video.status,
     "Still the old status — video-service has not consumed the event yet. The action is recorded; reload in a moment.",
   );
-  const machineReason = describeModeration(video.moderation);
+  const machineReason = describeModeration(video.moderation, video.textModeration);
 
   const action = videoDecision(video.status);
   const decision = DECISIONS[action];

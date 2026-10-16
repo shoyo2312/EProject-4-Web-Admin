@@ -9,6 +9,7 @@ import {
   type ReviewContext,
 } from "@/app/(admin)/moderation/review/actions";
 import { moderateVideoAction } from "@/app/(admin)/videos/actions";
+import { CaptionCheck } from "@/components/moderation/caption-check";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
 import { ClassifierPanel } from "@/components/moderation/review-queue/classifier-panel";
@@ -351,6 +352,18 @@ export function ReviewQueue({
             </Card>
 
             <ClassifierPanel moderation={video.moderation} lines={lines} />
+
+            {video.textModeration?.flags.length ? (
+              <Card>
+                <CardHeader
+                  title="Caption check"
+                  hint="What text moderation flagged in the title, description and tags, classifier notes included."
+                />
+                <div className="px-5 py-4">
+                  <CaptionCheck check={video.textModeration} />
+                </div>
+              </Card>
+            ) : null}
 
             <UploaderPanel
               ownerId={video.userId}

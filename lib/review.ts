@@ -1,4 +1,10 @@
-import type { ModerationSettingsResponse, ModerationSummary } from "@/lib/api/types";
+import type {
+  ModerationSettingsResponse,
+  ModerationSummary,
+  TextModerationSummary,
+} from "@/lib/api/types";
+import { categoryLabel } from "@/lib/labels";
+import { flagText, parseTextFlag } from "@/lib/text-flags";
 
 /**
  * The classifier's cut points, as far as the settings endpoint reports them. The payload is
@@ -24,10 +30,34 @@ export function reviewLines(settings: ModerationSettingsResponse | null): Review
 }
 
 /**
+ * media-worker's CaptionVerdict.REASON. When the frames pass and text moderation held the caption,
+ * media-worker sends the video to review under this reason — the frames' own reason, if they had
+ * one, after it in brackets — and keeps the frames' scores. It is not a check that failed.
+ */
+const CAPTION_HELD = "Caption held for review by text moderation";
+
+/**
+ * What the frames alone decided, when the caption is what held the video: the classifier's account
+ * with the caption's hold taken back off. Null when the caption did not hold it. A caption only ever
+ * holds a video whose frames passed, so their verdict is APPROVED.
+ */
+export function framesBeforeCaption(moderation: ModerationSummary): ModerationSummary | null {
+  if (!moderation.reason?.startsWith(CAPTION_HELD)) return null;
+  const own = /^ \((.*)\)$/.exec(moderation.reason.slice(CAPTION_HELD.length));
+  return { ...moderation, verdict: "APPROVED", reason: own ? own[1] : null };
+}
+
+/** Why a check scored no frame, as one clause: the backend's own sentence, or the usual cause. */
+function unscoredWhy(moderation: ModerationSummary): string {
+  return (moderation.reason ?? "No frame could be sampled from the video").replace(/\.$/, "");
+}
+
+/**
  * Why automatic moderation held a video for a person, in the classifier's own terms. The rule is
  * moderation-service's verdict.py: under the review line it publishes, past the reject line with
  * enough frames past the review line it removes, and everything between waits for a moderator. A
- * check that could not finish is held too — no evidence is not an approval.
+ * check that could not finish is held too — no evidence is not an approval. A video can also be
+ * held for its caption alone, whatever its frames scored.
  *
  * Measured against today's lines, which can have moved since the video was checked; the last
  * branch is the one place that shows.
@@ -37,6 +67,14 @@ export function heldBecause(
   lines: ReviewLines | null,
 ): string {
   if (!moderation) return "No classifier result is stored for this video.";
+  const frames = framesBeforeCaption(moderation);
+  if (frames) {
+    return `Held for its caption, which text moderation flagged. ${
+      frames.totalFrames > 0
+        ? `The frames passed: the highest scored ${frames.maxScore.toFixed(2)}.`
+        : `${unscoredWhy(frames)}, so the frames were not scored.`
+    }`;
+  }
   if (moderation.reason) return `The check did not finish: ${moderation.reason}`;
   if (moderation.totalFrames === 0) {
     return "No frame could be sampled from the file, so there was nothing to score.";
@@ -71,7 +109,9 @@ export function heldBecause(
  */
 export function unscoredBecause(moderation: ModerationSummary): string | null {
   if (moderation.totalFrames > 0) return null;
-  const why = (moderation.reason ?? "No frame could be sampled from the video").replace(/\.$/, "");
+  const frames = framesBeforeCaption(moderation);
+  if (frames) return `${unscoredWhy(frames)}, so the frames were not scored. Its caption held it for review.`;
+  const why = unscoredWhy(moderation);
   switch (moderation.verdict) {
     case "REVIEW":
       return `${why}. A check that cannot finish holds the video for a person rather than passing it.`;
@@ -94,11 +134,27 @@ export function unscoredBecause(moderation: ModerationSummary): string | null {
  * A check that scored no frame says so in the words the video's own page uses. The score is
  * printed raw rather than as a percentage, because the thresholds it is compared against are on the
  * same 0–1 scale and whoever is deciding whether to move one should not have to convert.
+ *
+ * A video held for its caption names the categories found in it, from `caption` — the video's
+ * textModeration — and lists every flag in the detail.
  */
 export function describeModeration(
   moderation: ModerationSummary | null,
+  caption: TextModerationSummary | null = null,
 ): { label: string; detail: string } | null {
   if (!moderation || moderation.verdict === "APPROVED") return null;
+
+  if (framesBeforeCaption(moderation)) {
+    const flags = (caption?.flags ?? []).map(parseTextFlag);
+    const categories = [...new Set(flags.map((flag) => categoryLabel(flag.category)))];
+    return {
+      label: categories.length > 0 ? `Caption held: ${categories.join(", ")}` : "Caption held",
+      detail: [
+        "Held by text moderation for its caption, not by the classifier or an admin. The frames passed.",
+        ...flags.map(flagText),
+      ].join("\n"),
+    };
+  }
 
   const unscored = unscoredBecause(moderation);
   if (unscored) return { label: "Not scored", detail: unscored };

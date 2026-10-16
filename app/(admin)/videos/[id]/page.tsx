@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ErrorState } from "@/components/layout/error-state";
 import { BackLink } from "@/components/layout/back-link";
 import { PageHeader } from "@/components/layout/page-header";
+import { CaptionCheck } from "@/components/moderation/caption-check";
 import { EnforcePanel } from "@/components/moderation/enforce-panel";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { getVideo } from "@/lib/api/videos";
 import { MODERATION_VERDICT_LABELS, VIDEO_STATUS_LABELS } from "@/lib/labels";
 import { playable, videoDecisions } from "@/lib/moderation";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
-import { unscoredBecause } from "@/lib/review";
+import { framesBeforeCaption, unscoredBecause } from "@/lib/review";
 import {
   daysUntilPurge,
   formatCompact,
@@ -252,6 +253,16 @@ export default async function VideoDetailPage({
         </Card>
 
         <Card>
+          <CardHeader
+            title="Caption check"
+            hint="What text moderation made of the title, description and tags at publish. Admin reads only."
+          />
+          <div className="px-5 py-4">
+            <CaptionCheck check={video.textModeration} />
+          </div>
+        </Card>
+
+        <Card>
           <CardHeader title="Moderation history" />
           <div className="px-5 py-4">
             <ModerationHistory
@@ -307,6 +318,10 @@ function ClassifierVerdict({ video }: { video: AdminVideoResponse }) {
       <span className={moderation.verdict === "REJECTED" ? "text-danger" : undefined}>
         {MODERATION_VERDICT_LABELS[moderation.verdict]}
       </span>
+      {/* The frames passed; the caption check below is what held it. */}
+      {framesBeforeCaption(moderation) ? (
+        <span className="text-ink-faint"> — for its caption</span>
+      ) : null}
     </Field>
   );
   const checked = <Field label="Checked">{formatDateTime(moderation.checkedAt)}</Field>;
