@@ -2,8 +2,12 @@ import type {
   CaptionField,
   ModerationActionType,
   ModerationSummary,
+  ModerationTermAction,
   ReportStatus,
   TextCategory,
+  TextDecision,
+  TextFlagSource,
+  TextSurface,
   UserStatus,
   VideoStatus,
 } from "@/lib/api/types";
@@ -80,6 +84,35 @@ export const CAPTION_FIELD_LABELS: Record<CaptionField, string> = {
   TITLE: "Title",
   DESCRIPTION: "Description",
   TAGS: "Tags",
+};
+
+/** What a match on an admin term does — the Terms page's filter tabs and its rows. */
+export const TERM_ACTION_LABELS: Record<ModerationTermAction, string> = {
+  HOLD: "Hold",
+  REJECT: "Reject",
+  EXEMPT: "Exempt",
+};
+
+/** Where a previewed text would be shown. */
+export const TEXT_SURFACE_LABELS: Record<TextSurface, string> = {
+  COMMENT: "Comment",
+  VIDEO_TITLE: "Title",
+  VIDEO_DESCRIPTION: "Description",
+  VIDEO_TAGS: "Tags",
+};
+
+/** What screening makes of a text, as a comment's author would meet it. */
+export const TEXT_DECISION_LABELS: Record<TextDecision, string> = {
+  ALLOW: "Allowed",
+  HOLD: "Held for a person",
+  REJECT: "Refused",
+};
+
+/** Rules are the word lists, shipped and admin, and the spam signals: links, phone numbers… */
+export const FLAG_SOURCE_LABELS: Record<TextFlagSource, string> = {
+  RULES: "Rules",
+  MODEL: "Classifier",
+  CREATOR: "Creator's filter",
 };
 
 /**

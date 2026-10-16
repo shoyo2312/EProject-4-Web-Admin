@@ -1,5 +1,6 @@
 import type {
   ModerationActionType,
+  ModerationTermAction,
   ReportStatus,
   ReportTargetType,
   UserStatus,
@@ -67,6 +68,9 @@ export const ACTION_TYPES: readonly ModerationActionType[] = [
   "DISMISS_REPORT",
 ];
 
+/** What a match on an admin term does — the Terms page's filter tabs, in their order. */
+export const TERM_ACTIONS: readonly ModerationTermAction[] = ["HOLD", "REJECT", "EXEMPT"];
+
 export function userFilters(params: ListParams) {
   return { q: params.q, status: oneOf(params.status, USER_STATUSES) };
 }
@@ -105,4 +109,8 @@ export function auditFilters(params: ListParams) {
     sort: oneOf(params.sort, ACTION_SORT_FIELDS) ?? "createdAt",
     ascending: params.dir === "asc",
   };
+}
+
+export function termFilters(params: ListParams) {
+  return { q: params.q?.trim() || undefined, action: oneOf(params.action, TERM_ACTIONS) };
 }

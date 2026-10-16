@@ -441,6 +441,80 @@ export interface ModerationSettingsResponse {
   reachable: boolean;
 }
 
+/**
+ * moderation-lib — AdminTerm.Action. HOLD and REJECT add a term at severity 2 and 3; EXEMPT takes a
+ * term out of the list every service ships with, for a false positive until the next release.
+ */
+export type ModerationTermAction = "HOLD" | "REJECT" | "EXEMPT";
+
+/** GET /api/v1/admin/moderation/terms — ModerationTermResponse. Live terms only, newest first. */
+export interface ModerationTermResponse {
+  id: string;
+  /** As the admin typed it, sanitized to one line. How it is written decides how it matches. */
+  term: string;
+  /** Null for EXEMPT, which flags nothing. */
+  category: TextCategory | null;
+  action: ModerationTermAction;
+  note: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+/** POST /api/v1/admin/moderation/terms — AddModerationTermRequest. */
+export interface AddModerationTermRequest {
+  term: string;
+  /** Required for HOLD and REJECT, never CREATOR_FILTER; ignored for EXEMPT. */
+  category: TextCategory | null;
+  action: ModerationTermAction;
+  note: string | null;
+}
+
+/** GET /api/v1/admin/moderation/terms/summary — ModerationTermSummaryResponse. */
+export interface ModerationTermSummaryResponse {
+  /** The `version:` line of the list the services ship with. */
+  shippedVersion: string;
+  shippedTerms: number;
+  /** Moved by every add and every removal; 0 before the first. */
+  revision: number;
+  /** Live admin terms, EXEMPT included. */
+  adminTerms: number;
+  /** What a verdict made with this list records: `rules-<shipped>+admin-<revision>`. */
+  version: string;
+}
+
+/** moderation-lib — Surface: where a text would be shown, which changes what a link means. */
+export type TextSurface = "COMMENT" | "VIDEO_TITLE" | "VIDEO_DESCRIPTION" | "VIDEO_TAGS";
+
+/** moderation-lib — Decision, least severe first. */
+export type TextDecision = "ALLOW" | "HOLD" | "REJECT";
+
+/** moderation-lib — Flag.Source: who raised a flag, which decides which switch it answers to. */
+export type TextFlagSource = "RULES" | "MODEL" | "CREATOR";
+
+/** moderation-lib — Flag, as the preview returns it: whole, where stored records keep only `CATEGORY:rule`. */
+export interface TextFlagResponse {
+  category: TextCategory;
+  /** 3 refuses the text, 2 sends it to a person, 1 is a note that decides nothing. */
+  severity: number;
+  /** What fired: `term:<term>`, `link:<domain>`, `phone`, `model:<label>:<score>`… */
+  rule: string;
+  source: TextFlagSource;
+}
+
+/**
+ * POST /api/v1/admin/moderation/text-preview — TextPreviewResponse. What screening makes of a text
+ * right now, before any service's switches: whether a service acts on a HOLD or a REJECT is its
+ * own enforce setting, and a video owner's comment filters come on top.
+ */
+export interface TextPreviewResponse {
+  decision: TextDecision;
+  /** Everything that fired, most severe first, notes included. */
+  flags: TextFlagResponse[];
+  version: string;
+  /** False when the classifier is off or did not answer: the decision is then the rules' alone. */
+  classifierAnswered: boolean;
+}
+
 /** common-lib ApiResponse<T> — every service wraps its payload in this */
 export interface ApiResponse<T> {
   success: boolean;

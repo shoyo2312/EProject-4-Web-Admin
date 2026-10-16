@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Users,
   Video,
+  WholeWord,
 } from "lucide-react";
 import type { Route } from "next";
 import type { LucideIcon } from "lucide-react";
@@ -45,6 +46,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Reports Queue", href: "/moderation/reports", icon: Flag, ready: true },
       { label: "Video Review", href: "/moderation/review", icon: ScanEye, ready: true },
       { label: "Audit Log", href: "/moderation/actions", icon: FileClock, ready: true },
+      { label: "Terms", href: "/moderation/terms", icon: WholeWord, ready: true },
     ],
   },
   {
@@ -73,6 +75,7 @@ export const ROUTE_TITLES: Record<string, { section: string; page: string }> = {
   "/moderation/reports": { section: "Moderation", page: "Reports Queue" },
   "/moderation/review": { section: "Moderation", page: "Video Review" },
   "/moderation/actions": { section: "Moderation", page: "Audit Log" },
+  "/moderation/terms": { section: "Moderation", page: "Terms" },
   "/users": { section: "Management", page: "Users" },
   "/videos": { section: "Management", page: "Videos" },
   "/comments": { section: "Management", page: "Comments" },
