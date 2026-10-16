@@ -155,6 +155,12 @@ export async function getModerationSettings(): Promise<ModerationSettingsRespons
         escalationCategories: ["Sexual", "Violence", "SelfHarm", "Hate"],
         escalationRejectSeverity: 4,
         escalationApproveSeverity: 0,
+        textEnabled: true,
+        textModel: "visolex/phobert-v2-hsd",
+        textModelRevision: "221aca47de6568d519eba61a94d7fdae3ca680ae",
+        textModelVersion: "hsd-v1",
+        textHateHoldAt: 0.9,
+        textMaxTexts: 16,
       },
     };
   }
