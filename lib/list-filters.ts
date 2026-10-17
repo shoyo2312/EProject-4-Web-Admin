@@ -21,7 +21,7 @@ function oneOf<T extends string>(value: string | undefined, allowed: readonly T[
   return allowed.includes(value as T) ? (value as T) : undefined;
 }
 
-const USER_STATUSES: readonly UserStatus[] = ["ACTIVE", "BANNED", "LOCKED"];
+const USER_STATUSES: readonly UserStatus[] = ["ACTIVE", "BANNED", "LOCKED", "DEACTIVATED"];
 
 const VIDEO_STATUSES: readonly VideoStatus[] = [
   "PROCESSING",

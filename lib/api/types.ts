@@ -132,7 +132,7 @@ export type UserRole = "USER" | "ADMIN";
 export type AuthProvider = "GOOGLE" | "FACEBOOK";
 
 /** auth-service — entity/UserStatus.java */
-export type UserStatus = "ACTIVE" | "LOCKED" | "BANNED";
+export type UserStatus = "ACTIVE" | "LOCKED" | "BANNED" | "DEACTIVATED";
 
 /**
  * GET /api/v1/auth/admin/users — auth-service UserResponse.
@@ -159,6 +159,10 @@ export interface AdminUserResponse {
   /** When the ban lapses. Null on a permanent one — and on every account that is not banned. */
   bannedUntil: string | null;
   banReason: string | null;
+  /** When the owner closed it, or null. Survives a ban, so a BANNED account can carry it too. */
+  deactivatedAt: string | null;
+  /** When the owner's deletion runs — a ban does not stop it — or null. */
+  deletionScheduledAt: string | null;
   /** First linked social provider, or null for an email/password account. */
   provider: AuthProvider | null;
   linkedProviders: AuthProvider[];

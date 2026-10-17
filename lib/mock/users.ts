@@ -9,7 +9,7 @@ const HANDLES = [
   "petra_novak", "jonas.berg", "amara.obi", "luca_ferrari",
 ] as const;
 
-const STATUSES: UserStatus[] = ["ACTIVE", "ACTIVE", "ACTIVE", "ACTIVE", "BANNED", "LOCKED"];
+const STATUSES: UserStatus[] = ["ACTIVE", "ACTIVE", "ACTIVE", "ACTIVE", "BANNED", "LOCKED", "DEACTIVATED"];
 
 const DAY_MS = 24 * 60 * 60_000;
 
@@ -27,12 +27,15 @@ export const mockUsers: AdminUserResponse[] = (() => {
   return Array.from({ length: 60 }, (_, i) => {
     const handle = `${pick(rand, HANDLES)}${i > HANDLES.length ? i : ""}`;
     const social = i % 11 === 0;
+    const status = i === 0 ? ("ACTIVE" as const) : pick(rand, STATUSES);
+    // Every other closed account also asked to be deleted, so both closure shapes show up.
+    const closedDaysAgo = status === "DEACTIVATED" ? between(rand, 1, 20) : null;
     return {
       id: userId(i),
       username: handle,
       email: social ? null : `${handle.replace(/[._]/g, "")}@example.com`,
       role: i === 0 ? ("ADMIN" as const) : ("USER" as const),
-      status: i === 0 ? ("ACTIVE" as const) : pick(rand, STATUSES),
+      status,
       emailVerified: !social && i % 7 !== 3,
       emailVerifiedAt:
         !social && i % 7 !== 3
@@ -47,6 +50,12 @@ export const mockUsers: AdminUserResponse[] = (() => {
       bannedAt: null,
       bannedUntil: null,
       banReason: null,
+      deactivatedAt:
+        closedDaysAgo === null ? null : new Date(MOCK_NOW - closedDaysAgo * DAY_MS).toISOString(),
+      deletionScheduledAt:
+        closedDaysAgo === null || i % 2 === 0
+          ? null
+          : new Date(MOCK_NOW + (30 - closedDaysAgo) * DAY_MS).toISOString(),
       provider: social ? ("GOOGLE" as const) : null,
       linkedProviders: social ? ["GOOGLE" as const] : [],
     };
