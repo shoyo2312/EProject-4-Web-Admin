@@ -10,6 +10,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
 import { UserStatusBadge } from "@/components/ui/status-badge";
+import { closureNote } from "@/lib/account-closure";
 import { getStrikeCount, listTargetActions } from "@/lib/api/moderation";
 import { getAdminHandles, getUserProfiles } from "@/lib/api/names";
 import { getReportCount } from "@/lib/api/reports";
@@ -93,6 +94,7 @@ export default async function UserDetailPage({
   // Who took each action, by @handle. Non-fatal: the history falls back to id tails.
   const adminHandles = await getAdminHandles(actions.map((a) => a.adminId));
   const action = user.status === "BANNED" ? "unban" : "ban";
+  const closure = closureNote(user);
   const totalLikes = (uploads?.content ?? []).reduce((sum, v) => sum + v.likeCount, 0);
 
   return (
@@ -183,6 +185,13 @@ export default async function UserDetailPage({
                     ? ` until ${formatDateTime(user.bannedUntil)}`
                     : " — permanent"}
                   {user.banReason ? ` — ${user.banReason}` : ""}
+                </span>
+              </Field>
+            ) : null}
+            {closure ? (
+              <Field label="Closed" wide>
+                <span className={user.deletionScheduledAt ? "text-pending" : undefined}>
+                  {closure}
                 </span>
               </Field>
             ) : null}

@@ -12,6 +12,7 @@ import { UserStatusBadge } from "@/components/ui/status-badge";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
+import { closureNote } from "@/lib/account-closure";
 import { USER_STATUS_LABELS, statusTabs } from "@/lib/labels";
 import { BAN_DURATIONS, PRESET_REASONS, banDaysOf, type BanDuration } from "@/lib/moderation";
 import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
@@ -23,7 +24,10 @@ import { cn } from "@/lib/utils";
 
 type StatusFilter = UserStatus | "ALL";
 
-const STATUS_FILTERS = statusTabs(["ACTIVE", "BANNED", "LOCKED"], USER_STATUS_LABELS);
+const STATUS_FILTERS = statusTabs(
+  ["ACTIVE", "BANNED", "LOCKED", "DEACTIVATED"],
+  USER_STATUS_LABELS,
+);
 
 export function UsersTable({
   users,
@@ -118,6 +122,7 @@ function UserRow({
 
   const action = user.status === "BANNED" ? "unban" : "ban";
   const presets = PRESET_REASONS[action];
+  const closure = closureNote(user);
 
   // An admin who bans themselves loses the console with no way back in — the bootstrap
   // account is provisioned at startup and there is no second admin to undo it.
@@ -238,6 +243,11 @@ function UserRow({
                   coming back by itself a week later reads as a bug. */}
               {user.bannedUntil ? ` until ${formatDateTime(user.bannedUntil)}` : " — permanent"}
               {user.banReason ? ` — ${user.banReason}` : ""}
+            </Field>
+          ) : null}
+          {closure ? (
+            <Field label="Closed" wide>
+              {closure}
             </Field>
           ) : null}
           <Field label="Moderation history" wide>

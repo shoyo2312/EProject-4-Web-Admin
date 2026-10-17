@@ -32,6 +32,7 @@ export const USER_STATUS_LABELS: Record<UserStatus, string> = {
   ACTIVE: "Active",
   LOCKED: "Locked",
   BANNED: "Banned",
+  DEACTIVATED: "Deactivated",
 };
 
 export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {

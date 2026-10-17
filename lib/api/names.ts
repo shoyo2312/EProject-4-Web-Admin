@@ -11,8 +11,11 @@ import { mockVideos } from "@/lib/mock/videos";
 
 /**
  * Handles (and avatar, follower count) for a batch of user ids, from user-service. Used to show a
- * video's owner as @handle rather than a bare id. Missing or blocked ids are simply absent from
+ * video's owner as @handle rather than a bare id. Missing and deleted ids are simply absent from
  * the map — callers must tolerate a gap.
+ *
+ * The admin batch, not the public `?ids=`: that one applies the viewer rules and drops an account
+ * its owner closed, so the reports, uploads and page of exactly that account would lose its name.
  */
 export async function getUserProfiles(
   ids: string[],
@@ -41,7 +44,7 @@ export async function getUserProfiles(
     );
   }
   const params = new URLSearchParams({ ids: unique.join(",") });
-  const profiles = await apiGet<UserProfileResponse[]>(`/api/v1/users?${params}`);
+  const profiles = await apiGet<UserProfileResponse[]>(`/api/v1/users/admin?${params}`);
   return Object.fromEntries(profiles.map((p) => [p.userId, p]));
 }
 

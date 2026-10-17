@@ -26,6 +26,7 @@ export const USER_STATUS_STYLES: Record<UserStatus, string> = {
   ACTIVE: OK,
   BANNED: BAD,
   LOCKED: NEUTRAL,
+  DEACTIVATED: NEUTRAL,
 };
 
 function Pill({
