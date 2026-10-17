@@ -23,6 +23,10 @@ import type { NextConfig } from "next";
 const CLIENT_HINTS = "Sec-CH-UA-Model, Sec-CH-UA-Platform-Version";
 
 const nextConfig: NextConfig = {
+  // The Docker image runs `node server.js` from `.next/standalone`, with only the traced
+  // dependencies copied in — see the Dockerfile.
+  output: "standalone",
+
   async headers() {
     return [
       {
