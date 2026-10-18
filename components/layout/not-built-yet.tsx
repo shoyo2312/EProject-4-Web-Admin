@@ -4,20 +4,25 @@ import { Card } from "@/components/ui/card";
 
 /**
  * Phase-1 shell. Each screen states the exact backend gap so the page doubles as
- * the todo list for phase 2 — rather than a blank "coming soon".
+ * the todo list for phase 2 — rather than a blank "coming soon". `children` are the
+ * parts of the screen already built, shown above what is still missing.
  */
 export function NotBuiltYet({
   title,
   purpose,
   missing,
+  children,
 }: {
   title: string;
   purpose: string;
   missing: string[];
+  children?: React.ReactNode;
 }) {
   return (
     <>
       <PageHeader title={title} subtitle={purpose} />
+
+      {children ? <div className="mb-4">{children}</div> : null}
 
       <Card className="max-w-3xl px-6 py-6">
         <div className="flex items-center gap-2.5">
@@ -25,8 +30,8 @@ export function NotBuiltYet({
           <h2 className="label-caps text-ink">Blocked on backend</h2>
         </div>
         <p className="mt-3 text-[12px] text-ink-soft">
-          The UI for this screen is not built yet because the endpoints it needs do
-          not exist. Required before it can ship:
+          {children ? "The rest of this screen" : "The UI for this screen"} is not built
+          yet because the endpoints it needs do not exist. Required before it can ship:
         </p>
         <ul className="mt-4 space-y-2">
           {missing.map((item) => (

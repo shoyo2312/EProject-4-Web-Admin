@@ -519,6 +519,48 @@ export interface TextPreviewResponse {
   classifierAnswered: boolean;
 }
 
+/** user-service DataExportFormat. */
+export type DataExportFormat = "TXT" | "JSON";
+
+/** user-service DataExportCategory — what an owner chose to put in their archive. */
+export type DataExportCategory =
+  | "DIRECT_MESSAGES"
+  | "LIKES_AND_FAVORITES"
+  | "POSTS"
+  | "PROFILE_AND_SETTINGS"
+  | "YOUR_ACTIVITY";
+
+/** One request "Download your data" gave up on after every attempt. */
+export interface FailedDataExport {
+  id: string;
+  userId: string;
+  format: DataExportFormat;
+  categories: DataExportCategory[];
+  attempts: number;
+  requestedAt: string;
+  failedAt: string;
+}
+
+/**
+ * GET /api/v1/users/admin/data-exports/summary — DataExportAdminSummaryResponse. The archive
+ * builds platform-wide; erased accounts are left out.
+ */
+export interface DataExportSummaryResponse {
+  /** Waiting for, or being built by, the worker. */
+  processing: number;
+  /** When the longest-waiting of them was made; null when none is. */
+  oldestProcessingSince: string | null;
+  /** Of `processing`, those older than every attempt's lease together — no worker is getting through them. */
+  stalled: number;
+  /** Finished archives still downloadable, so still taking space in MinIO. */
+  readyFiles: number;
+  /** Start of the window `failed` counts — seven days back. */
+  failedSince: string;
+  failed: number;
+  /** The latest twenty of `failed`, newest first. */
+  recentFailures: FailedDataExport[];
+}
+
 /** common-lib ApiResponse<T> — every service wraps its payload in this */
 export interface ApiResponse<T> {
   success: boolean;

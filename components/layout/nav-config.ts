@@ -60,7 +60,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "System",
     items: [
-      { label: "Queues & DLQ", href: "/system/queues", icon: Radio },
+      { label: "Queues & DLQ", href: "/system/queues", icon: Radio, ready: true },
       { label: "Settings", href: "/settings", icon: Settings, ready: true },
       { label: "Trash", href: "/trash", icon: Trash2, ready: true },
     ],
