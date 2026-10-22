@@ -239,7 +239,10 @@ function UserRow({
             {user.lastLoginAt ? formatDateTime(user.lastLoginAt) : "never"}
           </Field>
           <Field label="Updated">{formatDateTime(user.updatedAt)}</Field>
-          <Field label="User ID">#{user.id.slice(-12)}</Field>
+          {/* Whole, and selected in one click: it is what gets pasted into a URL or a ticket. */}
+          <Field label="User ID">
+            <span className="select-all">{user.id}</span>
+          </Field>
           {user.bannedAt ? (
             <Field label="Banned" wide>
               {formatDateTime(user.bannedAt)}
