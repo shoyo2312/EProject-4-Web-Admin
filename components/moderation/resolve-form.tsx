@@ -52,7 +52,7 @@ const ENFORCE_PRESETS = [
   "Harassment of a named person",
 ] as const;
 
-const DISMISS_PRESETS = [
+export const DISMISS_PRESETS = [
   "Reviewed — no policy violation",
   "Duplicate of an earlier report on the same target",
   "Already actioned under another report",

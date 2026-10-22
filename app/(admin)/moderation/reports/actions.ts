@@ -5,6 +5,7 @@ import { getModerationDetail, type ModerationDetail } from "@/lib/api/moderation
 import { getTargetPreview, type TargetPreview } from "@/lib/api/previews";
 import { resolveQueueRow, resolveReport } from "@/lib/api/reports";
 import type { ModerationActionType, ReportTargetType } from "@/lib/api/types";
+import { bulkSummary, cleanReason, queueTargets, runEach, type QueueTarget } from "@/lib/bulk";
 import type { ModerationResult } from "@/lib/moderation";
 
 export interface ReportTargetDetail extends ModerationDetail {
@@ -97,5 +98,37 @@ export async function resolveReportAction(
       actionType === "DISMISS_REPORT"
         ? "Report dismissed. Nothing happens to the target; the decision is in the audit log."
         : "Report resolved. The action is recorded now and applied once the owning service consumes the event.",
+  };
+}
+
+/**
+ * Dismiss every ticked queue row: nothing happens to the targets, every report against each is
+ * closed, and each dismissal is its own audit entry. Enforcement stays one row at a time — the
+ * action differs per target, and a ban is not something to apply to a list.
+ */
+export async function bulkDismissQueueAction(
+  targets: QueueTarget[],
+  reason: string,
+): Promise<ModerationResult> {
+  const rows = queueTargets(targets);
+  if (!rows) return { ok: false, message: "Nothing valid was selected." };
+  const why = cleanReason(reason);
+  if (!why) {
+    return { ok: false, message: "Give a reason of at most 1,000 characters — it goes into the audit log." };
+  }
+
+  const outcome = await runEach(
+    rows,
+    (row) => resolveQueueRow(row.targetType, row.targetId, "DISMISS_REPORT", why),
+    // The table's own row key, so the rows that failed can stay ticked.
+    (row) => `${row.targetType}:${row.targetId}`,
+  );
+
+  revalidatePath("/moderation/reports");
+  revalidatePath("/moderation/actions");
+  return {
+    ok: outcome.failed.length === 0,
+    message: bulkSummary(outcome, "Dismissed the reports on", "target"),
+    failedIds: outcome.failed.map((failure) => failure.id),
   };
 }

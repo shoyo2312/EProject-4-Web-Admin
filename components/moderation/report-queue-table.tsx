@@ -3,12 +3,17 @@
 import { Fragment, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Gavel } from "lucide-react";
-import { reportTargetDetailAction, resolveQueueAction } from "@/app/(admin)/moderation/reports/actions";
+import {
+  bulkDismissQueueAction,
+  reportTargetDetailAction,
+  resolveQueueAction,
+} from "@/app/(admin)/moderation/reports/actions";
+import { BulkBar, SelectAllCell, SelectCell } from "@/components/moderation/bulk-bar";
 import { TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
-import { ResolveForm } from "@/components/moderation/resolve-form";
+import { DISMISS_PRESETS, ResolveForm } from "@/components/moderation/resolve-form";
 import { TargetPreviewLine } from "@/components/moderation/target-preview-line";
 import { VideoThumb } from "@/components/videos/video-thumb";
 import type { ModerationActionType, ReportGroupResponse } from "@/lib/api/types";
@@ -16,9 +21,12 @@ import { formatDateTime, relativeTime } from "@/lib/format";
 import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { useRowDetail } from "@/lib/use-row-detail";
+import { useSelection, type Selection } from "@/lib/use-selection";
 import { cn } from "@/lib/utils";
 
-const COLUMNS = 6;
+const COLUMNS = 7;
+
+const keyOf = (group: ReportGroupResponse) => `${group.targetType}:${group.targetId}`;
 
 /**
  * Severity is 1–10 and means nothing to read as a number mid-scan. Three bands, so a row is
@@ -51,6 +59,18 @@ export function ReportQueueTable({
   names?: RowNames;
 }) {
   const belowXl = useBelowXl();
+  const router = useRouter();
+  const selection = useSelection();
+  const ticked = groups.filter((group) => selection.selected.has(keyOf(group)));
+
+  async function dismissTicked(reason: string) {
+    const targets = ticked.map(({ targetType, targetId }) => ({ targetType, targetId }));
+    const outcome = await bulkDismissQueueAction(targets, reason);
+    // Dismissals close their reports at once, so one re-read drops the decided rows.
+    selection.set(outcome.failedIds ?? []);
+    router.refresh();
+    return outcome;
+  }
 
   return (
     <Card>
@@ -63,11 +83,27 @@ export function ReportQueueTable({
         }
       />
 
+      <BulkBar
+        count={ticked.length}
+        actions={[
+          {
+            key: "dismiss",
+            label: "Dismiss",
+            count: ticked.length,
+            presets: DISMISS_PRESETS,
+            confirm: "Confirm dismissal",
+          },
+        ]}
+        onRun={(_, reason) => dismissTicked(reason)}
+        onClear={selection.clear}
+      />
+
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[12px] xl:min-w-[880px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps px-5 py-3 text-ink-soft">Target</th>
+              <SelectAllCell ids={groups.map(keyOf)} selection={selection} />
+              <th className="label-caps px-3 py-3 text-ink-soft">Target</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Reports</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Severity</th>
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">
@@ -80,10 +116,11 @@ export function ReportQueueTable({
           <tbody>
             {groups.map((group) => (
               <QueueRow
-                key={`${group.targetType}:${group.targetId}`}
+                key={keyOf(group)}
                 group={group}
                 names={names}
                 belowXl={belowXl}
+                selection={selection}
               />
             ))}
 
@@ -105,11 +142,13 @@ function QueueRow({
   group,
   names,
   belowXl,
+  selection,
 }: {
   group: ReportGroupResponse;
   names: RowNames;
   /** Below xl the reason column is dropped, so the expand row carries it instead. */
   belowXl: boolean;
+  selection: Selection;
 }) {
   const router = useRouter();
   const detail = useRowDetail(() => reportTargetDetailAction(group.targetType, group.targetId));
@@ -145,7 +184,12 @@ function QueueRow({
         {...expandableRowProps(detail.toggle, detail.open)}
         className="cursor-pointer border-b border-line transition-colors last:border-b-0 hover:bg-surface-muted"
       >
-        <td className="py-3 pl-5 pr-3">
+        <SelectCell
+          id={keyOf(group)}
+          label={`Select ${targetName(names, group.targetType, group.targetId) ?? group.targetId}`}
+          selection={selection}
+        />
+        <td className="px-3 py-3">
           {/* A poster frame for a reported video: the worklist is scanned, not read. */}
           <span className="inline-flex items-center gap-2.5">
             {group.targetType === "VIDEO" ? (
