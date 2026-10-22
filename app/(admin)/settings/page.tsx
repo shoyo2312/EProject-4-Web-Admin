@@ -114,6 +114,21 @@ function Thresholds({ values }: { values: ModerationSettingsResponse["values"] }
       <Field label="Model">{show(values.model)}</Field>
       <Field label="Model version">{show(values.modelVersion)}</Field>
       <Field label="Class acted on">{show(values.nsfwLabel)}</Field>
+      {/* The zero-shot scorer. Absent keys are an older moderation-service, not "off". */}
+      {values.harmEnabled === true ? (
+        <>
+          <Field label="Also held for" wide>
+            {Array.isArray(values.harmLabels) ? values.harmLabels.join(", ") : "—"}
+            <span className="text-ink-faint"> — held for a person, never removed</span>
+          </Field>
+          <Field label="Their review line">
+            <span className="figure">{show(values.harmReviewAt)}</span>
+          </Field>
+          <Field label="Their model">
+            {show(values.harmModel)} · {show(values.harmModelVersion)}
+          </Field>
+        </>
+      ) : null}
       <Field label="Second opinion">
         {escalating ? (
           "Azure Content Safety"
