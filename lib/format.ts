@@ -89,7 +89,12 @@ export function relativeTime(iso: string, now = Date.now()) {
  * Rounded up under the hour, so something with seconds to go never reads "0m".
  */
 export function timeLeft(iso: string, now: number) {
-  const minutes = Math.ceil((new Date(iso).getTime() - now) / 60_000);
+  return formatSpan(new Date(iso).getTime() - now);
+}
+
+/** A length of time in the same words as {@link timeLeft}: "45m", "5h", "6d", never under "1m". */
+export function formatSpan(ms: number) {
+  const minutes = Math.ceil(ms / 60_000);
   if (minutes < 60) return `${Math.max(minutes, 1)}m`;
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours}h`;
