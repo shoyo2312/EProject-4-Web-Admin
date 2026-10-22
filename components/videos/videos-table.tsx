@@ -294,7 +294,13 @@ function VideoRow({
         <td className="hidden px-3 py-3 whitespace-nowrap text-ink-faint @5xl:table-cell">
           {relativeTime(video.createdAt)}
         </td>
-        <td className="px-3 py-3 pr-5 text-right" onClick={(e) => e.stopPropagation()}>
+        {/* Keys stop here too: Enter on a button would otherwise reach the row's handler, which
+            cancels the click and opens the row instead. */}
+        <td
+          className="px-3 py-3 pr-5 text-right"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           <div className="inline-flex items-center gap-1.5">
             {/* The file at hlsUrl is a faststart mp4, not an HLS playlist — a bare
                 <video> plays it in every browser, no player library. Shown only when

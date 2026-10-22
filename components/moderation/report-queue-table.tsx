@@ -188,7 +188,11 @@ function QueueRow({
         <td className="px-3 py-3 whitespace-nowrap text-ink-faint">
           {relativeTime(group.firstReportedAt)}
         </td>
-        <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+        <td
+          className="px-5 py-3 text-right"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           <button
             type="button"
             onClick={() => {

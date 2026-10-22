@@ -180,7 +180,11 @@ function UserRow({
         <td className="hidden px-3 py-3 whitespace-nowrap text-ink-faint xl:table-cell">
           {relativeTime(user.createdAt)}
         </td>
-        <td className="px-5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+        <td
+          className="px-5 py-3 text-right"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           <button
             type="button"
             // Disabled until the change lands, so a second click cannot queue the same
