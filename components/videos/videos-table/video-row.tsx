@@ -7,6 +7,7 @@ import {
   moderateVideoAction,
   videoModerationDetailAction,
 } from "@/app/(admin)/videos/actions";
+import { SelectCell } from "@/components/moderation/bulk-bar";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
 import { VideoStatusBadge } from "@/components/ui/status-badge";
@@ -30,25 +31,32 @@ import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import { describeModeration } from "@/lib/review";
 import { usePropagation } from "@/lib/use-propagation";
 import { useRowDetail } from "@/lib/use-row-detail";
+import type { Selection } from "@/lib/use-selection";
 import { cn } from "@/lib/utils";
 
-const DECISIONS: Record<
-  VideoDecision,
+export const DECISIONS: Record<
+  VideoDecision | "reject",
   { label: string; verb: string; confirm: string; Icon: LucideIcon }
 > = {
   takedown: { label: "Take down", verb: "taking down", confirm: "Confirm takedown", Icon: EyeOff },
   restore: { label: "Restore", verb: "restoring", confirm: "Confirm restore", Icon: RotateCcw },
   approve: { label: "Approve", verb: "approving", confirm: "Confirm approval", Icon: CheckCircle2 },
+  reject: { label: "Reject", verb: "rejecting", confirm: "Confirm rejection", Icon: EyeOff },
 };
 
 export function VideoRow({
   video,
   owner,
   now,
+  selection,
+  bulkPending,
 }: {
   video: AdminVideoResponse;
   owner?: UserProfileResponse;
   now: number;
+  selection: Selection;
+  /** A bulk action went out for this row and its status has not moved yet. */
+  bulkPending: boolean;
 }) {
   const [reason, setReason] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -56,11 +64,13 @@ export function VideoRow({
   const [submitting, startSubmit] = useTransition();
   // Opening the row is what triggers the fetch — once, lazily. See getModerationDetail.
   const detail = useRowDetail(() => videoModerationDetailAction(video.id));
-  const { pending, stalled, watch } = usePropagation(
+  const { pending: propagating, stalled, watch } = usePropagation(
     video.status,
     "Still the old status — video-service has not consumed the event yet. The action is recorded; reload in a moment.",
   );
   const machineReason = describeModeration(video.moderation, video.textModeration);
+
+  const pending = propagating || bulkPending;
 
   const action = videoDecision(video.status);
   const decision = DECISIONS[action];
@@ -87,7 +97,19 @@ export function VideoRow({
           "cursor-pointer",
         )}
       >
-        <td className="max-w-[260px] px-5 py-3 @4xl:max-w-[320px]">
+        <SelectCell
+          id={video.id}
+          label={`Select ${video.title || "untitled upload"}`}
+          selection={selection}
+          disabledReason={
+            video.deletedAt
+              ? "Deleted by its owner — it cannot be moderated"
+              : bulkPending
+                ? "Waiting for the last action to land"
+                : null
+          }
+        />
+        <td className="max-w-[260px] px-3 py-3 @4xl:max-w-[320px]">
           <div className="flex items-center gap-3">
             {/* Purged media leaves the thumbnail url pointing at nothing. */}
             <VideoThumb
@@ -216,7 +238,7 @@ export function VideoRow({
       </tr>
 
       {detail.open ? (
-        <RowDetail colSpan={9}>
+        <RowDetail colSpan={10}>
           <Field label="Owner">
             {owner?.username ? `@${owner.username}` : `#${shortId(video.userId.slice(-8), 8)}`}
             {owner ? (
@@ -313,7 +335,7 @@ export function VideoRow({
 
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={9} className="px-5 py-3">
+          <td colSpan={10} className="px-5 py-3">
             <ReasonForm
               presets={presets}
               reason={reason}
@@ -330,7 +352,7 @@ export function VideoRow({
 
       {(stalled ?? result) ? (
         <tr className="border-b border-line">
-          <td colSpan={9} className="px-5 py-2 text-[11px] text-ink-soft">
+          <td colSpan={10} className="px-5 py-2 text-[11px] text-ink-soft">
             {stalled ?? result}
           </td>
         </tr>

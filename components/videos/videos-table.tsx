@@ -4,17 +4,26 @@ import { useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
+import { bulkModerateVideosAction } from "@/app/(admin)/videos/actions";
+import { BulkBar, SelectAllCell, type BulkAction } from "@/components/moderation/bulk-bar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
 import { Segmented } from "@/components/ui/segmented";
-import { VideoRow } from "@/components/videos/videos-table/video-row";
+import { DECISIONS, VideoRow } from "@/components/videos/videos-table/video-row";
+import { PRESET_REASONS, videoDecisions, type VideoDecision } from "@/lib/moderation";
 import type { AdminVideoResponse, UserProfileResponse, VideoStatus } from "@/lib/api/types";
 import { shortId } from "@/lib/format";
 import { VIDEO_STATUS_LABELS, statusTabs } from "@/lib/labels";
 import { hrefWith } from "@/lib/url";
+import { useBulkPropagation } from "@/lib/use-propagation";
+import { useSelection } from "@/lib/use-selection";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = VideoStatus | "ALL" | "DELETED";
+
+/** A held video counts toward both of its answers; every other state toward its one. */
+type BulkDecision = VideoDecision | "reject";
+const BULK_DECISIONS: readonly BulkDecision[] = ["approve", "reject", "takedown", "restore"];
 
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   // PENDING_REVIEW first after All: this is the one filter that is a worklist rather than a
@@ -59,6 +68,36 @@ export function VideosTable({
     startNavigation(() => router.replace(filterHref(patch) as never));
   }
 
+  // A deleted video cannot be moderated: video-service only writes to rows with no deletedAt.
+  const selection = useSelection();
+  const bulk = useBulkPropagation();
+  const selectable = videos.filter(
+    (video) => !video.deletedAt && !bulk.pending(video.id, video.status),
+  );
+  const ticked = selectable.filter((video) => selection.selected.has(video.id));
+  const tickedFor = (decision: BulkDecision) =>
+    ticked.filter((video) => videoDecisions(video.status).includes(decision));
+  const bulkActions: BulkAction<BulkDecision>[] = BULK_DECISIONS.map((decision) => ({
+    key: decision,
+    label: DECISIONS[decision].label,
+    count: tickedFor(decision).length,
+    presets: PRESET_REASONS[decision],
+    confirm: DECISIONS[decision].confirm,
+    tone: decision === "approve" ? "success" : decision === "restore" ? undefined : "danger",
+  }));
+
+  async function runBulk(decision: BulkDecision, reason: string) {
+    const rows = tickedFor(decision);
+    const outcome = await bulkModerateVideosAction(rows.map((video) => video.id), decision, reason);
+    const failed = new Set(outcome.failedIds);
+    bulk.watch(rows.filter((video) => !failed.has(video.id)).map((video) => [video.id, video.status]));
+    // What this run did not cover stays ticked — the other decision's rows, and the failures.
+    selection.set(
+      ticked.filter((video) => !rows.includes(video) || failed.has(video.id)).map((video) => video.id),
+    );
+    return outcome;
+  }
+
   return (
     <Card>
       <CardHeader
@@ -94,6 +133,13 @@ export function VideosTable({
         }
       />
 
+      <BulkBar
+        count={ticked.length}
+        actions={bulkActions}
+        onRun={runBulk}
+        onClear={selection.clear}
+      />
+
       {/* Columns come and go with the width of this box, not of the window: at 1280px the
           expanded sidebar leaves the table about 970px, and every column it held at "xl" pushed
           the actions off the right edge. What a narrow box drops is still in the expand row. */}
@@ -101,7 +147,8 @@ export function VideosTable({
         <table className="w-full border-collapse text-[12px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps px-5 py-3 text-ink-soft">Title</th>
+              <SelectAllCell ids={selectable.map((video) => video.id)} selection={selection} />
+              <th className="label-caps px-3 py-3 text-ink-soft">Title</th>
               <th className="label-caps hidden px-3 py-3 text-ink-soft @4xl:table-cell">Owner</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Status</th>
               <th className="label-caps hidden px-3 py-3 text-ink-soft @6xl:table-cell">Visibility</th>
@@ -114,12 +161,19 @@ export function VideosTable({
           </thead>
           <tbody>
             {videos.map((video) => (
-              <VideoRow key={video.id} video={video} owner={owners[video.userId]} now={now} />
+              <VideoRow
+                key={video.id}
+                video={video}
+                owner={owners[video.userId]}
+                now={now}
+                selection={selection}
+                bulkPending={bulk.pending(video.id, video.status)}
+              />
             ))}
 
             {videos.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-5 py-10 text-center text-ink-faint">
+                <td colSpan={10} className="px-5 py-10 text-center text-ink-faint">
                   No uploads match this filter.
                 </td>
               </tr>

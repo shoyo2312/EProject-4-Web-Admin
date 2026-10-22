@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getModerationDetail, type ModerationDetail } from "@/lib/api/moderation";
 import { moderateVideo } from "@/lib/api/videos";
+import { bulkSummary, cleanReason, plainIds, runEach } from "@/lib/bulk";
 import type { ModerationResult } from "@/lib/moderation";
 
 /** One video's report count and moderation history, for its row in the videos table. */
@@ -49,5 +50,40 @@ export async function moderateVideoAction(
       purge:
         "Permanent deletion recorded. The media is erased within seconds, once video-service and media-worker consume the event.",
     }[action],
+  };
+}
+
+const BULK_VERBS = {
+  approve: "Approved",
+  reject: "Rejected",
+  takedown: "Took down",
+  restore: "Restored",
+} as const;
+
+/** One decision for every ticked row of the same kind, each written as its own audit entry. */
+export async function bulkModerateVideosAction(
+  videoIds: string[],
+  action: keyof typeof BULK_VERBS,
+  reason: string,
+): Promise<ModerationResult> {
+  const ids = plainIds(videoIds);
+  if (!ids || !Object.hasOwn(BULK_VERBS, action)) {
+    return { ok: false, message: "Nothing valid was selected." };
+  }
+  const why = cleanReason(reason);
+  if (!why) {
+    return { ok: false, message: "Give a reason of at most 1,000 characters — it goes into the audit log." };
+  }
+
+  const wire = action === "approve" ? "restore" : action === "reject" ? "takedown" : action;
+  const outcome = await runEach(ids, (id) => moderateVideo(id, wire, why));
+
+  revalidatePath("/videos");
+  return {
+    ok: outcome.failed.length === 0,
+    message:
+      bulkSummary(outcome, BULK_VERBS[action], "video")
+      + (outcome.done > 0 ? " Each status changes once video-service consumes its event." : ""),
+    failedIds: outcome.failed.map((failure) => failure.id),
   };
 }
