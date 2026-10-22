@@ -78,7 +78,7 @@ export async function getComments(
 
   const params = new URLSearchParams({ ids: unique.join(",") });
   return apiGet<AdminCommentResponse[]>(
-    `/api/v1/interactions/admin/videos/${videoId}/comments/by-ids?${params}`,
+    `/api/v1/interactions/admin/videos/${encodeURIComponent(videoId)}/comments/by-ids?${params}`,
   );
 }
 

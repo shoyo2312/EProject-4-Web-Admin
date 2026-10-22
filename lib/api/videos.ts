@@ -118,7 +118,8 @@ export async function getVideoStatusCounts(
 export async function getVideo(videoId: string): Promise<AdminVideoResponse | null> {
   if (USE_MOCK) return mockVideos.find((video) => video.id === videoId) ?? null;
   try {
-    return await apiGet<AdminVideoResponse>(`/api/v1/videos/admin/${videoId}`);
+    // A reported video id is whatever the reporter sent: encoded, it cannot step out of this path.
+    return await apiGet<AdminVideoResponse>(`/api/v1/videos/admin/${encodeURIComponent(videoId)}`);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return null;
     throw error;
