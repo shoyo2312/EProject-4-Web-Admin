@@ -15,18 +15,42 @@ export interface ReviewLines {
   reviewAt: number;
   rejectAt: number;
   minRejectFrames: number | null;
+  /**
+   * The zero-shot labels (violence, gore, drugs…) and the one line they share. They can hold a
+   * video for a person and never remove one, so there is no reject line. Null when the classifier
+   * does not report them — switched off, or older than them.
+   */
+  harm: { reviewAt: number; labels: string[] } | null;
 }
 
 /** The lines in force, or null when moderation-service did not answer or left them out. */
 export function reviewLines(settings: ModerationSettingsResponse | null): ReviewLines | null {
   if (!settings?.reachable) return null;
-  const { reviewAt, rejectAt, minRejectFrames } = settings.values;
+  const { reviewAt, rejectAt, minRejectFrames, harmReviewAt, harmLabels } = settings.values;
   if (typeof reviewAt !== "number" || typeof rejectAt !== "number") return null;
   return {
     reviewAt,
     rejectAt,
     minRejectFrames: typeof minRejectFrames === "number" ? minRejectFrames : null,
+    harm:
+      typeof harmReviewAt === "number" && Array.isArray(harmLabels)
+        ? { reviewAt: harmReviewAt, labels: harmLabels }
+        : null,
   };
+}
+
+/**
+ * The lines a score under this label was measured against. A harm label's score is on its own
+ * scale, and drawing it against the NSFW lines would show a held video as "past the reject line"
+ * for a check that cannot reject.
+ */
+export function linesFor(
+  lines: ReviewLines | null,
+  label: string | null,
+): { reviewAt: number; rejectAt: number | null } | null {
+  if (!lines) return null;
+  if (label && lines.harm?.labels.includes(label)) return { reviewAt: lines.harm.reviewAt, rejectAt: null };
+  return lines;
 }
 
 /**
@@ -84,6 +108,13 @@ export function heldBecause(
   }
 
   const score = moderation.maxScore.toFixed(2);
+  const harm = moderation.label && lines.harm?.labels.includes(moderation.label) ? lines.harm : null;
+  if (harm) {
+    const harmAt = harm.reviewAt.toFixed(2);
+    return moderation.maxScore >= harm.reviewAt
+      ? `Its highest frame scored ${score} for ${moderation.label}, past the review line (${harmAt}). This check only holds a video for a person; it never removes one.`
+      : `Its highest frame scored ${score} for ${moderation.label}, under today's review line (${harmAt}) — the line was lower when it was checked.`;
+  }
   const reviewAt = lines.reviewAt.toFixed(2);
   const rejectAt = lines.rejectAt.toFixed(2);
   if (moderation.maxScore >= lines.rejectAt) {

@@ -2,7 +2,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
 import type { ModerationSummary } from "@/lib/api/types";
 import { formatDateTime } from "@/lib/format";
-import { heldBecause, type ReviewLines } from "@/lib/review";
+import { heldBecause, linesFor, type ReviewLines } from "@/lib/review";
 import { cn } from "@/lib/utils";
 
 /**
@@ -30,7 +30,7 @@ export function ClassifierPanel({
             no score worth drawing: 0.000 on 0/0 frames would read as a clean pass. */}
         {moderation && moderation.totalFrames > 0 ? (
           <>
-            <ScoreScale score={moderation.maxScore} lines={lines} />
+            <ScoreScale score={moderation.maxScore} lines={linesFor(lines, moderation.label)} />
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[12px] sm:grid-cols-4">
               <Field label="Label">{moderation.label ?? "—"}</Field>
               {/* Raw rather than a percentage: the lines are configured on this same 0–1 scale. */}
@@ -57,11 +57,19 @@ export function ClassifierPanel({
   );
 }
 
-function ScoreScale({ score, lines }: { score: number; lines: ReviewLines | null }) {
+/** A null reject line is a label that can only hold a video — nothing is drawn for it. */
+function ScoreScale({
+  score,
+  lines,
+}: {
+  score: number;
+  lines: { reviewAt: number; rejectAt: number | null } | null;
+}) {
   const at = (value: number) => `${Math.min(Math.max(value, 0), 1) * 100}%`;
+  const rejectAt = lines?.rejectAt ?? null;
   const fill = !lines
     ? "bg-ink-soft"
-    : score >= lines.rejectAt
+    : rejectAt !== null && score >= rejectAt
       ? "bg-danger"
       : score >= lines.reviewAt
         ? "bg-pending"
@@ -72,7 +80,9 @@ function ScoreScale({ score, lines }: { score: number; lines: ReviewLines | null
       role="img"
       aria-label={
         lines
-          ? `Highest frame ${score.toFixed(2)} on a 0 to 1 scale; review line ${lines.reviewAt.toFixed(2)}, reject line ${lines.rejectAt.toFixed(2)}.`
+          ? `Highest frame ${score.toFixed(2)} on a 0 to 1 scale; review line ${lines.reviewAt.toFixed(2)}${
+              rejectAt !== null ? `, reject line ${rejectAt.toFixed(2)}` : ", no reject line"
+            }.`
           : `Highest frame ${score.toFixed(2)} on a 0 to 1 scale.`
       }
     >
@@ -81,7 +91,9 @@ function ScoreScale({ score, lines }: { score: number; lines: ReviewLines | null
         {lines ? (
           <>
             <span className="absolute -inset-y-1 w-px bg-ink-soft" style={{ left: at(lines.reviewAt) }} />
-            <span className="absolute -inset-y-1 w-px bg-ink-soft" style={{ left: at(lines.rejectAt) }} />
+            {rejectAt !== null ? (
+              <span className="absolute -inset-y-1 w-px bg-ink-soft" style={{ left: at(rejectAt) }} />
+            ) : null}
           </>
         ) : null}
       </div>
@@ -92,9 +104,11 @@ function ScoreScale({ score, lines }: { score: number; lines: ReviewLines | null
             <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: at(lines.reviewAt) }}>
               review {lines.reviewAt.toFixed(2)}
             </span>
-            <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: at(lines.rejectAt) }}>
-              reject {lines.rejectAt.toFixed(2)}
-            </span>
+            {rejectAt !== null ? (
+              <span className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: at(rejectAt) }}>
+                reject {rejectAt.toFixed(2)}
+              </span>
+            ) : null}
           </>
         ) : null}
         <span className="absolute right-0">1</span>
