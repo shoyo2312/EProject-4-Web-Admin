@@ -4,6 +4,7 @@ import type {
   Page,
   ReportGroupResponse,
 } from "@/lib/api/types";
+import { formatNumber } from "@/lib/format";
 import { targetHref } from "@/lib/moderation";
 
 /**
@@ -33,6 +34,26 @@ export const TRASH_RETENTION_DAYS = 30;
 /** How close to the purge a trashed video has to be before the bell mentions it. */
 export const TRASH_WARNING_DAYS = 3;
 
+/** Past this many held videos the feed counts them in one line instead of a near-identical line each. */
+const REVIEW_LIST_MAX = 3;
+
+/** When a held video started waiting: its classifier verdict, else the last write to it. */
+export const heldAt = (video: AdminVideoResponse) => video.moderation?.checkedAt ?? video.updatedAt;
+
+/** The whole review backlog as one item, dated by the newest hold so each new one reads unread. */
+function reviewBacklog(page: Page<AdminVideoResponse>): AdminNotification[] {
+  if (page.content.length === 0) return [];
+  const newest = page.content.reduce((a, b) => (Date.parse(heldAt(b)) > Date.parse(heldAt(a)) ? b : a));
+  return [{
+    id: "review",
+    at: heldAt(newest),
+    kind: "review",
+    title: `${formatNumber(page.totalElements)} videos waiting for review`,
+    detail: `Newest: ${newest.title}`,
+    href: "/moderation/review",
+  }];
+}
+
 /**
  * What a newest-first page holds from after `since`: the newest row and how many, as "N+" when
  * the page ran out before the window did.
@@ -46,7 +67,7 @@ function arrivals<T extends { createdAt: string }>(page: Page<T>, since: number)
 
 export function buildNotifications(input: {
   queue: ReportGroupResponse[];
-  review: AdminVideoResponse[];
+  review: Page<AdminVideoResponse>;
   trash: AdminVideoResponse[];
   /** Newest first, as the user directory and the video listing both sort by default. */
   signups: Page<AdminUserResponse>;
@@ -66,15 +87,18 @@ export function buildNotifications(input: {
     href: targetHref(group.targetType, group.targetId) ?? "/moderation/reports",
   }));
 
-  const reviews = review.map<AdminNotification>((video) => ({
-    id: `review:${video.id}`,
-    at: video.moderation?.checkedAt ?? video.updatedAt,
-    kind: "review",
-    title: "Video waiting for review",
-    detail: video.title,
-    // The review screen, opened on this video rather than on the oldest one waiting.
-    href: `/moderation/review?video=${encodeURIComponent(video.id)}`,
-  }));
+  const reviews =
+    review.totalElements > REVIEW_LIST_MAX
+      ? reviewBacklog(review)
+      : review.content.map<AdminNotification>((video) => ({
+          id: `review:${video.id}`,
+          at: heldAt(video),
+          kind: "review",
+          title: "Video waiting for review",
+          detail: video.title,
+          // The review screen, opened on this video rather than on the oldest one waiting.
+          href: `/moderation/review?video=${encodeURIComponent(video.id)}`,
+        }));
 
   const expiring = trash.flatMap<AdminNotification>((video) => {
     if (!video.deletedAt) return [];

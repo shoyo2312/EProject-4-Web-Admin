@@ -41,7 +41,7 @@ async function loadNotifications(size: number, limit: number): Promise<AdminNoti
   ]);
   return buildNotifications({
     queue: queue.content,
-    review: review.content,
+    review,
     trash: trash.content,
     signups,
     uploads,
