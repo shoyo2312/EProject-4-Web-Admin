@@ -84,3 +84,28 @@ export function usePropagation<T>(current: T, stalledMessage: string, reread?: (
     },
   };
 }
+
+/**
+ * {@link usePropagation} for the bulk bar: one refresh schedule for every row an action went out
+ * for, rather than one per row — twenty rows each re-reading the page three times would be sixty
+ * renders against the gateway's rate limit. A row stays `pending` while it still shows the state it
+ * had when the action went out, so it cannot be ticked and sent again before the first one lands.
+ */
+export function useBulkPropagation() {
+  const router = useRouter();
+  const [moving, setMoving] = useState<ReadonlyMap<string, unknown>>(() => new Map());
+
+  useEffect(() => {
+    if (moving.size === 0) return;
+    const timers = REFRESH_AT.map((ms) => setTimeout(() => router.refresh(), ms));
+    timers.push(setTimeout(() => setMoving(new Map()), GIVE_UP_AT));
+    return () => timers.forEach(clearTimeout);
+  }, [moving, router]);
+
+  return {
+    pending: (id: string, current: unknown) =>
+      moving.has(id) && Object.is(moving.get(id), current),
+    /** `[id, state the action is moving it away from]` for each row the action went out for. */
+    watch: (rows: readonly (readonly [string, unknown])[]) => setMoving(new Map(rows)),
+  };
+}

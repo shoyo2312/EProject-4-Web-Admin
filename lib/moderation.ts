@@ -9,6 +9,8 @@ import type {
 export interface ModerationResult {
   ok: boolean;
   message: string;
+  /** From a bulk action: the rows it could not apply to, so they stay ticked for another try. */
+  failedIds?: string[];
 }
 
 /**
