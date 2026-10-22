@@ -2,6 +2,7 @@ import type {
   CommentRestrictionResponse,
   ModerationActionType,
   ReportTargetType,
+  UserStatus,
   VideoStatus,
 } from "@/lib/api/types";
 
@@ -97,6 +98,11 @@ export function videoDecision(status: VideoStatus): VideoDecision {
   if (status === "PENDING_REVIEW") return "approve";
   if (status === "TAKEN_DOWN" || status === "REJECTED") return "restore";
   return "takedown";
+}
+
+/** The decision an account's row offers, and what the bulk bar counts it towards. */
+export function userDecision(status: UserStatus): Extract<EnforcementAction, "ban" | "unban"> {
+  return status === "BANNED" ? "unban" : "ban";
 }
 
 /**

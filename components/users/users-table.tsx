@@ -4,7 +4,12 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Ban, ShieldCheck } from "lucide-react";
-import { moderateUserAction, userModerationDetailAction } from "@/app/(admin)/users/actions";
+import {
+  bulkModerateUsersAction,
+  moderateUserAction,
+  userModerationDetailAction,
+} from "@/app/(admin)/users/actions";
+import { BulkBar, SelectAllCell, SelectCell, type BulkAction } from "@/components/moderation/bulk-bar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
 import { Segmented } from "@/components/ui/segmented";
@@ -14,12 +19,19 @@ import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ReasonForm } from "@/components/moderation/reason-form";
 import { closureNote } from "@/lib/account-closure";
 import { USER_STATUS_LABELS, statusTabs } from "@/lib/labels";
-import { BAN_DURATIONS, PRESET_REASONS, banDaysOf, type BanDuration } from "@/lib/moderation";
+import {
+  BAN_DURATIONS,
+  PRESET_REASONS,
+  banDaysOf,
+  userDecision,
+  type BanDuration,
+} from "@/lib/moderation";
 import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
 import { formatDateTime, relativeTime } from "@/lib/format";
 import { hrefWith } from "@/lib/url";
-import { usePropagation } from "@/lib/use-propagation";
+import { useBulkPropagation, usePropagation } from "@/lib/use-propagation";
 import { useRowDetail } from "@/lib/use-row-detail";
+import { useSelection, type Selection } from "@/lib/use-selection";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = UserStatus | "ALL";
@@ -52,6 +64,55 @@ export function UsersTable({
     startNavigation(() => router.replace(href as never));
   }
 
+  // Admins cannot be ticked: one banning themselves loses the console, and there is no second admin.
+  const selection = useSelection();
+  const bulk = useBulkPropagation();
+  const [bulkDuration, setBulkDuration] = useState<BanDuration>("permanent");
+  const selectable = users.filter(
+    (user) => user.role !== "ADMIN" && !bulk.pending(user.id, user.status),
+  );
+  const ticked = selectable.filter((user) => selection.selected.has(user.id));
+  const tickedFor = (action: "ban" | "unban") =>
+    ticked.filter((user) => userDecision(user.status) === action);
+  const bulkActions: BulkAction<"ban" | "unban">[] = [
+    {
+      key: "ban",
+      label: "Ban",
+      count: tickedFor("ban").length,
+      presets: PRESET_REASONS.ban,
+      confirm: bulkDuration === "permanent" ? "Confirm ban" : `Ban for ${bulkDuration}d`,
+      tone: "danger",
+      extra: (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="label-caps text-ink-soft">Duration</span>
+          <Segmented options={BAN_DURATIONS} value={bulkDuration} onChange={setBulkDuration} />
+        </div>
+      ),
+    },
+    {
+      key: "unban",
+      label: "Unban",
+      count: tickedFor("unban").length,
+      presets: PRESET_REASONS.unban,
+      confirm: "Confirm unban",
+      tone: "success",
+    },
+  ];
+
+  async function runBulk(action: "ban" | "unban", reason: string) {
+    const rows = tickedFor(action);
+    const days = action === "ban" ? banDaysOf(bulkDuration) : null;
+    const outcome = await bulkModerateUsersAction(rows.map((user) => user.id), action, reason, days);
+    const failed = new Set(outcome.failedIds);
+    bulk.watch(rows.filter((user) => !failed.has(user.id)).map((user) => [user.id, user.status]));
+    selection.set(
+      ticked.filter((user) => !rows.includes(user) || failed.has(user.id)).map((user) => user.id),
+    );
+    // Permanent is the deliberate default, as on a single row: a length is chosen each time.
+    setBulkDuration("permanent");
+    return outcome;
+  }
+
   return (
     <Card>
       <CardHeader
@@ -73,11 +134,19 @@ export function UsersTable({
         }
       />
 
+      <BulkBar
+        count={ticked.length}
+        actions={bulkActions}
+        onRun={runBulk}
+        onClear={selection.clear}
+      />
+
       <div className={cn("overflow-x-auto transition-opacity", navigating && "opacity-50")}>
         <table className="w-full border-collapse text-[12px] xl:min-w-[840px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps px-5 py-3 text-ink-soft">Username</th>
+              <SelectAllCell ids={selectable.map((user) => user.id)} selection={selection} />
+              <th className="label-caps px-3 py-3 text-ink-soft">Username</th>
               <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Email</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Role</th>
               <th className="label-caps px-3 py-3 text-ink-soft">Status</th>
@@ -87,12 +156,17 @@ export function UsersTable({
           </thead>
           <tbody>
             {users.map((user) => (
-              <UserRow key={user.id} user={user} />
+              <UserRow
+                key={user.id}
+                user={user}
+                selection={selection}
+                bulkPending={bulk.pending(user.id, user.status)}
+              />
             ))}
 
             {users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-ink-faint">
+                <td colSpan={7} className="px-5 py-10 text-center text-ink-faint">
                   No accounts match this filter.
                 </td>
               </tr>
@@ -106,8 +180,13 @@ export function UsersTable({
 
 function UserRow({
   user,
+  selection,
+  bulkPending,
 }: {
   user: AdminUserResponse;
+  selection: Selection;
+  /** A bulk action went out for this account and its status has not moved yet. */
+  bulkPending: boolean;
 }) {
   const [reason, setReason] = useState<string | null>(null);
   const [duration, setDuration] = useState<BanDuration>("permanent");
@@ -115,12 +194,14 @@ function UserRow({
   const [submitting, startSubmit] = useTransition();
   // Opening the row is what triggers the fetch — once, lazily.
   const detail = useRowDetail(() => userModerationDetailAction(user.id));
-  const { pending, stalled, watch } = usePropagation(
+  const { pending: propagating, stalled, watch } = usePropagation(
     user.status,
     "Still the old status — auth-service has not consumed the event yet. The action is recorded; reload in a moment.",
   );
 
-  const action = user.status === "BANNED" ? "unban" : "ban";
+  const pending = propagating || bulkPending;
+
+  const action = userDecision(user.status);
   const presets = PRESET_REASONS[action];
   const closure = closureNote(user);
 
@@ -153,7 +234,19 @@ function UserRow({
           "cursor-pointer",
         )}
       >
-        <td className="px-5 py-3 whitespace-nowrap">
+        <SelectCell
+          id={user.id}
+          label={`Select @${user.username}`}
+          selection={selection}
+          disabledReason={
+            user.role === "ADMIN"
+              ? "Admin accounts cannot be banned from here"
+              : bulkPending
+                ? "Waiting for the last action to land"
+                : null
+          }
+        />
+        <td className="px-3 py-3 whitespace-nowrap">
           <span className="font-medium">@{user.username}</span>
         </td>
         <td className="hidden px-3 py-3 whitespace-nowrap xl:table-cell">
@@ -218,7 +311,7 @@ function UserRow({
       </tr>
 
       {detail.open ? (
-        <RowDetail colSpan={6}>
+        <RowDetail colSpan={7}>
           <Field label="Email" wide>
             {user.email ?? "— social login"}
             {user.email && !user.emailVerified ? " (unverified)" : ""}
@@ -279,7 +372,7 @@ function UserRow({
 
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={6} className="px-5 py-3">
+          <td colSpan={7} className="px-5 py-3">
             {/* The same choice the account's own page and a report's resolution offer: a ban
                 from here was always permanent. */}
             {action === "ban" ? (
@@ -306,7 +399,7 @@ function UserRow({
 
       {(stalled ?? result) ? (
         <tr className="border-b border-line">
-          <td colSpan={6} className="px-5 py-2 text-[11px] text-ink-soft">
+          <td colSpan={7} className="px-5 py-2 text-[11px] text-ink-soft">
             {stalled ?? result}
           </td>
         </tr>

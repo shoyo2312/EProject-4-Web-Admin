@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getModerationDetail, type ModerationDetail } from "@/lib/api/moderation";
 import { liftCommentRestriction, moderateUser } from "@/lib/api/users";
+import { bulkSummary, cleanReason, plainIds, runEach } from "@/lib/bulk";
 import type { ModerationResult } from "@/lib/moderation";
 
 /** One account's report count and moderation history, for its row in the users table. */
@@ -77,5 +78,38 @@ export async function liftCommentRestrictionAction(
     message: restricted
       ? "Restriction lifted — the account can comment again now, with no strikes against it. interaction-service logged it under your id; the Audit Log does not show it."
       : "Strikes cleared — the next restriction, if any, starts again from the shortest. interaction-service logged it under your id; the Audit Log does not show it.",
+  };
+}
+
+/** One ban or unban for every ticked account, each written as its own audit entry. */
+export async function bulkModerateUsersAction(
+  userIds: string[],
+  action: "ban" | "unban",
+  reason: string,
+  /** Days until the bans lapse; null is permanent. */
+  banDays: number | null = null,
+): Promise<ModerationResult> {
+  const ids = plainIds(userIds);
+  if (!ids || (action !== "ban" && action !== "unban")) {
+    return { ok: false, message: "Nothing valid was selected." };
+  }
+  const why = cleanReason(reason);
+  if (!why) {
+    return { ok: false, message: "Give a reason of at most 1,000 characters — it goes into the audit log." };
+  }
+  if (banDays !== null && !(Number.isInteger(banDays) && banDays >= 1 && banDays <= 365)) {
+    return { ok: false, message: "A ban lasts 1 to 365 days, or for good." };
+  }
+
+  const days = action === "ban" ? banDays : null;
+  const outcome = await runEach(ids, (id) => moderateUser(id, action, why, days));
+
+  revalidatePath("/users");
+  return {
+    ok: outcome.failed.length === 0,
+    message:
+      bulkSummary(outcome, action === "ban" ? "Banned" : "Unbanned", "account")
+      + (outcome.done > 0 ? " Each status changes once auth-service consumes its event." : ""),
+    failedIds: outcome.failed.map((failure) => failure.id),
   };
 }
