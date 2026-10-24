@@ -25,6 +25,9 @@ const AGENTS: [string, string][] = [
   ],
 ];
 
+/** Approximate places, as auth-service resolves them; null where an address resolves to nothing. */
+const PLACES: (string | null)[] = ["Ho Chi Minh City, Vietnam", "Hanoi, Vietnam", "Da Nang, Vietnam", null];
+
 /**
  * A few sign-ins and the occasional failure per account, so mock mode shows the shape of a real
  * security log rather than an empty tab.
@@ -50,6 +53,7 @@ export const mockSecurityEvents: Record<string, SecurityEventResponse[]> = (() =
         ipAddress: `203.0.113.${between(rand, 2, 250)}`,
         userAgent,
         deviceLabel,
+        location: pick(rand, PLACES),
         detail,
         createdAt: new Date(MOCK_NOW - hoursAgo * HOUR_MS).toISOString(),
       });

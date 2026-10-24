@@ -211,7 +211,10 @@ function securityEvent(event: SecurityEventResponse): ActivityEvent {
     category: "security",
     kind: `security.${event.eventType.toLowerCase()}`,
     summary: SECURITY_SUMMARY[event.eventType] ?? event.eventType,
-    detail: [event.detail, event.deviceLabel, event.ipAddress].filter(Boolean).join(" · ")
+    // The place is approximate — looked up from the address when the event happened — so it is
+    // marked as such rather than stated.
+    detail: [event.detail, event.deviceLabel, event.ipAddress, event.location && `≈ ${event.location}`]
+      .filter(Boolean).join(" · ")
       || undefined,
   };
 }

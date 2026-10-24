@@ -157,9 +157,13 @@ export default async function UserActivityPage({
           that never did it, and the two gaps left are not ones a reader can infer. */}
       <p className="mt-3 px-1 text-[11px] text-ink-faint">
         Sign-ins are listed from the day the security log was added; anything earlier was never
-        recorded. Locations are not shown — the address is kept, but resolving one to a place
-        needs a geo-IP database the platform does not have. Phone changes are not listed either:
-        accounts have no phone number.
+        recorded. Places are approximate: they are looked up from the address when the event
+        happened, mobile networks often resolve to Hà Nội or TP.HCM wherever the phone is, and
+        entries from before places were added have none. Phone changes are not listed either:
+        accounts have no phone number.{" "}
+        <a href="https://db-ip.com" className="underline">
+          IP Geolocation by DB-IP
+        </a>
       </p>
     </>
   );

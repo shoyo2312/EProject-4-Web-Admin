@@ -200,6 +200,12 @@ export interface SecurityEventResponse {
   userAgent: string | null;
   /** "Chrome on macOS" — null when the agent named nothing recognised. */
   deviceLabel: string | null;
+  /**
+   * The approximate place of the address — "Ho Chi Minh City, Vietnam", sometimes the country
+   * alone — looked up when the event happened. Null for older entries and for addresses that
+   * resolve to nothing.
+   */
+  location: string | null;
   /** A short phrase: the new address, why sessions were revoked. Never a secret. */
   detail: string | null;
   createdAt: string;
