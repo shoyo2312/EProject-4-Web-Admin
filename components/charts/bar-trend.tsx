@@ -21,7 +21,7 @@ export function BarTrend({
     <div>
       <div
         className={cn(
-          "flex h-[220px] items-end gap-[3px] border-b border-dashed border-line pb-px",
+          "flex h-[220px] items-end gap-[3px] border-b border-line pb-px",
           className,
         )}
       >
@@ -29,7 +29,7 @@ export function BarTrend({
           <span
             key={bar.day}
             title={`${formatDate(bar.day)} · ${describe(bar.value)}`}
-            className="min-w-0 flex-1 rounded-t-[1px] bg-ink transition-opacity hover:opacity-60"
+            className="min-w-0 flex-1 rounded-t-sm bg-accent/80 transition-colors hover:bg-accent"
             // A zero bucket still needs a visible baseline tick, otherwise a gap in the series
             // is indistinguishable from a bucket that never loaded.
             style={{ height: `${Math.max((bar.value / peak) * 100, 2)}%` }}
@@ -38,7 +38,7 @@ export function BarTrend({
       </div>
 
       {bars.length > 0 ? (
-        <div className="mt-2 flex items-center justify-between text-[10px] text-ink-faint">
+        <div className="mt-2 flex items-center justify-between text-[11px] text-ink-faint">
           <span>{formatDate(bars[0].day)}</span>
           <span>{formatDate(bars[bars.length - 1].day)}</span>
         </div>

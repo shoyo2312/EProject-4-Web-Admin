@@ -59,7 +59,7 @@ export default async function ModerationTermsPage({
             title="The list in force"
             hint="The shipped file changes only with a release; the admin terms on top of it change here. Every held comment and screened caption records the version it was decided with."
           />
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[13px] xl:grid-cols-4">
             <Field label="Shipped list">
               <span className="figure">{formatNumber(summary.shippedTerms)}</span> terms
               <span className="text-ink-faint"> · version {summary.shippedVersion}</span>

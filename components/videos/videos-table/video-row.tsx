@@ -121,7 +121,7 @@ export function VideoRow({
                 {video.title || "(untitled upload)"}
               </span>
               {video.failureReason ? (
-                <span className="block truncate text-[10px] text-danger" title={video.failureReason}>
+                <span className="block truncate text-[11px] text-danger" title={video.failureReason}>
                   {video.failureReason}
                 </span>
               ) : null}
@@ -139,18 +139,18 @@ export function VideoRow({
           {/* A deleted video's pipeline status (PUBLISHED, TAKEN_DOWN, ...) stopped mattering
               the moment its owner removed it — showing both reads as "which one is it". */}
           {video.deletedAt ? (
-            <span className="inline-flex items-center rounded-md border border-danger/25 bg-danger-bg px-2 py-1 text-[11px] font-medium text-danger">
+            <span className="inline-flex items-center rounded-md border border-danger/25 bg-danger-bg px-2 py-1 text-[12px] font-medium text-danger">
               Deleted
             </span>
           ) : (
             <VideoStatusBadge status={video.status} dimmed={pending} />
           )}
           {pending ? (
-            <span className="ml-2 text-[10px] text-ink-faint">applying…</span>
+            <span className="ml-2 text-[11px] text-ink-faint">applying…</span>
           ) : null}
         </td>
         <td className="hidden px-3 py-3 @6xl:table-cell">
-          <span className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[10px] tracking-wider text-ink-soft">
+          <span className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[11px] tracking-wider text-ink-soft">
             {video.visibility}
           </span>
         </td>
@@ -224,7 +224,7 @@ export function VideoRow({
               disabled={pending || Boolean(video.deletedAt)}
               onClick={() => setReason(reason === null ? "" : null)}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] whitespace-nowrap transition-colors",
+                "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] whitespace-nowrap transition-colors",
                 pending || video.deletedAt ? "cursor-not-allowed text-ink-faint" : "hover:bg-surface",
                 !pending && !video.deletedAt && action === "takedown" && "text-danger",
                 !pending && !video.deletedAt && action === "approve" && "text-success",
@@ -325,7 +325,7 @@ export function VideoRow({
           <Field label="" wide>
             <Link
               href={`/videos/${video.id}` as never}
-              className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+              className="text-[12px] text-ink-soft underline-offset-4 hover:underline"
             >
               Open this video&apos;s page →
             </Link>
@@ -352,7 +352,7 @@ export function VideoRow({
 
       {(stalled ?? result) ? (
         <tr className="border-b border-line">
-          <td colSpan={10} className="px-5 py-2 text-[11px] text-ink-soft">
+          <td colSpan={10} className="px-5 py-2 text-[12px] text-ink-soft">
             {stalled ?? result}
           </td>
         </tr>

@@ -56,7 +56,7 @@ export function Tooltip({
               role="tooltip"
               style={{ left: coords.x, top: coords.y }}
               className={cn(
-                "pointer-events-none fixed z-[60] whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] font-medium text-surface shadow-md",
+                "pointer-events-none fixed z-[60] whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[12px] font-medium text-surface shadow-md",
                 placement === "right"
                   ? "-translate-y-1/2"
                   : "-translate-x-1/2 -translate-y-full",

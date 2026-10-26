@@ -13,7 +13,7 @@ export function CommentModeration({ comment }: { comment: AdminCommentResponse }
   if (!held && flags.length === 0) return null;
 
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px]">
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
       {held ? (
         <span
           title="Never public: it waits for the video's owner to approve it."

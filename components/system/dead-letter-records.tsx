@@ -37,15 +37,15 @@ export function DeadLetterRecords({
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[12px] xl:min-w-[980px]">
+        <table className="w-full border-collapse text-[13px] xl:min-w-[980px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps px-5 py-3 text-ink-soft">Parked</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Failed in</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Event</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Why</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">State</th>
-              <th className="label-caps px-5 py-3 text-right text-ink-soft">Replay</th>
+              <th className="label px-5 py-3 text-ink-soft">Parked</th>
+              <th className="label px-3 py-3 text-ink-soft">Failed in</th>
+              <th className="label px-3 py-3 text-ink-soft">Event</th>
+              <th className="label px-3 py-3 text-ink-soft">Why</th>
+              <th className="label px-3 py-3 text-ink-soft">State</th>
+              <th className="label px-5 py-3 text-right text-ink-soft">Replay</th>
             </tr>
           </thead>
           <tbody>
@@ -111,25 +111,25 @@ function RecordRow({
       <tr className="border-b border-line align-top last:border-b-0">
         <td className="px-5 py-3 whitespace-nowrap text-ink-soft" title={formatDateTime(record.parkedAt)}>
           {relativeTime(record.parkedAt, now)}
-          <p className="figure text-[11px] text-ink-faint">
+          <p className="figure text-[12px] text-ink-faint">
             {record.partition}:{record.offset}
           </p>
         </td>
         <td className="px-3 py-3">
           <span className="font-medium">{record.consumerGroup ?? "—"}</span>
-          <p className="text-[11px] text-ink-faint wrap-anywhere">{record.origin ?? "no origin headers"}</p>
+          <p className="text-[12px] text-ink-faint wrap-anywhere">{record.origin ?? "no origin headers"}</p>
         </td>
         <td className="px-3 py-3">
           {record.eventType ?? <span className="text-ink-faint">no eventType</span>}
-          <p className="figure text-[11px] text-ink-faint wrap-anywhere">key {record.key ?? "—"}</p>
+          <p className="figure text-[12px] text-ink-faint wrap-anywhere">key {record.key ?? "—"}</p>
         </td>
-        <td className="max-w-[360px] px-3 py-3 text-[11px] text-ink-soft wrap-anywhere">
+        <td className="max-w-[360px] px-3 py-3 text-[12px] text-ink-soft wrap-anywhere">
           {record.error ?? <span className="text-ink-faint">no exception recorded</span>}
         </td>
         <td className="px-3 py-3">
           <ToneBadge tone={status.tone}>{status.label}</ToneBadge>
           {last ? (
-            <p className="mt-1 text-[11px] whitespace-nowrap text-ink-faint" title={formatDateTime(last.at)}>
+            <p className="mt-1 text-[12px] whitespace-nowrap text-ink-faint" title={formatDateTime(last.at)}>
               {replayedBy ?? `#${last.adminId.slice(-6)}`} · {relativeTime(last.at, now)}
             </p>
           ) : null}
@@ -144,7 +144,7 @@ function RecordRow({
                 setOutcome(null);
               }}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
+                "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors",
                 confirming ? "cursor-not-allowed text-ink-faint" : "hover:bg-surface",
               )}
             >
@@ -157,7 +157,7 @@ function RecordRow({
 
       {heldBack && last.detail ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={COLUMNS} className="px-5 py-2 text-[11px] text-ink-soft">
+          <td colSpan={COLUMNS} className="px-5 py-2 text-[12px] text-ink-soft">
             Held back: {last.detail}. Replaying it lands it after that event, so it can undo what that
             event did — a takedown replayed after its restore takes the video down again.
           </td>
@@ -167,7 +167,7 @@ function RecordRow({
       {confirming ? (
         <tr className="border-b border-line bg-surface-muted">
           <td colSpan={COLUMNS} className="px-5 py-3">
-            <p className="mb-2 text-[11px] text-ink-soft">
+            <p className="mb-2 text-[12px] text-ink-soft">
               Send this {record.eventType ?? "record"} back to{" "}
               <span className="font-medium">{originTopic}</span>? Every consumer group on it receives it again; those
               that handled it before drop it.
@@ -180,7 +180,7 @@ function RecordRow({
                 type="button"
                 onClick={() => replay(false)}
                 disabled={submitting}
-                className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
+                className="rounded-md bg-accent px-3 py-2 text-[12px] font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-40"
               >
                 {submitting ? "Replaying..." : "Replay"}
               </button>
@@ -189,7 +189,7 @@ function RecordRow({
                   type="button"
                   onClick={() => replay(true)}
                   disabled={submitting}
-                  className="rounded-md border border-danger/40 bg-surface px-3 py-2 text-[11px] text-danger transition-colors hover:bg-danger-bg disabled:opacity-40"
+                  className="rounded-md border border-danger/40 bg-surface px-3 py-2 text-[12px] text-danger transition-colors hover:bg-danger-bg disabled:opacity-40"
                 >
                   Replay anyway
                 </button>
@@ -198,7 +198,7 @@ function RecordRow({
                 type="button"
                 onClick={() => setConfirming(false)}
                 disabled={submitting}
-                className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
+                className="rounded-md border border-line bg-surface px-3 py-2 text-[12px] transition-colors hover:bg-canvas"
               >
                 Cancel
               </button>
@@ -209,7 +209,7 @@ function RecordRow({
 
       {outcome ? (
         <tr className="border-b border-line">
-          <td colSpan={COLUMNS} className="px-5 py-2 text-[11px] text-ink-soft">
+          <td colSpan={COLUMNS} className="px-5 py-2 text-[12px] text-ink-soft">
             {outcome}
           </td>
         </tr>

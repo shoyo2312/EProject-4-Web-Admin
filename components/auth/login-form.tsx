@@ -99,19 +99,19 @@ export function LoginForm() {
       {step === "credentials" ? (
         <>
           <label className="block">
-            <span className="label-caps text-ink-soft">Username or email</span>
+            <span className="label text-ink-soft">Username or email</span>
             <input
               name="usernameOrEmail"
               autoComplete="username"
               required
               value={usernameOrEmail}
               onChange={(e) => setUsernameOrEmail(e.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-line bg-surface-muted px-3 py-2.5 text-[13px] outline-none focus:border-ink-faint"
+              className="mt-1.5 w-full rounded-lg border border-line bg-surface-muted px-3 py-2.5 text-[14px] outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-accent/40"
             />
           </label>
 
           <label className="block">
-            <span className="label-caps text-ink-soft">Password</span>
+            <span className="label text-ink-soft">Password</span>
             <div className="relative mt-1.5">
               <input
                 name="password"
@@ -120,7 +120,7 @@ export function LoginForm() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-line bg-surface-muted px-3 py-2.5 pr-10 text-[13px] outline-none focus:border-ink-faint"
+                className="w-full rounded-lg border border-line bg-surface-muted px-3 py-2.5 pr-10 text-[14px] outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-accent/40"
               />
               <button
                 type="button"
@@ -139,7 +139,7 @@ export function LoginForm() {
 
           <Link
             href="/forgot-password"
-            className="block text-right text-[11px] text-ink-faint underline"
+            className="block text-right text-[12px] text-ink-faint underline"
           >
             Forgot password?
           </Link>
@@ -147,7 +147,7 @@ export function LoginForm() {
       ) : (
         <>
           <label className="block">
-            <span className="label-caps text-ink-soft">6-digit code</span>
+            <span className="label text-ink-soft">6-digit code</span>
             <input
               name="otp"
               inputMode="numeric"
@@ -158,11 +158,11 @@ export function LoginForm() {
               autoFocus
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="mt-1.5 w-full rounded-lg border border-line bg-surface-muted px-3 py-2.5 text-center text-[18px] tracking-[0.4em] outline-none focus:border-ink-faint"
+              className="mt-1.5 w-full rounded-lg border border-line bg-surface-muted px-3 py-2.5 text-center text-[18px] tracking-[0.4em] outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-accent/40"
             />
           </label>
 
-          <label className="flex items-center gap-2 text-[12px] text-ink-soft">
+          <label className="flex items-center gap-2 text-[13px] text-ink-soft">
             <input
               type="checkbox"
               checked={rememberDevice}
@@ -176,7 +176,7 @@ export function LoginForm() {
             type="button"
             onClick={resend}
             disabled={submitDisabled}
-            className="text-[11px] text-ink-soft underline disabled:opacity-40"
+            className="text-[12px] text-ink-soft underline disabled:opacity-40"
           >
             Send a new code
           </button>
@@ -188,20 +188,20 @@ export function LoginForm() {
           <TurnstileWidget key={turnstile.widgetKey} onVerify={turnstile.setToken} />
         </div>
       ) : (
-        <p className="rounded-lg border border-pending/25 bg-pending-bg px-3 py-2.5 text-[11px] text-pending">
+        <p className="rounded-lg border border-pending/25 bg-pending-bg px-3 py-2.5 text-[12px] text-pending">
           Set <code>NEXT_PUBLIC_TURNSTILE_SITE_KEY</code> in <code>.env.local</code> — admin login
           requires the Turnstile check.
         </p>
       )}
 
       {notice ? (
-        <p className="rounded-lg border border-line bg-surface-muted px-3 py-2.5 text-[11px] text-ink-soft">
+        <p className="rounded-lg border border-line bg-surface-muted px-3 py-2.5 text-[12px] text-ink-soft">
           {notice}
         </p>
       ) : null}
 
       {error ? (
-        <p className="flex items-start gap-2 rounded-lg border border-danger/25 bg-danger-bg px-3 py-2.5 text-[11px] text-danger">
+        <p className="flex items-start gap-2 rounded-lg border border-danger/25 bg-danger-bg px-3 py-2.5 text-[12px] text-danger">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           {error}
         </p>
@@ -210,7 +210,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={submitDisabled}
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 py-2.5 text-[13px] font-medium text-surface transition-opacity hover:opacity-85 disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-3 py-2.5 text-[14px] font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-50"
       >
         {pending ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -228,7 +228,7 @@ export function LoginForm() {
             setError(null);
             setNotice(null);
           }}
-          className="w-full text-center text-[11px] text-ink-faint underline"
+          className="w-full text-center text-[12px] text-ink-faint underline"
         >
           Back
         </button>

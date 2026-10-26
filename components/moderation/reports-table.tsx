@@ -96,7 +96,7 @@ export function ReportsTable({
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[12px] xl:min-w-[880px]">
+        <table className="w-full border-collapse text-[13px] xl:min-w-[880px]">
           <thead>
             <tr className="border-b border-line text-left">
               <SortableHeader
@@ -105,17 +105,17 @@ export function ReportsTable({
                 sort={order}
                 className="hidden pl-5 xl:table-cell"
               />
-              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reporter</th>
+              <th className="label hidden px-3 py-3 text-ink-soft xl:table-cell">Reporter</th>
               <SortableHeader
                 label="Target"
                 sortKey="targetType"
                 sort={order}
                 className="pl-5 xl:pl-3"
               />
-              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reason</th>
+              <th className="label hidden px-3 py-3 text-ink-soft xl:table-cell">Reason</th>
               <SortableHeader label="Status" sortKey="status" sort={order} />
               <SortableHeader label="Created" sortKey="createdAt" sort={order} />
-              <th className="label-caps px-5 py-3 text-right text-ink-soft">
+              <th className="label px-5 py-3 text-right text-ink-soft">
                 Actions
               </th>
             </tr>
@@ -140,7 +140,7 @@ export function ReportsTable({
         <div className="border-t border-line px-5 py-3 text-right">
           <Link
             href={footerHref as never}
-            className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+            className="text-[12px] text-ink-soft underline-offset-4 hover:underline"
           >
             View full queue →
           </Link>
@@ -221,13 +221,13 @@ function ReportRow({
                 setResolving((open) => !open);
                 setResult(null);
               }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors hover:bg-surface"
+              className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors hover:bg-surface"
             >
               <Gavel className="h-3.5 w-3.5" />
               Resolve
             </button>
           ) : (
-            <span className="text-[11px] text-ink-faint">
+            <span className="text-[12px] text-ink-faint">
               {report.resolvedAt ? relativeTime(report.resolvedAt) : "closed"}
             </span>
           )}
@@ -299,7 +299,7 @@ function ReportRow({
 
       {result ? (
         <tr className="border-b border-line last:border-b-0">
-          <td colSpan={COLUMNS} className="px-5 pb-3 text-[11px] text-ink-soft">
+          <td colSpan={COLUMNS} className="px-5 pb-3 text-[12px] text-ink-soft">
             {result}
           </td>
         </tr>

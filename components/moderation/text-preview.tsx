@@ -81,25 +81,25 @@ export function TextPreview() {
           }}
           rows={3}
           placeholder={PLACEHOLDERS[surface]}
-          className="block w-full resize-y rounded-lg border border-line bg-surface px-3 py-2 text-[12px] outline-none placeholder:text-ink-faint"
+          className="block w-full resize-y rounded-lg border border-line bg-surface px-3 py-2 text-[13px] outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-accent/40 placeholder:text-ink-faint"
         />
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={check}
             disabled={checking || !text.trim()}
-            className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
+            className="rounded-md bg-accent px-3 py-2 text-[12px] font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-40"
           >
             {checking ? "Checking..." : "Check"}
           </button>
-          <span className="text-[11px] text-ink-faint">or ⌘/Ctrl + Enter</span>
+          <span className="text-[12px] text-ink-faint">or ⌘/Ctrl + Enter</span>
         </div>
 
         {result ? (
           result.ok ? (
             <Verdict preview={result.preview} />
           ) : (
-            <p className="text-[11px] text-ink-soft">{result.message}</p>
+            <p className="text-[12px] text-ink-soft">{result.message}</p>
           )
         ) : null}
       </div>
@@ -112,7 +112,7 @@ function Verdict({ preview }: { preview: TextPreviewResponse }) {
     <div className="space-y-2.5 rounded-lg border border-line bg-surface-muted px-3 py-3">
       <span
         className={cn(
-          "inline-flex rounded-md border px-2 py-1 text-[11px] font-medium",
+          "inline-flex rounded-md border px-2 py-1 text-[12px] font-medium",
           DECISION_STYLES[preview.decision],
         )}
       >
@@ -120,7 +120,7 @@ function Verdict({ preview }: { preview: TextPreviewResponse }) {
       </span>
 
       {preview.flags.length > 0 ? (
-        <ul className="space-y-1.5 text-[11px]">
+        <ul className="space-y-1.5 text-[12px]">
           {preview.flags.map((flag, i) => (
             // Two links to the same domain are two flags with the same text.
             <li key={i} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -133,10 +133,10 @@ function Verdict({ preview }: { preview: TextPreviewResponse }) {
           ))}
         </ul>
       ) : (
-        <p className="text-[11px] text-ink-faint">Nothing fired.</p>
+        <p className="text-[12px] text-ink-faint">Nothing fired.</p>
       )}
 
-      <p className="text-[11px] text-ink-faint">
+      <p className="text-[12px] text-ink-faint">
         Decided with <span className="figure break-all">{preview.version}</span>.
         {preview.classifierAnswered
           ? null

@@ -105,9 +105,9 @@ export function ResolveForm({
             aria-pressed={action === choice.value}
             onClick={() => setAction(choice.value)}
             className={cn(
-              "rounded-md border px-2.5 py-1 text-[11px] transition-colors",
+              "rounded-md border px-2.5 py-1 text-[12px] transition-colors",
               action === choice.value
-                ? "border-ink bg-ink text-surface"
+                ? "border-accent bg-accent text-on-accent"
                 : "border-line bg-surface text-ink-soft hover:bg-canvas",
             )}
           >
@@ -118,7 +118,7 @@ export function ResolveForm({
 
       {banning ? (
         <div className="mb-2 flex flex-wrap items-center gap-2">
-          <span className="label-caps text-ink-soft">Duration</span>
+          <span className="label text-ink-soft">Duration</span>
           <Segmented options={BAN_DURATIONS} value={duration} onChange={setDuration} />
         </div>
       ) : null}

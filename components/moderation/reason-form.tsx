@@ -58,9 +58,9 @@ export function ReasonForm({
             aria-pressed={reason === preset}
             onClick={() => choosePreset(preset)}
             className={cn(
-              "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+              "rounded-full border px-2.5 py-1 text-[12px] transition-colors",
               reason === preset
-                ? "border-ink bg-ink text-surface"
+                ? "border-accent bg-accent text-on-accent"
                 : "border-line bg-surface text-ink-soft hover:bg-canvas",
             )}
           >
@@ -70,7 +70,7 @@ export function ReasonForm({
         <button
           type="button"
           onClick={() => choosePreset("")}
-          className="rounded-full border border-dashed border-line px-2.5 py-1 text-[11px] text-ink-faint transition-colors hover:bg-canvas"
+          className="rounded-full border border-dashed border-line px-2.5 py-1 text-[12px] text-ink-faint transition-colors hover:bg-canvas"
         >
           Other…
         </button>
@@ -90,20 +90,20 @@ export function ReasonForm({
             if (reason.trim() && !submitting) onSubmit();
           }}
           placeholder={placeholder}
-          className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-[11px] outline-none placeholder:text-ink-faint"
+          className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-[12px] outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-accent/40 placeholder:text-ink-faint"
         />
         <button
           type="button"
           onClick={onSubmit}
           disabled={submitting || !reason.trim()}
-          className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
+          className="rounded-md bg-accent px-3 py-2 text-[12px] font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-40"
         >
           {submitting ? "Submitting..." : confirmLabel}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
+          className="rounded-md border border-line bg-surface px-3 py-2 text-[12px] transition-colors hover:bg-canvas"
         >
           Cancel
         </button>

@@ -23,13 +23,11 @@ export function PageHeader({
   csv?: CsvExport;
 }) {
   return (
-    <div className="mb-5 flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between md:gap-6">
-      <div>
-        <h1 className="text-[26px] leading-tight font-bold tracking-tight">
-          {title}
-        </h1>
+    <div className="mb-6 flex flex-col items-start gap-4 md:flex-row md:items-end md:justify-between md:gap-6">
+      <div className="min-w-0">
+        <h1 className="text-[24px] leading-tight font-semibold tracking-tight">{title}</h1>
         {subtitle ? (
-          <p className="mt-1 text-[12px] text-ink-soft">{subtitle}</p>
+          <p className="mt-1.5 max-w-2xl text-[13px] leading-relaxed text-ink-soft">{subtitle}</p>
         ) : null}
       </div>
 

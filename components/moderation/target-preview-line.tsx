@@ -49,12 +49,12 @@ export function TargetPreviewLine({
     <span className="flex flex-wrap items-baseline gap-x-2">
       <span>{preview.title}</span>
       {preview.detail ? (
-        <span className="text-[11px] text-ink-faint">· {preview.detail}</span>
+        <span className="text-[12px] text-ink-faint">· {preview.detail}</span>
       ) : null}
       {preview.href ? (
         <Link
           href={preview.href as never}
-          className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+          className="text-[12px] text-ink-soft underline-offset-4 hover:underline"
         >
           open →
         </Link>

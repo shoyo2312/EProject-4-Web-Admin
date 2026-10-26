@@ -57,7 +57,7 @@ export function BulkBar<K extends string>({
   return (
     <div className="border-b border-line bg-surface-muted px-5 py-3">
       <div className="flex flex-wrap items-center gap-2">
-        {count > 0 ? <span className="text-[11px] font-medium">{count} selected</span> : null}
+        {count > 0 ? <span className="text-[12px] font-medium">{count} selected</span> : null}
         {offered.map((candidate) => (
           <button
             key={candidate.key}
@@ -70,7 +70,7 @@ export function BulkBar<K extends string>({
               setResult(null);
             }}
             className={cn(
-              "rounded-md border border-line bg-surface px-2.5 py-1.5 text-[11px] transition-colors hover:bg-canvas disabled:opacity-40",
+              "rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12px] transition-colors hover:bg-canvas disabled:opacity-40",
               candidate.tone === "danger" && "text-danger",
               candidate.tone === "success" && "text-success",
             )}
@@ -85,7 +85,7 @@ export function BulkBar<K extends string>({
             setOpen(null);
             setResult(null);
           }}
-          className="ml-auto text-[11px] text-ink-soft underline-offset-4 hover:underline"
+          className="ml-auto text-[12px] text-ink-soft underline-offset-4 hover:underline"
         >
           {count > 0 ? "Clear selection" : "Dismiss"}
         </button>
@@ -108,7 +108,7 @@ export function BulkBar<K extends string>({
       ) : null}
 
       {result ? (
-        <p role="status" className="mt-2 text-[11px] text-ink-soft">
+        <p role="status" className="mt-2 text-[12px] text-ink-soft">
           {result}
         </p>
       ) : null}
@@ -117,7 +117,7 @@ export function BulkBar<K extends string>({
 }
 
 const CHECKBOX =
-  "h-3.5 w-3.5 cursor-pointer accent-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed";
+  "h-3.5 w-3.5 cursor-pointer accent-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed";
 
 /** The whole cell is the target — a 14px box alone is under the 24px a pointer needs. */
 const CELL_LABEL = "flex cursor-pointer items-center py-3 pr-3 pl-5";

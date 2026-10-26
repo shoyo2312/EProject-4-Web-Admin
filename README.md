@@ -3,7 +3,7 @@
 Admin dashboard for the `tiktok-backend` microservices monorepo. Separate Next.js app —
 no shared bundle or JWT handling with the public client at `../tiktok-cloned`.
 
-Stack: Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · lucide-react · JetBrains Mono.
+Stack: Next.js 16 (App Router) · React 19 · Tailwind CSS 4 · lucide-react · Geist.
 
 ```bash
 npm install
@@ -72,9 +72,9 @@ published, so the Audit Log marks it "Recorded only".
 
 ## Design notes
 
-Neo-brutalist / monospace: flat surfaces, 1px borders, `#F1F1F1` canvas, no shadows.
+Dark rail beside a light workspace (dark theme from the topbar toggle, stored in the `admin_theme` cookie): rounded cards with a hairline border and a soft shadow, one indigo accent for anything selected or primary, status colours as dot pills. Tokens live in `app/globals.css`.
 Colour is reserved for status — green resolved, amber pending, grey dismissed, red
-destructive. Tokens live in `app/globals.css`; light-only by design.
+destructive.
 
 Mock data uses a seeded PRNG and a fixed clock (`lib/mock/random.ts`) so server and
 client renders match — `Math.random()` / `Date.now()` would break hydration.

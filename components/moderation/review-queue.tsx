@@ -202,8 +202,8 @@ export function ReviewQueue({
     return (
       <Card className="flex flex-col items-center gap-2 px-5 py-14 text-center">
         <Inbox className="h-5 w-5 text-ink-faint" />
-        <p className="text-[12px] text-ink-soft">The queue is empty.</p>
-        <p className="max-w-sm text-[11px] text-ink-faint">
+        <p className="text-[13px] text-ink-soft">The queue is empty.</p>
+        <p className="max-w-sm text-[12px] text-ink-faint">
           Videos automatic moderation holds back for a person land here, longest waiting first.
         </p>
       </Card>
@@ -225,7 +225,7 @@ export function ReviewQueue({
         <p
           role="status"
           className={cn(
-            "rounded-lg border px-4 py-2.5 text-[12px]",
+            "rounded-lg border px-4 py-2.5 text-[13px]",
             notice.ok
               ? "border-success/25 bg-success-bg text-success"
               : "border-danger/25 bg-danger-bg text-danger",
@@ -250,12 +250,12 @@ export function ReviewQueue({
                   </h2>
                   <Link
                     href={`/videos/${video.id}` as never}
-                    className="shrink-0 text-[11px] text-ink-soft underline-offset-4 hover:underline"
+                    className="shrink-0 text-[12px] text-ink-soft underline-offset-4 hover:underline"
                   >
                     Full page →
                   </Link>
                 </div>
-                <dl className="grid grid-cols-3 gap-x-4 text-[12px]">
+                <dl className="grid grid-cols-3 gap-x-4 text-[13px]">
                   <Field label="Uploaded">{relativeTime(video.createdAt)}</Field>
                   <Field label="Duration">
                     {video.durationSeconds != null ? formatDuration(video.durationSeconds) : "—"}
@@ -263,10 +263,10 @@ export function ReviewQueue({
                   <Field label="Visibility">{video.visibility}</Field>
                 </dl>
                 {video.description ? (
-                  <p className="text-[12px] text-ink-soft wrap-anywhere">{video.description}</p>
+                  <p className="text-[13px] text-ink-soft wrap-anywhere">{video.description}</p>
                 ) : null}
                 {video.tags.length > 0 ? (
-                  <p className="text-[11px] text-ink-faint wrap-anywhere">
+                  <p className="text-[12px] text-ink-faint wrap-anywhere">
                     {video.tags.map((tag) => `#${tag}`).join(" ")}
                   </p>
                 ) : null}
@@ -274,7 +274,7 @@ export function ReviewQueue({
 
               <div className="border-t border-line px-5 py-4">
                 {answered ? (
-                  <p className={cn("flex items-start gap-2 text-[12px]", ANSWERS[answered.answer].tone)}>
+                  <p className={cn("flex items-start gap-2 text-[13px]", ANSWERS[answered.answer].tone)}>
                     {AnsweredIcon ? <AnsweredIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : null}
                     <span>
                       You {answered.answer === "approve" ? "approved" : "rejected"} this video: “
@@ -282,15 +282,15 @@ export function ReviewQueue({
                     </span>
                   </p>
                 ) : gone ? (
-                  <p className="text-[12px] text-ink-faint">
+                  <p className="text-[13px] text-ink-faint">
                     This video no longer exists — there is nothing left to decide.
                   </p>
                 ) : fresh?.deletedAt ? (
-                  <p className="text-[12px] text-ink-faint">
+                  <p className="text-[13px] text-ink-faint">
                     Its owner deleted it while it waited — there is nothing left to decide.
                   </p>
                 ) : settled && fresh ? (
-                  <p className="flex flex-wrap items-center gap-2 text-[12px] text-ink-soft">
+                  <p className="flex flex-wrap items-center gap-2 text-[13px] text-ink-soft">
                     Already decided — it is now <VideoStatusBadge status={fresh.status} dense />
                   </p>
                 ) : open ? (
@@ -316,7 +316,7 @@ export function ReviewQueue({
                           disabled={submitting}
                           onClick={() => start(answer)}
                           className={cn(
-                            "inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-[12px] font-medium transition-colors hover:bg-canvas disabled:opacity-40",
+                            "inline-flex items-center gap-2 rounded-md border border-line px-3 py-2 text-[13px] font-medium transition-colors hover:bg-canvas disabled:opacity-40",
                             tone,
                           )}
                         >
@@ -328,7 +328,7 @@ export function ReviewQueue({
                     })}
                   </div>
                 )}
-                <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-ink-faint">
+                <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-ink-faint">
                   <span>
                     <Kbd>J</Kbd> next
                   </span>
@@ -391,11 +391,11 @@ export function ReviewQueue({
       ) : (
         <Card className="flex flex-col items-center gap-3 px-5 py-12 text-center">
           <CheckCircle2 className="h-5 w-5 text-success" />
-          <p className="text-[12px] text-ink-soft">
+          <p className="text-[13px] text-ink-soft">
             Every video in this batch has an answer —{" "}
             {formatNumber(decided.size)} {plural(decided.size, "decision")} this visit.
           </p>
-          <p className="max-w-md text-[11px] text-ink-faint">
+          <p className="max-w-md text-[12px] text-ink-faint">
             {total > videos.length
               ? `${formatNumber(total - videos.length)} more ${plural(total - videos.length, "was", "were")} waiting when the page loaded.`
               : "That was everything waiting when the page loaded."}{" "}
@@ -405,7 +405,7 @@ export function ReviewQueue({
             type="button"
             disabled={reloading}
             onClick={() => startReload(() => router.refresh())}
-            className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
+            className="rounded-md bg-accent px-3 py-2 text-[12px] font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-40"
           >
             {reloading ? "Loading…" : total > videos.length ? "Load the next videos" : "Check for new ones"}
           </button>
@@ -438,7 +438,7 @@ function Player({
 
   if (!source.hlsUrl || source.purgeEventPublishedAt) {
     return (
-      <p className="px-5 py-16 text-center text-[12px] text-ink-faint">
+      <p className="px-5 py-16 text-center text-[13px] text-ink-faint">
         No playable file on the record — the transcode produced no output.
       </p>
     );
@@ -464,7 +464,7 @@ function Player({
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded border border-line bg-surface-muted px-1 py-px font-mono text-[10px] text-ink-soft">
+    <kbd className="rounded border border-line bg-surface-muted px-1 py-px font-mono text-[11px] text-ink-soft">
       {children}
     </kbd>
   );

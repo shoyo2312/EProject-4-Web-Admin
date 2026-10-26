@@ -24,14 +24,14 @@ export function OutboxCard({ services }: { services: OutboxBacklogResponse[] }) 
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[12px] xl:min-w-[640px]">
+        <table className="w-full border-collapse text-[13px] xl:min-w-[640px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps px-5 py-3 text-ink-soft">Service</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Outbox</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Pending</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Oldest waiting</th>
-              <th className="label-caps px-5 py-3 text-ink-soft">State</th>
+              <th className="label px-5 py-3 text-ink-soft">Service</th>
+              <th className="label px-3 py-3 text-ink-soft">Outbox</th>
+              <th className="label px-3 py-3 text-ink-soft">Pending</th>
+              <th className="label px-3 py-3 text-ink-soft">Oldest waiting</th>
+              <th className="label px-5 py-3 text-ink-soft">State</th>
             </tr>
           </thead>
           <tbody>

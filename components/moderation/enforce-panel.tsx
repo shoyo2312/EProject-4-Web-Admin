@@ -140,7 +140,7 @@ export function EnforcePanel({
                   setResult(null);
                 }}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors",
                   why
                     ? "cursor-not-allowed text-ink-faint"
                     : cn(
@@ -161,7 +161,7 @@ export function EnforcePanel({
         <div className="space-y-3">
           {open === "ban" ? (
             <div className="flex flex-wrap items-center gap-2">
-              <span className="label-caps text-ink-soft">Duration</span>
+              <span className="label text-ink-soft">Duration</span>
               <Segmented options={BAN_DURATIONS} value={duration} onChange={setDuration} />
             </div>
           ) : null}
@@ -184,13 +184,13 @@ export function EnforcePanel({
 
       {actions.map((action) =>
         blocked?.[action] ? (
-          <p key={action} className="text-[11px] text-ink-faint">
+          <p key={action} className="text-[12px] text-ink-faint">
             {blocked[action]}
           </p>
         ) : null,
       )}
 
-      {result ? <p className="text-[11px] text-ink-soft">{result}</p> : null}
+      {result ? <p className="text-[12px] text-ink-soft">{result}</p> : null}
     </div>
   );
 }

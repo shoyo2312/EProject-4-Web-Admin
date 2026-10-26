@@ -24,7 +24,7 @@ export function AudienceGrowth({
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <p className="text-[12px] text-ink-soft">
+            <p className="text-[13px] text-ink-soft">
               New accounts, last {days.length}
               {unit}
             </p>
@@ -33,7 +33,7 @@ export function AudienceGrowth({
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[12px] text-ink-soft">Per bar, on average</p>
+            <p className="text-[13px] text-ink-soft">Per bar, on average</p>
             <p className="figure mt-1 text-[22px] font-bold">
               {formatNumber(average)}
             </p>

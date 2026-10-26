@@ -7,13 +7,14 @@ export default function Loading() {
   return (
     <div role="status" className="animate-pulse">
       <span className="sr-only">Loading…</span>
-      <div className="mb-5 h-8 w-56 rounded-md bg-surface-muted" />
+      <div className="mb-2 h-7 w-56 rounded-md bg-line" />
+      <div className="mb-6 h-4 w-80 rounded-md bg-line/60" />
       <div className="mb-4 grid grid-cols-2 gap-4 xl:grid-cols-4">
         {Array.from({ length: 4 }, (_, i) => (
-          <div key={i} className="h-28 rounded-xl border border-line bg-surface" />
+          <div key={i} className="h-28 rounded-2xl border border-line bg-surface" />
         ))}
       </div>
-      <div className="h-80 rounded-xl border border-line bg-surface" />
+      <div className="h-80 rounded-2xl border border-line bg-surface" />
     </div>
   );
 }

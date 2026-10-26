@@ -81,7 +81,7 @@ export default async function VideoDetailPage({
       <>
         <BackLink href="/videos">All videos</BackLink>
         <PageHeader title="Video" />
-        <Card className="px-5 py-10 text-center text-[12px] text-ink-faint">
+        <Card className="px-5 py-10 text-center text-[13px] text-ink-faint">
           Nothing at id <span className="figure">{id}</span>. Whatever pointed here was filed
           against a video video-service has no record of.
         </Card>
@@ -135,7 +135,7 @@ export default async function VideoDetailPage({
                 className="max-h-[60vh] w-full rounded-lg bg-black"
               />
             ) : (
-              <p className="text-[12px] text-ink-faint">
+              <p className="text-[13px] text-ink-faint">
                 {video.purgeEventPublishedAt
                   ? "Media permanently removed from storage — nothing left to play."
                   : watchable
@@ -151,7 +151,7 @@ export default async function VideoDetailPage({
             title="Upload"
             hint="Shares and engagement rate are all-time totals from the analytics event stream; views and likes are the video's own counters."
           />
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[13px] xl:grid-cols-4">
             <Field label="Owner">
               <Link
                 href={`/users/${video.userId}` as never}
@@ -235,7 +235,7 @@ export default async function VideoDetailPage({
           <div className="border-t border-line px-5 py-3">
             <Link
               href={{ pathname: "/comments", query: { videoId: video.id } } as never}
-              className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+              className="text-[12px] text-ink-soft underline-offset-4 hover:underline"
             >
               Open this video&apos;s comments →
             </Link>
@@ -306,7 +306,7 @@ function ClassifierVerdict({ video }: { video: AdminVideoResponse }) {
 
   if (!moderation) {
     return (
-      <p className="text-[12px] text-ink-faint">
+      <p className="text-[13px] text-ink-faint">
         No check recorded — either the upload predates automatic moderation, or it never reached
         the classifier.
       </p>
@@ -329,7 +329,7 @@ function ClassifierVerdict({ video }: { video: AdminVideoResponse }) {
 
   if (unscored) {
     return (
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[12px] xl:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] xl:grid-cols-4">
         {verdict}
         {checked}
         <Field label="Not scored" wide>
@@ -340,7 +340,7 @@ function ClassifierVerdict({ video }: { video: AdminVideoResponse }) {
   }
 
   return (
-    <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[12px] xl:grid-cols-4">
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] xl:grid-cols-4">
       {verdict}
       <Field label="Label">{moderation.label ?? "—"}</Field>
       {/* Raw rather than a percentage: the thresholds it is compared against are configured on

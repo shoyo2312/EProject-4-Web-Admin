@@ -20,26 +20,26 @@ export function EngagementMix({
       <CardHeader
         title="Engagement Mix"
         hint="Every event type over the same days as the figures above — unlikes and uploads included, which the trend leaves out."
-        actions={<span className="text-[11px] text-ink-faint">{period}</span>}
+        actions={<span className="text-[12px] text-ink-faint">{period}</span>}
       />
 
       <div className="flex flex-1 flex-col gap-4 p-5">
         {rows.length === 0 ? (
-          <p className="text-[12px] text-ink-faint">
+          <p className="text-[13px] text-ink-faint">
             No engagement events recorded yet.
           </p>
         ) : (
           rows.map((row) => (
             <div key={row.eventType}>
               <div className="flex items-baseline justify-between gap-3">
-                <span className="label-caps text-ink-soft">{row.label}</span>
-                <span className="figure text-[13px] font-semibold">
+                <span className="label text-ink-soft">{row.label}</span>
+                <span className="figure text-[14px] font-semibold">
                   {formatNumber(row.total)}
                 </span>
               </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[var(--cell-empty)]">
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-muted">
                 <span
-                  className="block h-full rounded-full bg-ink"
+                  className="block h-full rounded-full bg-accent"
                   style={{ width: `${Math.max(row.weight * 100, 1.5)}%` }}
                 />
               </div>

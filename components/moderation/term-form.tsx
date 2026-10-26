@@ -66,18 +66,18 @@ export function TermForm() {
       <div className="space-y-3 px-5 py-4">
         <div className="space-y-1.5">
           <Segmented options={ACTION_OPTIONS} value={action} onChange={setAction} />
-          <p className="text-[11px] text-ink-faint">{ACTION_EFFECTS[action]}</p>
+          <p className="text-[12px] text-ink-faint">{ACTION_EFFECTS[action]}</p>
         </div>
 
         <label className="block space-y-1.5">
-          <span className="label-caps text-[10px] text-ink-faint">Term</span>
+          <span className="label text-[11px] text-ink-faint">Term</span>
           <input
             value={term}
             onChange={(e) => setTerm(e.target.value)}
             placeholder={exempt ? "A term on the shipped list, as it is written there" : "e.g. nhà cái uy tín"}
-            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12px] outline-none placeholder:text-ink-faint"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[13px] outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-accent/40 placeholder:text-ink-faint"
           />
-          <span className="block text-[11px] text-ink-faint">
+          <span className="block text-[12px] text-ink-faint">
             {written
               ? matchesAnyDiacritics(written)
                 ? "Written without diacritics: it matches every spelling, accented or not."
@@ -88,12 +88,12 @@ export function TermForm() {
 
         {exempt ? null : (
           <label className="block space-y-1.5">
-            <span className="label-caps text-[10px] text-ink-faint">Category</span>
+            <span className="label text-[11px] text-ink-faint">Category</span>
             <span className="relative block">
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as TextCategory | "")}
-                className="w-full appearance-none rounded-lg border border-line bg-surface py-2 pr-8 pl-3 text-[12px] outline-none"
+                className="w-full appearance-none rounded-lg border border-line bg-surface py-2 pr-8 pl-3 text-[13px] outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-accent/40"
               >
                 <option value="">What a match is…</option>
                 {TERM_CATEGORIES.map((value) => (
@@ -108,12 +108,12 @@ export function TermForm() {
         )}
 
         <label className="block space-y-1.5">
-          <span className="label-caps text-[10px] text-ink-faint">Note</span>
+          <span className="label text-[11px] text-ink-faint">Note</span>
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Why — for the next admin reading the list (optional)"
-            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12px] outline-none placeholder:text-ink-faint"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[13px] outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-accent/40 placeholder:text-ink-faint"
           />
         </label>
 
@@ -122,12 +122,12 @@ export function TermForm() {
             type="button"
             onClick={submit}
             disabled={submitting || !written || (!exempt && !category)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-2 text-[12px] font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-40"
           >
             <Plus className="h-3.5 w-3.5" />
             {submitting ? "Submitting..." : exempt ? "Exempt term" : "Add term"}
           </button>
-          {result ? <p className="text-[11px] text-ink-soft">{result}</p> : null}
+          {result ? <p className="text-[12px] text-ink-soft">{result}</p> : null}
         </div>
       </div>
     </Card>

@@ -27,7 +27,7 @@ export function SortableHeader<F extends string>({
   className?: string;
 }) {
   if (!sort) {
-    return <th className={cn("label-caps px-3 py-3 text-ink-soft", className)}>{label}</th>;
+    return <th className={cn("label px-3 py-3 text-ink-soft", className)}>{label}</th>;
   }
   const active = sort.field === sortKey;
   return (
@@ -71,7 +71,7 @@ function SortButton({
       type="button"
       onClick={toggle}
       className={cn(
-        "label-caps inline-flex items-center gap-1 transition-colors hover:text-ink",
+        "label inline-flex items-center gap-1 transition-colors hover:text-ink",
         active ? "text-ink" : "text-ink-soft",
       )}
     >

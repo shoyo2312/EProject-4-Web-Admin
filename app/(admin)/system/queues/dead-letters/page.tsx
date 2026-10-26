@@ -57,7 +57,7 @@ export default async function DeadLettersPage({
             title={summary.topic}
             hint="Pending counts what no replay of every pending record has been past yet — from here or from make dlt-replay ALL=1, which share their place on the topic. A replayed record stays on the topic until retention drops it."
           />
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[13px] xl:grid-cols-4">
             <Field label="Pending">
               <span className={cn("figure", summary.pending > 0 && "text-danger")}>
                 {formatNumber(summary.pending)}

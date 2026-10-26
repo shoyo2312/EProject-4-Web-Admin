@@ -13,7 +13,7 @@ import { parseTextFlag } from "@/lib/text-flags";
 export function CaptionCheck({ check }: { check: TextModerationSummary | null }) {
   if (!check) {
     return (
-      <p className="text-[12px] text-ink-faint">
+      <p className="text-[13px] text-ink-faint">
         Not screened — the upload predates text moderation.
       </p>
     );
@@ -21,7 +21,7 @@ export function CaptionCheck({ check }: { check: TextModerationSummary | null })
 
   return (
     <div className="space-y-3">
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[12px] xl:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] xl:grid-cols-4">
         <Field label="Verdict">{MODERATION_VERDICT_LABELS[check.verdict]}</Field>
         {/* Off while the rules only measure: the verdict was recorded and held nothing. */}
         <Field label="Acted on">{check.enforced ? "Yes" : "No — measured only"}</Field>
@@ -33,7 +33,7 @@ export function CaptionCheck({ check }: { check: TextModerationSummary | null })
       {check.flags.length > 0 ? (
         <TextFlags flags={check.flags.map(parseTextFlag)} />
       ) : (
-        <p className="text-[12px] text-ink-faint">Nothing in the caption was flagged.</p>
+        <p className="text-[13px] text-ink-faint">Nothing in the caption was flagged.</p>
       )}
     </div>
   );

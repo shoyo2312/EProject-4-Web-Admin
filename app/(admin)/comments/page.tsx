@@ -148,8 +148,8 @@ export default async function CommentsPage({
         ) : (
           <Card className="flex flex-col items-center justify-center gap-2 px-6 py-20 text-center">
             <MessageSquare className="h-5 w-5 text-ink-faint" />
-            <p className="text-[12px] text-ink-soft">Pick a video to read its thread.</p>
-            <p className="max-w-sm text-[11px] text-ink-faint">
+            <p className="text-[13px] text-ink-soft">Pick a video to read its thread.</p>
+            <p className="max-w-sm text-[12px] text-ink-faint">
               Comments are read one video at a time — there is no feed of every comment on the
               platform. Reported comments open straight from the Reports Queue.
             </p>

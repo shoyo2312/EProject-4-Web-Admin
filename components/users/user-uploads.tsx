@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 export function UserUploads({ videos }: { videos: AdminVideoResponse[] }) {
   if (videos.length === 0) {
     return (
-      <p className="px-5 py-6 text-center text-[12px] text-ink-faint">
+      <p className="px-5 py-6 text-center text-[13px] text-ink-faint">
         No uploads from this account.
       </p>
     );
@@ -45,7 +45,7 @@ export function UserUploads({ videos }: { videos: AdminVideoResponse[] }) {
                 the record — showing that here would read as still live. */}
             <span
               className={cn(
-                "absolute top-1 left-1 rounded border px-1 py-0.5 text-[8px] leading-none font-medium",
+                "absolute top-1 left-1 rounded border px-1 py-0.5 text-[9px] leading-none font-medium",
                 video.deletedAt
                   ? "border-danger/25 bg-danger-bg text-danger"
                   : VIDEO_STATUS_STYLES[video.status],
@@ -55,8 +55,8 @@ export function UserUploads({ videos }: { videos: AdminVideoResponse[] }) {
             </span>
           </div>
           <div className="px-1.5 py-1">
-            <p className="truncate text-[10px] font-medium">{video.title}</p>
-            <p className="flex items-center gap-1.5 truncate text-[9px] text-ink-faint">
+            <p className="truncate text-[11px] font-medium">{video.title}</p>
+            <p className="flex items-center gap-1.5 truncate text-[10px] text-ink-faint">
               <span className="inline-flex items-center gap-0.5">
                 <Eye className="h-2.5 w-2.5" />
                 {formatCount(video.viewCount)}

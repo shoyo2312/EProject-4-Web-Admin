@@ -21,13 +21,13 @@ export function DeadLetterTopicsCard({ topics, now }: { topics: DeadLetterTopicR
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[12px] xl:min-w-[640px]">
+        <table className="w-full border-collapse text-[13px] xl:min-w-[640px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps px-5 py-3 text-ink-soft">Topic</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Pending</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Held by Kafka</th>
-              <th className="label-caps px-5 py-3 text-ink-soft">Last parked</th>
+              <th className="label px-5 py-3 text-ink-soft">Topic</th>
+              <th className="label px-3 py-3 text-ink-soft">Pending</th>
+              <th className="label px-3 py-3 text-ink-soft">Held by Kafka</th>
+              <th className="label px-5 py-3 text-ink-soft">Last parked</th>
             </tr>
           </thead>
           <tbody>
@@ -37,7 +37,7 @@ export function DeadLetterTopicsCard({ topics, now }: { topics: DeadLetterTopicR
                   <Link href={deadLetterHref(topic.topic) as never} className="font-medium hover:underline">
                     {topic.originTopic}
                   </Link>
-                  <p className="text-[11px] text-ink-faint">{topic.topic}</p>
+                  <p className="text-[12px] text-ink-faint">{topic.topic}</p>
                 </td>
                 <td className={cn("figure px-3 py-3", topic.pending > 0 && "text-danger")}>
                   {formatNumber(topic.pending)}

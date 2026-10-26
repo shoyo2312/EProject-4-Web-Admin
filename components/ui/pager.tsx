@@ -61,7 +61,7 @@ function PagerControls({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 px-1 py-1 text-[11px] text-ink-soft",
+        "flex items-center justify-between gap-3 px-1 py-1 text-[12px] text-ink-soft",
         pending && "opacity-60",
       )}
     >

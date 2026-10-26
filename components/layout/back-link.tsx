@@ -7,7 +7,7 @@ export function BackLink({ href, children }: { href: string; children: ReactNode
   return (
     <Link
       href={href as never}
-      className="mb-3 inline-flex items-center gap-1.5 text-[11px] text-ink-soft underline-offset-4 hover:underline"
+      className="mb-3 inline-flex items-center gap-1.5 text-[12px] text-ink-soft underline-offset-4 hover:underline"
     >
       <ArrowLeft className="h-3.5 w-3.5" />
       {children}

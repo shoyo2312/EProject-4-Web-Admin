@@ -50,14 +50,14 @@ export function TrashTable({
       />
 
       <div className={cn("overflow-x-auto transition-opacity", navigating && "opacity-50")}>
-        <table className="w-full border-collapse text-[12px]">
+        <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps px-5 py-3 text-ink-soft">Title</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft md:table-cell">Owner</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft md:table-cell">Deleted</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Time left</th>
-              <th className="label-caps px-5 py-3 text-right text-ink-soft">Actions</th>
+              <th className="label px-5 py-3 text-ink-soft">Title</th>
+              <th className="label hidden px-3 py-3 text-ink-soft md:table-cell">Owner</th>
+              <th className="label hidden px-3 py-3 text-ink-soft md:table-cell">Deleted</th>
+              <th className="label px-3 py-3 text-ink-soft">Time left</th>
+              <th className="label px-5 py-3 text-right text-ink-soft">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -147,7 +147,7 @@ function TrashRow({
             disabled={pending}
             onClick={() => setReason(reason === null ? "" : null)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
+              "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors",
               pending ? "cursor-not-allowed text-ink-faint" : "text-danger hover:bg-surface",
             )}
           >
@@ -176,7 +176,7 @@ function TrashRow({
 
       {(stalled ?? result) ? (
         <tr className="border-b border-line">
-          <td colSpan={5} className="px-5 py-2 text-[11px] text-ink-soft">
+          <td colSpan={5} className="px-5 py-2 text-[12px] text-ink-soft">
             {stalled ?? result}
           </td>
         </tr>

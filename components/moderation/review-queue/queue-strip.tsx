@@ -58,7 +58,7 @@ export function QueueStrip({
                 onClick={() => onPick(video.id)}
                 className={cn(
                   "relative block rounded-md p-0.5 transition-opacity",
-                  i === current ? "ring-2 ring-ink" : "hover:opacity-80",
+                  i === current ? "ring-2 ring-accent" : "hover:opacity-80",
                   answer && i !== current && "opacity-45",
                 )}
               >
@@ -84,7 +84,7 @@ export function QueueStrip({
         onClick={() => onStep(1)}
         Icon={ChevronRight}
       />
-      <p className="hidden shrink-0 pr-1 text-[11px] text-ink-soft sm:block">
+      <p className="hidden shrink-0 pr-1 text-[12px] text-ink-soft sm:block">
         {current >= 0 ? (
           <>
             <span className="figure font-medium text-ink">{current + 1}</span> of{" "}

@@ -39,7 +39,7 @@ export function DataExportCard({
         actions={
           <span
             className={cn(
-              "inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-medium",
+              "inline-flex rounded-md border px-1.5 py-0.5 text-[11px] font-medium",
               HEALTH_STYLES[health.tone],
             )}
           >
@@ -48,7 +48,7 @@ export function DataExportCard({
         }
       />
 
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 border-b border-line px-5 py-4 text-[12px] xl:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 border-b border-line px-5 py-4 text-[13px] xl:grid-cols-4">
         <Field label="Processing">
           <span className="figure">{formatNumber(summary.processing)}</span>
           {summary.oldestProcessingSince ? (
@@ -77,14 +77,14 @@ export function DataExportCard({
       </dl>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[12px] xl:min-w-[760px]">
+        <table className="w-full border-collapse text-[13px] xl:min-w-[760px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps px-5 py-3 text-ink-soft">Account</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Asked for</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Attempts</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Requested</th>
-              <th className="label-caps px-5 py-3 text-ink-soft">Failed</th>
+              <th className="label px-5 py-3 text-ink-soft">Account</th>
+              <th className="label px-3 py-3 text-ink-soft">Asked for</th>
+              <th className="label px-3 py-3 text-ink-soft">Attempts</th>
+              <th className="label px-3 py-3 text-ink-soft">Requested</th>
+              <th className="label px-5 py-3 text-ink-soft">Failed</th>
             </tr>
           </thead>
           <tbody>

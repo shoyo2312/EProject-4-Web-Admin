@@ -65,13 +65,13 @@ export function NotificationBell({
         aria-expanded={open}
         aria-controls="notification-panel"
         className={cn(
-          "relative flex h-9 w-9 items-center justify-center rounded-lg border border-line text-ink-soft transition-colors hover:bg-surface-muted",
-          open && "bg-surface-muted",
+          "relative flex h-9 w-9 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink",
+          open && "bg-surface-muted text-ink",
         )}
       >
         <Bell className="h-4 w-4" />
         {unread ? (
-          <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-pending px-1 text-[10px] font-semibold text-surface">
+          <span className="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-on-accent ring-2 ring-canvas">
             {unread > 9 ? "9+" : unread}
           </span>
         ) : null}
@@ -82,18 +82,23 @@ export function NotificationBell({
           id="notification-panel"
           role="dialog"
           aria-label="Notifications"
-          className="fixed inset-x-4 top-16 z-20 overflow-hidden rounded-xl border border-line bg-surface shadow-lg sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-[360px]"
+          className="fixed inset-x-4 top-[72px] z-20 overflow-hidden rounded-2xl border border-line bg-surface shadow-pop sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-[380px]"
         >
-          <div className="border-b border-line px-4 py-3 text-[13px] font-semibold">
-            Notifications
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <span className="text-[14px] font-semibold">Notifications</span>
+            {unread ? (
+              <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent">
+                {unread} new
+              </span>
+            ) : null}
           </div>
 
           {items === null ? (
-            <p className="px-4 py-6 text-center text-[12px] text-ink-faint">
+            <p className="px-4 py-8 text-center text-[13px] text-ink-faint">
               Couldn&apos;t load notifications. The next refresh will try again.
             </p>
           ) : items.length === 0 ? (
-            <p className="px-4 py-6 text-center text-[12px] text-ink-faint">
+            <p className="px-4 py-8 text-center text-[13px] text-ink-faint">
               Nothing is waiting on you.
             </p>
           ) : (
@@ -114,7 +119,7 @@ export function NotificationBell({
           <Link
             href="/notifications"
             onClick={() => setOpen(false)}
-            className="block border-t border-line px-4 py-2.5 text-center text-[11px] text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink"
+            className="block border-t border-line px-4 py-2.5 text-center text-[12px] font-medium text-accent transition-colors hover:bg-surface-muted"
           >
             See all notifications
           </Link>

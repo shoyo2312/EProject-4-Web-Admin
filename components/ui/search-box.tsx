@@ -44,8 +44,8 @@ export function SearchBox({
   return (
     <label
       className={cn(
-        "flex items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5",
-        full ? "w-full" : "w-[180px] lg:w-[240px]",
+        "flex h-9 items-center gap-2 rounded-lg border border-line bg-surface px-3 transition-[border-color,box-shadow] focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/40",
+        full ? "w-full" : "w-[200px] lg:w-[260px]",
       )}
     >
       <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
@@ -53,7 +53,7 @@ export function SearchBox({
         value={term}
         onChange={(e) => setTerm(e.target.value)}
         placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
+        className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-ink-faint"
       />
     </label>
   );

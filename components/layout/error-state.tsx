@@ -34,17 +34,17 @@ export function ErrorState({ error }: { error: unknown }) {
     <Card className="max-w-3xl px-6 py-6">
       <div className="flex items-center gap-2.5">
         <AlertTriangle className="h-4 w-4 text-danger" />
-        <h2 className="label-caps text-ink">Could not load</h2>
+        <h2 className="label text-ink">Could not load</h2>
         {code ? (
-          <code className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[10px] text-ink-soft">
+          <code className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[11px] text-ink-soft">
             {code}
           </code>
         ) : null}
       </div>
 
-      <p className="mt-3 text-[12px] text-ink-soft">{message}</p>
+      <p className="mt-3 text-[13px] text-ink-soft">{message}</p>
 
-      <ul className="mt-4 space-y-2 text-[11px] text-ink-soft">
+      <ul className="mt-4 space-y-2 text-[12px] text-ink-soft">
         <li className="rounded-lg border border-line bg-surface-muted px-3 py-2">
           Gateway: <code>{GATEWAY_URL}</code> — start it with{" "}
           <code>make run-gateway</code>

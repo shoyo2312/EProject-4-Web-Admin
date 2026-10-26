@@ -35,7 +35,7 @@ export function Uploads({
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <p className="text-[12px] text-ink-soft">
+            <p className="text-[13px] text-ink-soft">
               Uploaded, last {bars.length}
               {unit}
             </p>
@@ -43,11 +43,11 @@ export function Uploads({
           </div>
           <dl className="grid grid-cols-2 gap-x-5 text-right">
             <div>
-              <dt className="text-[12px] text-ink-soft">Awaiting review</dt>
+              <dt className="text-[13px] text-ink-soft">Awaiting review</dt>
               <dd className="figure mt-1 text-[22px] font-bold">{formatNumber(awaitingReview)}</dd>
             </div>
             <div>
-              <dt className="text-[12px] text-ink-soft">Can&apos;t play</dt>
+              <dt className="text-[13px] text-ink-soft">Can&apos;t play</dt>
               <dd className="figure mt-1 text-[22px] font-bold">{formatNumber(notPlayable)}</dd>
             </div>
           </dl>

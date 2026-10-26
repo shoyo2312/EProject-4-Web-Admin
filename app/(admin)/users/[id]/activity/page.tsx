@@ -83,7 +83,7 @@ export default async function UserActivityPage({
       <>
         <BackLink href={`/users/${id}`}>Back to account</BackLink>
         <PageHeader title="Activity" />
-        <Card className="px-5 py-10 text-center text-[12px] text-ink-faint">
+        <Card className="px-5 py-10 text-center text-[13px] text-ink-faint">
           No account reachable at id <span className="figure">{id}</span>.
         </Card>
       </>
@@ -155,7 +155,7 @@ export default async function UserActivityPage({
 
       {/* Still said on the page: a trail that is missing something looks exactly like an account
           that never did it, and the two gaps left are not ones a reader can infer. */}
-      <p className="mt-3 px-1 text-[11px] text-ink-faint">
+      <p className="mt-3 px-1 text-[12px] text-ink-faint">
         Sign-ins are listed from the day the security log was added; anything earlier was never
         recorded. Places are approximate: they are looked up from the address when the event
         happened, mobile networks often resolve to Hà Nội or TP.HCM wherever the phone is, and
@@ -198,7 +198,7 @@ function FilterTab({
       }
       aria-current={active ? "true" : undefined}
       className={cn(
-        "shrink-0 rounded-md px-2.5 py-1.5 text-[11px] transition-colors",
+        "shrink-0 rounded-md px-2.5 py-1.5 text-[12px] transition-colors",
         active
           ? "bg-surface font-semibold text-ink shadow-[0_0_0_1px_var(--line)]"
           : "text-ink-soft hover:text-ink",

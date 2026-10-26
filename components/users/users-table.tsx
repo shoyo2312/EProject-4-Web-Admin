@@ -84,7 +84,7 @@ export function UsersTable({
       tone: "danger",
       extra: (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="label-caps text-ink-soft">Duration</span>
+          <span className="label text-ink-soft">Duration</span>
           <Segmented options={BAN_DURATIONS} value={bulkDuration} onChange={setBulkDuration} />
         </div>
       ),
@@ -142,16 +142,16 @@ export function UsersTable({
       />
 
       <div className={cn("overflow-x-auto transition-opacity", navigating && "opacity-50")}>
-        <table className="w-full border-collapse text-[12px] xl:min-w-[840px]">
+        <table className="w-full border-collapse text-[13px] xl:min-w-[840px]">
           <thead>
             <tr className="border-b border-line text-left">
               <SelectAllCell ids={selectable.map((user) => user.id)} selection={selection} />
-              <th className="label-caps px-3 py-3 text-ink-soft">Username</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Email</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Role</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Status</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Joined</th>
-              <th className="label-caps px-5 py-3 text-right text-ink-soft">Actions</th>
+              <th className="label px-3 py-3 text-ink-soft">Username</th>
+              <th className="label hidden px-3 py-3 text-ink-soft xl:table-cell">Email</th>
+              <th className="label px-3 py-3 text-ink-soft">Role</th>
+              <th className="label px-3 py-3 text-ink-soft">Status</th>
+              <th className="label hidden px-3 py-3 text-ink-soft xl:table-cell">Joined</th>
+              <th className="label px-5 py-3 text-right text-ink-soft">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -260,14 +260,14 @@ function UserRow({
           )}
         </td>
         <td className="px-3 py-3">
-          <span className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[10px] tracking-wider text-ink-soft">
+          <span className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[11px] tracking-wider text-ink-soft">
             {user.role}
           </span>
         </td>
         <td className="px-3 py-3">
           <UserStatusBadge status={user.status} dimmed={pending} />
           {pending ? (
-            <span className="ml-2 text-[10px] text-ink-faint">applying…</span>
+            <span className="ml-2 text-[11px] text-ink-faint">applying…</span>
           ) : null}
         </td>
         <td className="hidden px-3 py-3 whitespace-nowrap text-ink-faint xl:table-cell">
@@ -293,7 +293,7 @@ function UserRow({
                 : undefined
             }
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
+              "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors",
               selfDestructive || pending
                 ? "cursor-not-allowed text-ink-faint"
                 : "hover:bg-surface",
@@ -362,7 +362,7 @@ function UserRow({
           <Field label="" wide>
             <Link
               href={`/users/${user.id}` as never}
-              className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+              className="text-[12px] text-ink-soft underline-offset-4 hover:underline"
             >
               Open this account&apos;s page →
             </Link>
@@ -377,7 +377,7 @@ function UserRow({
                 from here was always permanent. */}
             {action === "ban" ? (
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <span className="label-caps text-ink-soft">Duration</span>
+                <span className="label text-ink-soft">Duration</span>
                 <Segmented options={BAN_DURATIONS} value={duration} onChange={setDuration} />
               </div>
             ) : null}
@@ -399,7 +399,7 @@ function UserRow({
 
       {(stalled ?? result) ? (
         <tr className="border-b border-line">
-          <td colSpan={7} className="px-5 py-2 text-[11px] text-ink-soft">
+          <td colSpan={7} className="px-5 py-2 text-[12px] text-ink-soft">
             {stalled ?? result}
           </td>
         </tr>

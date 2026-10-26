@@ -2,10 +2,10 @@ import type { UserStatus, VideoStatus } from "@/lib/api/types";
 import { USER_STATUS_LABELS, VIDEO_STATUS_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-const OK = "border-success/25 bg-success-bg text-success";
-const HELD = "border-pending/25 bg-pending-bg text-pending";
-const BAD = "border-danger/25 bg-danger-bg text-danger";
-const NEUTRAL = "border-line bg-neutral-bg text-neutral";
+const OK = "bg-success-bg text-success";
+const HELD = "bg-pending-bg text-pending";
+const BAD = "bg-danger-bg text-danger";
+const NEUTRAL = "bg-neutral-bg text-neutral";
 
 /**
  * One colour per state, in one place: the same status has to read the same on the directory,
@@ -47,12 +47,13 @@ function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md border px-2 text-[11px] font-medium whitespace-nowrap",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium whitespace-nowrap",
         dense ? "py-0.5" : "py-1",
         style,
         dimmed && "opacity-50",
       )}
     >
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {children}
     </span>
   );

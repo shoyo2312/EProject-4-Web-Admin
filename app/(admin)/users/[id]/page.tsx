@@ -83,7 +83,7 @@ export default async function UserDetailPage({
       <>
         <BackLink href="/users">All accounts</BackLink>
         <PageHeader title="Account" />
-        <Card className="px-5 py-10 text-center text-[12px] text-ink-faint">
+        <Card className="px-5 py-10 text-center text-[13px] text-ink-faint">
           No account at id <span className="figure">{id}</span>. Either nothing is registered
           there, or the account has been deleted.
         </Card>
@@ -108,7 +108,7 @@ export default async function UserDetailPage({
             <h1 className="text-[26px] leading-tight font-bold tracking-tight">
               @{user.username}
             </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-soft">
+            <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[13px] text-ink-soft">
               <UserStatusBadge status={user.status} dense />
               <span>
                 · {user.role} · joined {formatDateTime(user.createdAt)}
@@ -130,7 +130,7 @@ export default async function UserDetailPage({
             title="Account"
             hint="The account record: status, role, how it signs in, and when it last did."
           />
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[13px] xl:grid-cols-4">
             <Field label="Handle">@{user.username}</Field>
             <Field label="Status">
               <UserStatusBadge status={user.status} dense />
@@ -211,7 +211,7 @@ export default async function UserDetailPage({
                 now={referenceNow()}
               />
             ) : (
-              <p className="text-[12px] text-ink-faint">
+              <p className="text-[13px] text-ink-faint">
                 interaction-service did not answer, so the comment strikes cannot be read right
                 now. Nothing about the account has changed.
               </p>
@@ -227,7 +227,7 @@ export default async function UserDetailPage({
               uploads && uploads.totalElements > INLINE_UPLOADS ? (
                 <Link
                   href={{ pathname: "/videos", query: { owner: user.id } } as never}
-                  className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+                  className="text-[12px] text-ink-soft underline-offset-4 hover:underline"
                 >
                   All {uploads.totalElements} →
                 </Link>
@@ -243,7 +243,7 @@ export default async function UserDetailPage({
             actions={
               <Link
                 href={`/users/${user.id}/activity` as never}
-                className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+                className="text-[12px] text-ink-soft underline-offset-4 hover:underline"
               >
                 Full activity →
               </Link>
@@ -294,7 +294,7 @@ function Stat({ label, value }: { label: string; value: number }) {
       <div className="figure text-[18px] font-bold leading-tight" title={String(value)}>
         {formatCount(value)}
       </div>
-      <div className="label-caps text-[10px] text-ink-faint">{label}</div>
+      <div className="label text-[11px] text-ink-faint">{label}</div>
     </div>
   );
 }

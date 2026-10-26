@@ -80,7 +80,7 @@ export function ExportCsvButton({ name, rows, columns, all }: CsvExport) {
       onClick={download}
       disabled={count === 0 || exporting}
       title={title}
-      className="flex items-center gap-1.5 rounded-lg bg-ink px-3 py-2 text-[12px] text-surface transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-40"
+      className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-[13px] font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-40"
     >
       <Download className="h-3.5 w-3.5" />
       {exporting

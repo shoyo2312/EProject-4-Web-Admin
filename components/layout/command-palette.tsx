@@ -87,13 +87,13 @@ export function CommandPalette() {
         type="button"
         onClick={show}
         aria-keyshortcuts="Meta+K Control+K /"
-        className="hidden w-[200px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-3 py-2 text-left transition-colors hover:border-line-strong sm:flex lg:w-[320px]"
+        className="hidden h-9 w-[200px] items-center gap-2 rounded-full border border-line bg-surface px-3.5 text-left transition-[border-color,box-shadow] hover:border-line-strong hover:shadow-card sm:flex lg:w-[300px]"
       >
         <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
-        <span className="min-w-0 flex-1 truncate text-[12px] text-ink-faint">
+        <span className="min-w-0 flex-1 truncate text-[13px] text-ink-faint">
           Search users, videos, reports...
         </span>
-        <kbd className="hidden items-center gap-0.5 rounded border border-line bg-surface px-1.5 py-0.5 text-[10px] text-ink-faint lg:flex">
+        <kbd className="hidden items-center gap-0.5 rounded-md bg-surface-muted px-1.5 py-0.5 font-sans text-[11px] text-ink-faint lg:flex">
           ⌘ K
         </kbd>
       </button>
@@ -101,7 +101,7 @@ export function CommandPalette() {
         type="button"
         onClick={show}
         aria-label="Search"
-        className="flex h-9 w-9 items-center justify-center rounded-lg border border-line text-ink-soft transition-colors hover:bg-surface-muted sm:hidden"
+        className="flex h-9 w-9 items-center justify-center rounded-full text-ink-soft transition-colors hover:bg-surface-muted hover:text-ink sm:hidden"
       >
         <Search className="h-4 w-4" />
       </button>
@@ -211,14 +211,14 @@ function PaletteDialog({
   return createPortal(
     <div
       onMouseDown={onClose}
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 px-4 pt-[12vh]"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 pt-[12vh] backdrop-blur-[2px]"
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Search the console"
         onMouseDown={(event) => event.stopPropagation()}
-        className="w-full max-w-[560px] overflow-hidden rounded-xl border border-line bg-surface shadow-lg"
+        className="w-full max-w-[600px] overflow-hidden rounded-2xl border border-line bg-surface shadow-pop"
       >
         <div className="flex items-center gap-2.5 border-b border-line px-4 py-3">
           <Search className="h-4 w-4 shrink-0 text-ink-faint" />
@@ -236,10 +236,10 @@ function PaletteDialog({
             aria-controls={listId}
             aria-autocomplete="list"
             aria-activedescendant={activeIndex >= 0 ? optionId(activeIndex) : undefined}
-            className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-ink-faint"
+            className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-ink-faint"
           />
           {searching ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-ink-faint" /> : null}
-          <kbd className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[10px] text-ink-faint">
+          <kbd className="rounded-md bg-surface-muted px-1.5 py-0.5 font-sans text-[11px] text-ink-faint">
             Esc
           </kbd>
         </div>
@@ -256,7 +256,7 @@ function PaletteDialog({
           {options.map((option, index) => (
             <div key={option.key}>
               {index === 0 || options[index - 1].group !== option.group ? (
-                <p className="label-caps px-4 pt-2.5 pb-1 text-[10px] text-ink-faint">
+                <p className="label px-4 pt-2.5 pb-1 text-[11px] text-ink-faint">
                   {option.group}
                 </p>
               ) : null}
@@ -269,21 +269,21 @@ function PaletteDialog({
                 }}
                 onClick={() => onOpen(option.href)}
                 className={cn(
-                  "flex cursor-pointer items-center gap-3 px-4 py-2",
-                  index === activeIndex && "bg-surface-muted",
+                  "mx-1.5 flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2",
+                  index === activeIndex && "bg-accent-soft/60",
                 )}
               >
                 {option.icon ? (
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-line text-ink-soft">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-ink-soft">
                     <option.icon className="h-3.5 w-3.5" />
                   </span>
                 ) : (
                   <VideoThumb src={option.thumbnailUrl} className="h-10 w-8" />
                 )}
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12px] font-medium">{option.title}</span>
+                  <span className="block truncate text-[13px] font-medium">{option.title}</span>
                   {option.detail ? (
-                    <span className="block truncate text-[11px] text-ink-faint">
+                    <span className="block truncate text-[12px] text-ink-faint">
                       {option.detail}
                     </span>
                   ) : null}
@@ -293,22 +293,22 @@ function PaletteDialog({
           ))}
 
           {term.length < 2 ? (
-            <p className="px-4 pt-2 pb-2.5 text-[11px] text-ink-faint">
+            <p className="px-4 pt-2 pb-2.5 text-[12px] text-ink-faint">
               Type at least two characters to search accounts and videos, or paste a full user,
               video or report id.
             </p>
           ) : failed ? (
-            <p className="px-4 pt-2 pb-2.5 text-[11px] text-ink-faint">
+            <p className="px-4 pt-2 pb-2.5 text-[12px] text-ink-faint">
               Couldn&apos;t search — the console server did not answer. Change the text to try again.
             </p>
           ) : nothingFound ? (
-            <p className="px-4 pt-2 pb-2.5 text-[11px] text-ink-faint">
+            <p className="px-4 pt-2 pb-2.5 text-[12px] text-ink-faint">
               No account, video or report matches &ldquo;{term}&rdquo;.
             </p>
           ) : null}
         </div>
 
-        <div className="flex items-center gap-3 border-t border-line px-4 py-2 text-[10px] text-ink-faint">
+        <div className="flex items-center gap-3 border-t border-line px-4 py-2 text-[11px] text-ink-faint">
           <span>↑ ↓ to move</span>
           <span>Enter to open</span>
           <span>Esc to close</span>

@@ -102,20 +102,20 @@ export function ActionsTable({
         hint="Every moderation decision in the selected period. The action-type and admin filters and the column order cover the whole log; the search box and the tabs cover this page."
         actions={
           <>
-            <label className="flex w-[180px] items-center gap-2 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 lg:w-[240px]">
+            <label className="flex h-9 w-[200px] items-center gap-2 rounded-lg border border-line bg-surface px-3 transition-[border-color,box-shadow] focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/40 lg:w-[260px]">
               <Search className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search actions..."
-                className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
+                className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-ink-faint"
               />
             </label>
             {adminId ? (
               <Link
                 href={filterHref({ admin: null }) as never}
                 title="Show every admin's actions"
-                className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[11px] text-ink-soft hover:text-ink"
+                className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] text-ink-soft hover:text-ink"
               >
                 {adminName(names, adminId)}
                 <X className="h-3 w-3" />
@@ -130,7 +130,7 @@ export function ActionsTable({
                 );
               }}
               aria-label="Filter by action type"
-              className="rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[11px] text-ink-soft outline-none"
+              className="rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] text-ink-soft outline-none transition-[border-color,box-shadow] focus:border-accent focus:ring-2 focus:ring-accent/40"
             >
               <option value="ALL">All actions</option>
               {ACTION_TYPES.map((type) => (
@@ -149,15 +149,15 @@ export function ActionsTable({
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[12px] xl:min-w-[840px]">
+        <table className="w-full border-collapse text-[13px] xl:min-w-[840px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps hidden px-5 py-3 text-ink-soft xl:table-cell">Admin</th>
+              <th className="label hidden px-5 py-3 text-ink-soft xl:table-cell">Admin</th>
               <SortableHeader label="Action" sortKey="actionType" sort={order} className="px-5 xl:px-3" />
               <SortableHeader label="Target" sortKey="targetType" sort={order} />
-              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Reason</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">Report</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Effect</th>
+              <th className="label hidden px-3 py-3 text-ink-soft xl:table-cell">Reason</th>
+              <th className="label hidden px-3 py-3 text-ink-soft xl:table-cell">Report</th>
+              <th className="label px-3 py-3 text-ink-soft">Effect</th>
               <SortableHeader label="When" sortKey="createdAt" sort={order} className="px-5 text-right" />
             </tr>
           </thead>
@@ -216,7 +216,7 @@ function ActionRow({
         <td className="px-5 py-3 whitespace-nowrap xl:px-3">
           <span
             className={cn(
-              "rounded border px-1.5 py-0.5 text-[11px]",
+              "rounded border px-1.5 py-0.5 text-[12px]",
               DESTRUCTIVE.includes(action.actionType)
                 ? "border-danger/25 bg-danger-bg text-danger"
                 : "border-line bg-surface-muted text-ink-soft",
@@ -271,7 +271,7 @@ function ActionRow({
               {adminHref ? (
                 <Link
                   href={adminHref as never}
-                  className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+                  className="text-[12px] text-ink-soft underline-offset-4 hover:underline"
                   onClick={(e) => e.stopPropagation()}
                 >
                   only this admin →

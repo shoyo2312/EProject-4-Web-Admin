@@ -109,7 +109,7 @@ export function VideosTable({
               <Link
                 href={filterHref({ owner: null }) as never}
                 title="Show every owner's uploads"
-                className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[11px] text-ink-soft hover:text-ink"
+                className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] text-ink-soft hover:text-ink"
               >
                 {owners[ownerId]?.username
                   ? `@${owners[ownerId].username}`
@@ -144,19 +144,19 @@ export function VideosTable({
           expanded sidebar leaves the table about 970px, and every column it held at "xl" pushed
           the actions off the right edge. What a narrow box drops is still in the expand row. */}
       <div className={cn("@container overflow-x-auto transition-opacity", navigating && "opacity-50")}>
-        <table className="w-full border-collapse text-[12px]">
+        <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-line text-left">
               <SelectAllCell ids={selectable.map((video) => video.id)} selection={selection} />
-              <th className="label-caps px-3 py-3 text-ink-soft">Title</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft @4xl:table-cell">Owner</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Status</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft @6xl:table-cell">Visibility</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Reason</th>
-              <th className="label-caps hidden px-3 py-3 text-right text-ink-soft @4xl:table-cell">Views</th>
-              <th className="label-caps hidden px-3 py-3 text-right text-ink-soft @6xl:table-cell">Likes</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft @5xl:table-cell">Uploaded</th>
-              <th className="label-caps px-5 py-3 text-right text-ink-soft">Actions</th>
+              <th className="label px-3 py-3 text-ink-soft">Title</th>
+              <th className="label hidden px-3 py-3 text-ink-soft @4xl:table-cell">Owner</th>
+              <th className="label px-3 py-3 text-ink-soft">Status</th>
+              <th className="label hidden px-3 py-3 text-ink-soft @6xl:table-cell">Visibility</th>
+              <th className="label px-3 py-3 text-ink-soft">Reason</th>
+              <th className="label hidden px-3 py-3 text-right text-ink-soft @4xl:table-cell">Views</th>
+              <th className="label hidden px-3 py-3 text-right text-ink-soft @6xl:table-cell">Likes</th>
+              <th className="label hidden px-3 py-3 text-ink-soft @5xl:table-cell">Uploaded</th>
+              <th className="label px-5 py-3 text-right text-ink-soft">Actions</th>
             </tr>
           </thead>
           <tbody>

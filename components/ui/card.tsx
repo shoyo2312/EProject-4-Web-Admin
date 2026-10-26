@@ -1,3 +1,4 @@
+import { CircleHelp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Card({
@@ -9,10 +10,7 @@ export function Card({
 }) {
   return (
     <section
-      className={cn(
-        "rounded-xl border border-line bg-surface",
-        className,
-      )}
+      className={cn("rounded-2xl border border-line bg-surface shadow-card", className)}
     >
       {children}
     </section>
@@ -27,12 +25,9 @@ export function CardHeader({
 }: {
   title: string;
   /**
-   * Small "?" affordance in the reference — kept as a title tooltip, no popover yet.
-   *
-   * The glyph is decorative and stays out of the tab order; the text itself is exposed to
-   * assistive technology next to the heading instead. A bare `title` on a non-focusable span
-   * is hover-only — unreachable by keyboard, and announced inconsistently by screen readers —
-   * so the hint would otherwise be mouse-only on every card in the console.
+   * What this card is measuring and where it reads from — kept as a title tooltip on the
+   * glyph, with the same text exposed to assistive technology beside the heading, because a
+   * bare `title` on a non-focusable span is mouse-only.
    */
   hint?: string;
   actions?: React.ReactNode;
@@ -41,20 +36,17 @@ export function CardHeader({
   return (
     <header
       className={cn(
-        "flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4",
+        "flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5",
         className,
       )}
     >
-      <div className="flex items-center gap-2">
-        <h2 className="label-caps text-ink">{title}</h2>
+      <div className="flex items-center gap-1.5">
+        <h2 className="text-[14px] font-semibold tracking-tight text-ink">{title}</h2>
         {hint ? (
           <>
-            <span
-              aria-hidden
-              title={hint}
-              className="flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-line-strong text-[9px] text-ink-faint"
-            >
-              ?
+            {/* The glyph is decorative and hover-only; the sr-only copy is what is read out. */}
+            <span aria-hidden title={hint} className="flex cursor-help text-ink-faint">
+              <CircleHelp className="h-3.5 w-3.5" />
             </span>
             <span className="sr-only">{hint}</span>
           </>

@@ -77,3 +77,6 @@ export const SIDEBAR_COOKIE = "admin_sidebar";
  * right on first paint instead of flashing in after hydration.
  */
 export const NOTIFICATIONS_SEEN_COOKIE = "admin_notifications_seen";
+
+/** "light" or "dark". Read by the root layout for the same first-paint reason as the sidebar's. */
+export const THEME_COOKIE = "admin_theme";

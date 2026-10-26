@@ -43,7 +43,7 @@ export function WatchOverlay({
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute -top-9 right-0 inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-black/40 px-2 py-1 text-[11px] text-white transition-colors hover:bg-black/60"
+          className="absolute -top-9 right-0 inline-flex items-center gap-1.5 rounded-md border border-white/20 bg-black/40 px-2 py-1 text-[12px] text-white transition-colors hover:bg-black/60"
         >
           <X className="h-3.5 w-3.5" />
           Close
@@ -56,7 +56,7 @@ export function WatchOverlay({
           autoPlay
           className="max-h-[80vh] w-full rounded-lg bg-black"
         />
-        <p className="mt-2 truncate text-[11px] text-white/70" title={video.title}>
+        <p className="mt-2 truncate text-[12px] text-white/70" title={video.title}>
           {video.title}
         </p>
       </div>

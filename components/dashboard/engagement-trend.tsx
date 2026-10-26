@@ -32,12 +32,12 @@ export function EngagementTrend({
       <div className="p-5">
         <div className="mb-4 flex items-center justify-between gap-4">
           <p className="flex items-baseline gap-2">
-            <span className="label-caps text-ink-soft">Total events</span>
+            <span className="label text-ink-soft">Total events</span>
             <span className="figure text-[22px] font-bold">
               {formatNumber(total)}
             </span>
           </p>
-          <p className="text-[11px] text-ink-faint">
+          <p className="text-[12px] text-ink-faint">
             {buckets.length} {BUCKET_LABEL[range]}
             {buckets.length === 1 ? "" : "s"}
           </p>

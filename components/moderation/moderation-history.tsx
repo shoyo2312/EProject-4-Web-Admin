@@ -26,12 +26,12 @@ export function ModerationHistory({
   onRetry?: () => void;
 }) {
   if (loading) {
-    return <p className="text-[11px] text-ink-faint">Loading moderation history…</p>;
+    return <p className="text-[12px] text-ink-faint">Loading moderation history…</p>;
   }
 
   if (reportCount === null && actions === null) {
     return (
-      <p className="text-[11px] text-ink-faint">
+      <p className="text-[12px] text-ink-faint">
         Couldn&apos;t load the moderation history.{" "}
         {onRetry ? (
           <button
@@ -49,22 +49,22 @@ export function ModerationHistory({
   return (
     <div className="space-y-2">
       {reportCount === null ? (
-        <p className="text-[11px] text-ink-faint">Couldn&apos;t count the reports against this target.</p>
+        <p className="text-[12px] text-ink-faint">Couldn&apos;t count the reports against this target.</p>
       ) : (
-        <p className="text-[11px] text-ink-soft">
+        <p className="text-[12px] text-ink-soft">
           <span className="font-medium">{reportCount}</span> report
           {reportCount === 1 ? "" : "s"} filed against this target
         </p>
       )}
 
       {actions === null ? (
-        <p className="text-[11px] text-ink-faint">Couldn&apos;t load the actions taken on it.</p>
+        <p className="text-[12px] text-ink-faint">Couldn&apos;t load the actions taken on it.</p>
       ) : actions.length > 0 ? (
         <ul className="space-y-1">
           {actions.map((action) => (
             <li
               key={action.id}
-              className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px]"
+              className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[12px]"
             >
               <span className="rounded border border-line bg-surface px-1.5 py-0.5 font-medium">
                 {ACTION_LABELS[action.actionType]}
@@ -79,7 +79,7 @@ export function ModerationHistory({
           ))}
         </ul>
       ) : (
-        <p className="text-[11px] text-ink-faint">No moderation actions recorded.</p>
+        <p className="text-[12px] text-ink-faint">No moderation actions recorded.</p>
       )}
     </div>
   );

@@ -30,7 +30,7 @@ export function ReplayPending({ topic, originTopic, pending }: { topic: string; 
   }
 
   return (
-    <div className="space-y-2 border-t border-line px-5 py-4 text-[12px]">
+    <div className="space-y-2 border-t border-line px-5 py-4 text-[13px]">
       {confirming ? (
         <>
           <p className="text-ink-soft">
@@ -44,7 +44,7 @@ export function ReplayPending({ topic, originTopic, pending }: { topic: string; 
               type="button"
               onClick={replay}
               disabled={submitting}
-              className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
+              className="rounded-md bg-accent px-3 py-2 text-[12px] font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-40"
             >
               {submitting ? "Replaying..." : "Confirm replay"}
             </button>
@@ -52,7 +52,7 @@ export function ReplayPending({ topic, originTopic, pending }: { topic: string; 
               type="button"
               onClick={() => setConfirming(false)}
               disabled={submitting}
-              className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
+              className="rounded-md border border-line bg-surface px-3 py-2 text-[12px] transition-colors hover:bg-canvas"
             >
               Cancel
             </button>
@@ -67,7 +67,7 @@ export function ReplayPending({ topic, originTopic, pending }: { topic: string; 
             setOutcome(null);
           }}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
+            "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors",
             pending === 0 ? "cursor-not-allowed text-ink-faint" : "hover:bg-surface",
           )}
         >
@@ -75,7 +75,7 @@ export function ReplayPending({ topic, originTopic, pending }: { topic: string; 
           Replay pending records
         </button>
       )}
-      {outcome ? <p className="text-[11px] text-ink-soft">{outcome}</p> : null}
+      {outcome ? <p className="text-[12px] text-ink-soft">{outcome}</p> : null}
     </div>
   );
 }

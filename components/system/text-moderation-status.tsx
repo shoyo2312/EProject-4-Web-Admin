@@ -25,13 +25,13 @@ export function TextModerationStatus({ statuses }: { statuses: TextModerationSta
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[12px] xl:min-w-[640px]">
+        <table className="w-full border-collapse text-[13px] xl:min-w-[640px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps px-5 py-3 text-ink-soft">Service</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Word list &amp; spam rules</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Classifier</th>
-              <th className="label-caps px-5 py-3 text-ink-soft">List in use</th>
+              <th className="label px-5 py-3 text-ink-soft">Service</th>
+              <th className="label px-3 py-3 text-ink-soft">Word list &amp; spam rules</th>
+              <th className="label px-3 py-3 text-ink-soft">Classifier</th>
+              <th className="label px-5 py-3 text-ink-soft">List in use</th>
             </tr>
           </thead>
           <tbody>
@@ -57,7 +57,7 @@ export function TextModerationStatus({ statuses }: { statuses: TextModerationSta
         </table>
       </div>
 
-      <p className="border-t border-line px-5 py-3 text-[11px] text-ink-faint">
+      <p className="border-t border-line px-5 py-3 text-[12px] text-ink-faint">
         Recording only: every verdict is still computed, logged and kept on the comment or video, and
         nothing is held or refused — for measuring false positives before switching it on. Not reported:
         a build from before services reported it.

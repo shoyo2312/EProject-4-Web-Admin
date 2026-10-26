@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { cookies } from "next/headers";
+import { Geist, Geist_Mono } from "next/font/google";
+import { THEME_COOKIE } from "@/lib/api/config";
 import "./globals.css";
 
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -13,9 +19,15 @@ export const metadata: Metadata = {
   description: "Moderation and operations console",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Read here rather than after hydration so a dark console does not flash white on every load.
+  const dark = (await cookies()).get(THEME_COOKIE)?.value === "dark";
+
   return (
-    <html lang="en" className={`${jetbrainsMono.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased${dark ? " dark" : ""}`}
+    >
       <body className="min-h-full">{children}</body>
     </html>
   );

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const SIZES = {
-  sm: "h-7 w-7 text-[10px]",
+  sm: "h-7 w-7 text-[11px]",
   lg: "h-14 w-14 text-[16px]",
 } as const;
 

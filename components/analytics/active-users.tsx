@@ -34,16 +34,16 @@ export function ActiveUsers({
       <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <p className="text-[12px] text-ink-soft">Average day, last {days.length}d</p>
+            <p className="text-[13px] text-ink-soft">Average day, last {days.length}d</p>
             <p className="figure mt-1 text-[22px] font-bold">{formatNumber(average)}</p>
           </div>
           <div className="text-right">
-            <p className="text-[12px] text-ink-soft">Busiest day</p>
+            <p className="text-[13px] text-ink-soft">Busiest day</p>
             <p className="figure mt-1 text-[22px] font-bold">
               {busiest && busiest.activeUsers > 0 ? formatNumber(busiest.activeUsers) : "—"}
             </p>
             {busiest && busiest.activeUsers > 0 ? (
-              <p className="text-[10px] text-ink-faint">{formatDate(busiest.day)}</p>
+              <p className="text-[11px] text-ink-faint">{formatDate(busiest.day)}</p>
             ) : null}
           </div>
         </div>

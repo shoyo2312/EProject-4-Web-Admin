@@ -47,7 +47,7 @@ export function HeaderFilters({ period, asOf, latest }: HeaderFilterConfig) {
             onChange={(e) =>
               setParam("p", e.target.value, e.target.value === "month")
             }
-            className="appearance-none rounded-lg border border-line bg-surface py-2 pr-8 pl-3 text-[12px] transition-colors hover:bg-surface-muted"
+            className="appearance-none rounded-lg border border-line bg-surface py-2 pr-8 pl-3 text-[13px] transition-colors hover:bg-surface-muted"
           >
             {PERIODS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -64,7 +64,7 @@ export function HeaderFilters({ period, asOf, latest }: HeaderFilterConfig) {
           ignored by others. So the native field is laid transparently over the button and
           only supplies the calendar; the text underneath is ours, always DD/MM/YYYY. */}
       <div
-        className={`relative flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-[12px] transition-colors focus-within:bg-surface-muted hover:bg-surface-muted ${dimmed}`}
+        className={`relative flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-[13px] transition-colors focus-within:bg-surface-muted hover:bg-surface-muted ${dimmed}`}
       >
         <CalendarDays className="h-3.5 w-3.5 shrink-0 text-ink-faint" />
         <span aria-hidden>{formatDate(asOf)}</span>

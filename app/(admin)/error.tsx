@@ -23,20 +23,20 @@ export default function AdminError({
     <Card className="max-w-3xl px-6 py-6">
       <div className="flex items-center gap-2.5">
         <AlertTriangle className="h-4 w-4 text-danger" />
-        <h2 className="label-caps text-ink">Something went wrong</h2>
+        <h2 className="label text-ink">Something went wrong</h2>
         {error.digest ? (
-          <code className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[10px] text-ink-soft">
+          <code className="rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[11px] text-ink-soft">
             {error.digest}
           </code>
         ) : null}
       </div>
 
-      <p className="mt-3 text-[12px] text-ink-soft">{error.message}</p>
+      <p className="mt-3 text-[13px] text-ink-soft">{error.message}</p>
 
       <button
         type="button"
         onClick={retry}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] text-ink-soft transition-colors hover:bg-surface-muted"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] text-ink-soft transition-colors hover:bg-surface-muted"
       >
         <RotateCw className="h-3.5 w-3.5" />
         Try again

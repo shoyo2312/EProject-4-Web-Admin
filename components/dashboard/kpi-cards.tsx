@@ -1,5 +1,5 @@
-import { ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { Sparkbars } from "@/components/charts/sparkbars";
+import { ArrowDownRight, ArrowUpRight, type LucideIcon } from "lucide-react";
+import { Sparkline } from "@/components/charts/sparkline";
 import { Card } from "@/components/ui/card";
 import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,8 @@ export interface KpiCard {
   value: string;
   /** Small grey word after the figure, e.g. "Reports" / "New Users" */
   unit?: string;
+  /** Drawn in the corner tile when the page has one that names the figure. */
+  icon?: LucideIcon;
   /**
    * Percentage change against the previous period, or null when none can be computed: a
    * snapshot figure with no history behind it, or a previous period that was zero.
@@ -36,45 +38,46 @@ export function KpiCards({ cards }: { cards: KpiCard[] }) {
         const Arrow = rising ? ArrowUpRight : ArrowDownRight;
 
         return (
-          <Card key={card.label} className="flex flex-col">
-            <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3">
-              <div className="min-w-0">
-                <p className="label-caps text-ink-soft">{card.label}</p>
-                {/* The unit wraps under the figure rather than truncating: "Average, last 3…"
-                    drops exactly the part that says what the number covers. */}
-                <p className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
-                  <span className="figure text-[26px] leading-none font-bold">
-                    {card.value}
-                  </span>
-                  {card.unit ? (
-                    <span className="text-[11px] text-ink-faint">{card.unit}</span>
-                  ) : null}
-                </p>
-              </div>
-              {card.spark ? (
-                <Sparkbars values={card.spark} className="shrink-0" />
+          <Card key={card.label} className="flex flex-col px-5 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[13px] font-medium text-ink-soft">{card.label}</p>
+              {card.icon ? (
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                  <card.icon className="h-3.5 w-3.5" />
+                </span>
               ) : null}
             </div>
+
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <div className="min-w-0">
+                <p className="figure text-[28px] leading-none font-semibold tracking-tight">
+                  {card.value}
+                </p>
+                {/* The unit wraps under the figure rather than truncating: "Average, last 3…"
+                    drops exactly the part that says what the number covers. */}
+                {card.unit ? (
+                  <p className="mt-1.5 text-[12px] text-ink-faint">{card.unit}</p>
+                ) : null}
+              </div>
+              {card.spark ? (
+                <Sparkline values={card.spark} />
+              ) : null}
+            </div>
+
             {delta !== null ? (
-              <div className="flex items-center justify-between border-t border-line px-5 py-2.5">
+              <p className="mt-3 flex items-center gap-1.5 text-[12px] text-ink-faint">
                 <span
                   className={cn(
-                    "flex h-4 w-4 items-center justify-center rounded-full border",
-                    good
-                      ? "border-success/30 text-success"
-                      : "border-danger/30 text-danger",
+                    "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-medium",
+                    good ? "bg-success-bg text-success" : "bg-danger-bg text-danger",
                   )}
                 >
-                  <Arrow className="h-2.5 w-2.5" />
+                  <Arrow className="h-3 w-3" />
+                  {rising ? "+" : ""}
+                  {card.deltaUnit === "count" ? formatNumber(delta) : `${delta}%`}
                 </span>
-                <span className="text-[11px] text-ink-faint">
-                  <span className={good ? "text-success" : "text-danger"}>
-                    {rising ? "+" : ""}
-                    {card.deltaUnit === "count" ? formatNumber(delta) : `${delta}%`}
-                  </span>{" "}
-                  {card.deltaLabel}
-                </span>
-              </div>
+                <span className="truncate">{card.deltaLabel}</span>
+              </p>
             ) : null}
           </Card>
         );

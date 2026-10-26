@@ -38,7 +38,7 @@ export function RowDetail({
         {/* w-0 min-w-full: the expand cell fills the row but contributes zero
             intrinsic width, so the auto table-layout can't redistribute column
             widths (shoving the table sideways) when a row opens. */}
-        <dl className="grid w-0 min-w-full grid-cols-2 gap-x-4 gap-y-2.5 text-[12px]">
+        <dl className="grid w-0 min-w-full grid-cols-2 gap-x-4 gap-y-2.5 text-[13px]">
           {children}
         </dl>
       </td>
@@ -57,7 +57,7 @@ export function Field({
 }) {
   return (
     <div className={cn("min-w-0", wide && "col-span-2")}>
-      <dt className="label-caps text-[10px] text-ink-faint">{label}</dt>
+      <dt className="label text-[11px] text-ink-faint">{label}</dt>
       <dd className="mt-0.5 wrap-anywhere">{children}</dd>
     </div>
   );

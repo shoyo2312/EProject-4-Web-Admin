@@ -77,18 +77,18 @@ export function TermsTable({
       />
 
       {notice ? (
-        <p className="border-b border-line px-5 py-2 text-[11px] text-ink-soft">{notice}</p>
+        <p className="border-b border-line px-5 py-2 text-[12px] text-ink-soft">{notice}</p>
       ) : null}
 
       <div className={cn("overflow-x-auto transition-opacity", navigating && "opacity-50")}>
-        <table className="w-full border-collapse text-[12px] xl:min-w-[760px]">
+        <table className="w-full border-collapse text-[13px] xl:min-w-[760px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label-caps px-5 py-3 text-ink-soft">Term</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Action</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Category</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Added</th>
-              <th className="label-caps px-5 py-3 text-right text-ink-soft">Remove</th>
+              <th className="label px-5 py-3 text-ink-soft">Term</th>
+              <th className="label px-3 py-3 text-ink-soft">Action</th>
+              <th className="label px-3 py-3 text-ink-soft">Category</th>
+              <th className="label px-3 py-3 text-ink-soft">Added</th>
+              <th className="label px-5 py-3 text-right text-ink-soft">Remove</th>
             </tr>
           </thead>
           <tbody>
@@ -152,17 +152,17 @@ function TermRow({
       <tr className="border-b border-line align-top last:border-b-0">
         <td className="px-5 py-3">
           <span className="font-medium wrap-anywhere">{term.term}</span>
-          <span className="ml-2 text-[10px] text-ink-faint">
+          <span className="ml-2 text-[11px] text-ink-faint">
             {matchesAnyDiacritics(term.term) ? "any diacritics" : "exact diacritics"}
           </span>
           {term.note ? (
-            <p className="mt-0.5 max-w-[420px] text-[11px] text-ink-soft wrap-anywhere">{term.note}</p>
+            <p className="mt-0.5 max-w-[420px] text-[12px] text-ink-soft wrap-anywhere">{term.note}</p>
           ) : null}
         </td>
         <td className="px-3 py-3">
           <span
             className={cn(
-              "inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap",
+              "inline-flex rounded-md border px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap",
               ACTION_STYLES[term.action],
             )}
           >
@@ -192,7 +192,7 @@ function TermRow({
             }}
             aria-label={`Remove ${term.term}`}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
+              "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors",
               confirming ? "cursor-not-allowed text-ink-faint" : "text-danger hover:bg-surface",
             )}
           >
@@ -205,7 +205,7 @@ function TermRow({
       {confirming ? (
         <tr className="border-b border-line bg-surface-muted">
           <td colSpan={COLUMNS} className="px-5 py-3">
-            <p className="mb-2 text-[11px] text-ink-soft">
+            <p className="mb-2 text-[12px] text-ink-soft">
               {exempt
                 ? `Remove the exemption? The shipped term “${term.term}” matches again within a minute.`
                 : `Remove “${term.term}”? Every service stops matching it within a minute.`}
@@ -215,19 +215,19 @@ function TermRow({
                 type="button"
                 onClick={remove}
                 disabled={submitting}
-                className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
+                className="rounded-md bg-accent px-3 py-2 text-[12px] font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-40"
               >
                 {submitting ? "Submitting..." : "Confirm removal"}
               </button>
               <button
                 type="button"
                 onClick={() => setConfirming(false)}
-                className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
+                className="rounded-md border border-line bg-surface px-3 py-2 text-[12px] transition-colors hover:bg-canvas"
               >
                 Cancel
               </button>
             </div>
-            {failure ? <p className="mt-2 text-[11px] text-ink-soft">{failure}</p> : null}
+            {failure ? <p className="mt-2 text-[12px] text-ink-soft">{failure}</p> : null}
           </td>
         </tr>
       ) : null}

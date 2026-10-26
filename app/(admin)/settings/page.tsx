@@ -45,7 +45,7 @@ export default async function SettingsPage() {
           {moderation.reachable ? (
             <Thresholds values={moderation.values} />
           ) : (
-            <p className="px-5 py-8 text-center text-[12px] text-ink-faint">
+            <p className="px-5 py-8 text-center text-[13px] text-ink-faint">
               The moderation classifier did not answer. Uploads are still being screened with
               whatever it was started with — only reading the values back failed.
             </p>
@@ -60,7 +60,7 @@ export default async function SettingsPage() {
           {moderation.reachable ? (
             <TextClassifier values={moderation.values} />
           ) : (
-            <p className="px-5 py-8 text-center text-[12px] text-ink-faint">
+            <p className="px-5 py-8 text-center text-[13px] text-ink-faint">
               moderation-service did not answer. Comments and captions are still screened — if
               the classifier cannot be reached, by the word list alone.
             </p>
@@ -71,7 +71,7 @@ export default async function SettingsPage() {
 
         <Card>
           <CardHeader title="Not configurable from here" />
-          <ul className="list-disc space-y-1.5 py-4 pr-5 pl-10 text-[12px] text-ink-soft">
+          <ul className="list-disc space-y-1.5 py-4 pr-5 pl-10 text-[13px] text-ink-soft">
             <li>
               Admin accounts — there is a single admin role, granted at startup from{" "}
               <code>ADMIN_EMAIL</code>, and no way to grant or revoke it from the console.
@@ -107,7 +107,7 @@ function Thresholds({ values }: { values: ModerationSettingsResponse["values"] }
   const escalating = values.escalationEnabled === true;
 
   return (
-    <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[12px] xl:grid-cols-4">
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 px-5 py-4 text-[13px] xl:grid-cols-4">
       <Field label="Review at">
         <span className="figure">{show(values.reviewAt)}</span>
         <span className="text-ink-faint"> — a frame at or above this is suspicious</span>
@@ -179,7 +179,7 @@ function Thresholds({ values }: { values: ModerationSettingsResponse["values"] }
 function TextClassifier({ values }: { values: ModerationSettingsResponse["values"] }) {
   if (values.textEnabled === undefined) {
     return (
-      <p className="px-5 py-8 text-center text-[12px] text-ink-faint">
+      <p className="px-5 py-8 text-center text-[13px] text-ink-faint">
         This moderation-service does not report a text classifier — it predates one.
       </p>
     );
@@ -187,7 +187,7 @@ function TextClassifier({ values }: { values: ModerationSettingsResponse["values
 
   return (
     <div className="space-y-3 px-5 py-4">
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[12px] xl:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] xl:grid-cols-4">
         {values.textEnabled === true ? (
           <>
             <Field label="Holds at">
@@ -212,7 +212,7 @@ function TextClassifier({ values }: { values: ModerationSettingsResponse["values
           </Field>
         )}
       </dl>
-      <p className="text-[11px] text-ink-faint">
+      <p className="text-[12px] text-ink-faint">
         The word list in front of it is edited under{" "}
         <Link href="/moderation/terms" className="text-ink-soft underline-offset-4 hover:underline">
           Moderation → Terms

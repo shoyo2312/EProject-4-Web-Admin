@@ -49,7 +49,7 @@ export function CommentRestriction({
 
   return (
     <div className="space-y-3">
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[12px] xl:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] xl:grid-cols-4">
         <Field label="Status" wide>
           {restrictedUntil ? (
             <span className="text-danger">
@@ -75,7 +75,7 @@ export function CommentRestriction({
             setConfirming(true);
             setResult(null);
           }}
-          className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors hover:bg-surface"
+          className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors hover:bg-surface"
         >
           <LockOpen className="h-3.5 w-3.5" />
           {lifts === "restriction" ? "Lift restriction" : "Clear strikes"}
@@ -84,7 +84,7 @@ export function CommentRestriction({
 
       {lifts && confirming ? (
         <div className="space-y-2 rounded-lg border border-line bg-surface-muted px-3 py-2.5">
-          <p className="text-[11px] text-ink-soft">
+          <p className="text-[12px] text-ink-soft">
             {lifts === "restriction"
               ? `${subject} can comment again straight away, and their strikes and restrictions in a row start over.`
               : `${subject}'s strikes and restrictions in a row start over: restricting them again takes a fresh run of strikes, and starts from the shortest.`}{" "}
@@ -95,7 +95,7 @@ export function CommentRestriction({
               type="button"
               onClick={lift}
               disabled={submitting}
-              className="rounded-md bg-ink px-3 py-2 text-[11px] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
+              className="rounded-md bg-accent px-3 py-2 text-[12px] font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:opacity-40"
             >
               {submitting
                 ? "Submitting..."
@@ -106,7 +106,7 @@ export function CommentRestriction({
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="rounded-md border border-line bg-surface px-3 py-2 text-[11px] transition-colors hover:bg-canvas"
+              className="rounded-md border border-line bg-surface px-3 py-2 text-[12px] transition-colors hover:bg-canvas"
             >
               Cancel
             </button>
@@ -114,7 +114,7 @@ export function CommentRestriction({
         </div>
       ) : null}
 
-      {result ? <p className="text-[11px] text-ink-soft">{result}</p> : null}
+      {result ? <p className="text-[12px] text-ink-soft">{result}</p> : null}
     </div>
   );
 }

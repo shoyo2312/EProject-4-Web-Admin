@@ -36,7 +36,7 @@ export function UploaderPanel({
         actions={
           <Link
             href={`/users/${ownerId}` as never}
-            className="text-[11px] text-ink-soft underline-offset-4 hover:underline"
+            className="text-[12px] text-ink-soft underline-offset-4 hover:underline"
           >
             Open account →
           </Link>
@@ -44,15 +44,15 @@ export function UploaderPanel({
       />
       <div className="space-y-3 px-5 py-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[13px] font-medium">{name}</span>
+          <span className="text-[14px] font-medium">{name}</span>
           {record?.status ? <UserStatusBadge status={record.status} dense /> : null}
           {record?.joinedAt ? (
-            <span className="text-[11px] text-ink-faint">joined {formatDate(record.joinedAt)}</span>
+            <span className="text-[12px] text-ink-faint">joined {formatDate(record.joinedAt)}</span>
           ) : null}
         </div>
 
         {failed ? (
-          <p className="text-[11px] text-ink-faint">
+          <p className="text-[12px] text-ink-faint">
             Couldn&apos;t load this account&apos;s record.{" "}
             <button
               type="button"
@@ -63,7 +63,7 @@ export function UploaderPanel({
             </button>
           </p>
         ) : (
-          <dl className="grid grid-cols-3 gap-x-4 gap-y-2.5 text-[12px]">
+          <dl className="grid grid-cols-3 gap-x-4 gap-y-2.5 text-[13px]">
             <Count label="Followers" value={record?.followers} loading={loading} compact />
             <Count label="Uploads" value={record?.uploads} loading={loading} />
             <Count label="Taken down" value={record?.takenDown} loading={loading} warn />

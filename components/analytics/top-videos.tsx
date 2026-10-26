@@ -36,26 +36,26 @@ export function TopVideos({
       />
 
       {rows.length === 0 ? (
-        <p className="px-5 py-8 text-center text-[12px] text-ink-faint">
+        <p className="px-5 py-8 text-center text-[13px] text-ink-faint">
           No watch events in this window.
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-[12px]">
+          <table className="w-full text-[13px]">
             <thead>
               <tr className="border-b border-line text-left">
-                <th className="label-caps px-5 py-2.5 font-medium text-ink-soft">#</th>
-                <th className="label-caps px-3 py-2.5 font-medium text-ink-soft">Video</th>
-                <th className="label-caps px-3 py-2.5 text-right font-medium text-ink-soft">
+                <th className="label px-5 py-2.5 font-medium text-ink-soft">#</th>
+                <th className="label px-3 py-2.5 font-medium text-ink-soft">Video</th>
+                <th className="label px-3 py-2.5 text-right font-medium text-ink-soft">
                   Watch time
                 </th>
-                <th className="label-caps px-3 py-2.5 text-right font-medium text-ink-soft">
+                <th className="label px-3 py-2.5 text-right font-medium text-ink-soft">
                   Views
                 </th>
-                <th className="label-caps px-3 py-2.5 text-right font-medium text-ink-soft">
+                <th className="label px-3 py-2.5 text-right font-medium text-ink-soft">
                   Viewers
                 </th>
-                <th className="label-caps px-5 py-2.5 text-right font-medium text-ink-soft">
+                <th className="label px-5 py-2.5 text-right font-medium text-ink-soft">
                   Finished
                 </th>
               </tr>
@@ -83,7 +83,7 @@ export function TopVideos({
                             {row.videoId}
                           </span>
                         )}
-                        <span className="block text-[11px] text-ink-faint">
+                        <span className="block text-[12px] text-ink-faint">
                           {video ? (owner ?? "") : "not public right now"}
                         </span>
                       </span>

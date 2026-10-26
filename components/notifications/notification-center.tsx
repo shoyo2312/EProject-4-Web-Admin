@@ -62,7 +62,7 @@ export function NotificationCenter({
 
   return (
     <div className="space-y-3">
-      <p className="text-[12px] text-ink-soft">
+      <p className="text-[13px] text-ink-soft">
         {unread > 0
           ? `${formatNumber(unread)} new since you last looked — marked as seen now.`
           : "Nothing new since you last looked."}
@@ -74,13 +74,13 @@ export function NotificationCenter({
           actions={<Segmented options={options} value={kind} onChange={setKind} />}
         />
         {days.length === 0 ? (
-          <p className="px-5 py-10 text-center text-[12px] text-ink-faint">
+          <p className="px-5 py-10 text-center text-[13px] text-ink-faint">
             Nothing is waiting on you.
           </p>
         ) : (
           days.map(({ day, items: onDay }) => (
             <section key={day}>
-              <h3 className="label-caps border-b border-line bg-surface-muted px-4 py-1.5 text-[10px] text-ink-faint">
+              <h3 className="label border-b border-line bg-surface-muted px-4 py-1.5 text-[11px] text-ink-faint">
                 {dayHeading(day, now) ?? formatDate(day)}
               </h3>
               <ul className="divide-y divide-line border-b border-line last:border-b-0">

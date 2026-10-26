@@ -24,14 +24,14 @@ export function ClassifierPanel({
         hint="The classifier's own account of this video. The lines are today's thresholds, the ones Settings shows."
       />
       <div className="space-y-4 px-5 py-4">
-        <p className="text-[12px] text-ink-soft">{heldBecause(moderation, lines)}</p>
+        <p className="text-[13px] text-ink-soft">{heldBecause(moderation, lines)}</p>
 
         {/* No scored frames — a check that did not finish, or a file with nothing to sample — has
             no score worth drawing: 0.000 on 0/0 frames would read as a clean pass. */}
         {moderation && moderation.totalFrames > 0 ? (
           <>
             <ScoreScale score={moderation.maxScore} lines={linesFor(lines, moderation.label)} />
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[12px] sm:grid-cols-4">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-[13px] sm:grid-cols-4">
               <Field label="Label">{moderation.label ?? "—"}</Field>
               {/* Raw rather than a percentage: the lines are configured on this same 0–1 scale. */}
               <Field label="Highest frame">
@@ -48,7 +48,7 @@ export function ClassifierPanel({
             </dl>
           </>
         ) : moderation ? (
-          <p className="text-[11px] text-ink-faint">
+          <p className="text-[12px] text-ink-faint">
             Checked {formatDateTime(moderation.checkedAt)}
           </p>
         ) : null}
@@ -97,7 +97,7 @@ function ScoreScale({
           </>
         ) : null}
       </div>
-      <div className="relative mt-1.5 h-4 text-[10px] text-ink-faint">
+      <div className="relative mt-1.5 h-4 text-[11px] text-ink-faint">
         <span className="absolute left-0">0</span>
         {lines ? (
           <>

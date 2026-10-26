@@ -13,7 +13,7 @@ export function TextFlags({ flags }: { flags: TextFlag[] }) {
         <li
           // Two links to the same domain are two flags with the same text.
           key={i}
-          className="inline-flex max-w-full items-center gap-1.5 rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[10px]"
+          className="inline-flex max-w-full items-center gap-1.5 rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[11px]"
         >
           {flag.field ? <span className="text-ink-faint">{CAPTION_FIELD_LABELS[flag.field]}</span> : null}
           <span className="font-medium text-ink-soft">{categoryLabel(flag.category)}</span>

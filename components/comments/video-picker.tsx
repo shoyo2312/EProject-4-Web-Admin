@@ -65,7 +65,7 @@ export function VideoPicker({
             type="button"
             onClick={() => select(video.id)}
             className={cn(
-              "flex w-full items-start gap-2 border-b border-line px-4 py-2.5 text-left text-[11px] transition-colors last:border-b-0",
+              "flex w-full items-start gap-2 border-b border-line px-4 py-2.5 text-left text-[12px] transition-colors last:border-b-0",
               video.id === selectedId ? "bg-surface-muted" : "hover:bg-surface-muted",
             )}
           >
@@ -87,7 +87,7 @@ export function VideoPicker({
         ))}
 
         {videos.length === 0 ? (
-          <p className="px-4 py-8 text-center text-[11px] text-ink-faint">
+          <p className="px-4 py-8 text-center text-[12px] text-ink-faint">
             No uploads match that search.
           </p>
         ) : null}

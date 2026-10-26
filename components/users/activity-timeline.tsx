@@ -71,7 +71,7 @@ const CATEGORY_FALLBACK: Record<ActivityCategory, LucideIcon> = {
 export function ActivityTimeline({ events }: { events: ActivityEvent[] }) {
   if (events.length === 0) {
     return (
-      <p className="px-5 py-10 text-center text-[12px] text-ink-faint">
+      <p className="px-5 py-10 text-center text-[13px] text-ink-faint">
         Nothing recorded for this account in the categories selected.
       </p>
     );
@@ -119,7 +119,7 @@ function ActivityRow({ event }: { event: ActivityEvent }) {
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="text-[12px] font-medium wrap-anywhere">
+          <span className="text-[13px] font-medium wrap-anywhere">
             {event.href ? (
               <Link href={event.href as never} className="underline-offset-4 hover:underline">
                 {event.summary}
@@ -128,14 +128,14 @@ function ActivityRow({ event }: { event: ActivityEvent }) {
               event.summary
             )}
           </span>
-          <span className="label-caps text-[10px] text-ink-faint">{style.label}</span>
+          <span className="label text-[11px] text-ink-faint">{style.label}</span>
         </div>
 
         {event.detail ? (
-          <p className="mt-0.5 text-[11px] text-ink-soft wrap-anywhere">{event.detail}</p>
+          <p className="mt-0.5 text-[12px] text-ink-soft wrap-anywhere">{event.detail}</p>
         ) : null}
 
-        <p className="mt-0.5 text-[11px] text-ink-faint">
+        <p className="mt-0.5 text-[12px] text-ink-faint">
           {/* Exact moment first, relative second: a compliance trail is read by date, and the
               relative form is the orientation, not the record. */}
           <time dateTime={event.at} title={event.at}>

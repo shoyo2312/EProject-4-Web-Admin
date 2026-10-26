@@ -1,9 +1,9 @@
 "use client";
 
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart as RechartsLineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,7 +13,7 @@ import {
 import type { MosaicBucket } from "@/lib/api/rollup";
 import { formatCompact, formatNumber } from "@/lib/format";
 
-const TICK = { fontSize: 10, fill: "var(--ink-faint)" };
+const TICK = { fontSize: 11, fill: "var(--ink-faint)" };
 
 export function LineChart({
   buckets,
@@ -25,21 +25,21 @@ export function LineChart({
   secondaryLabel: string;
 }) {
   const series = [
-    { key: "primary", label: primaryLabel, color: "var(--cell-strong)", dot: "bg-[var(--cell-strong)]" },
-    { key: "secondary", label: secondaryLabel, color: "var(--cell-mid)", dot: "bg-[var(--cell-mid)]" },
+    { key: "primary", label: primaryLabel, color: "var(--chart-1)", dot: "bg-[var(--chart-1)]" },
+    { key: "secondary", label: secondaryLabel, color: "var(--chart-2)", dot: "bg-[var(--chart-2)]" },
   ] as const;
 
   const renderTooltip = ({ active, payload }: TooltipContentProps) => {
     const bucket = payload?.[0]?.payload as MosaicBucket | undefined;
     if (!active || !bucket) return null;
     return (
-      <div className="w-[190px] rounded-lg border border-line bg-surface p-3">
-        <p className="text-[12px] font-semibold">{bucket.label}</p>
-        <dl className="mt-2 space-y-1.5 text-[11px]">
+      <div className="w-[200px] rounded-xl border border-line bg-surface p-3 shadow-pop">
+        <p className="text-[13px] font-semibold">{bucket.label}</p>
+        <dl className="mt-2 space-y-1.5 text-[12px]">
           {series.map((s) => (
             <div key={s.key} className="flex items-center justify-between gap-3">
               <dt className="flex items-center gap-1.5 text-ink-soft">
-                <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+                <span className={`h-2 w-2 rounded-full ${s.dot}`} />
                 {s.label}
               </dt>
               <dd className="figure font-semibold">{formatNumber(bucket[s.key])}</dd>
@@ -52,25 +52,33 @@ export function LineChart({
 
   return (
     <div>
-      <div className="mb-3 flex items-center gap-4 text-[11px] text-ink-soft">
+      <div className="mb-4 flex items-center gap-4 text-[12px] text-ink-soft">
         {series.map((s) => (
           <span key={s.key} className="flex items-center gap-1.5">
-            <span className={`h-0.5 w-3 rounded-full ${s.dot}`} />
-            <span className="label-caps">{s.label}</span>
+            <span className={`h-2 w-2 rounded-full ${s.dot}`} />
+            {s.label}
           </span>
         ))}
       </div>
 
       <div className="h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <RechartsLineChart data={buckets} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-            <CartesianGrid vertical={false} stroke="var(--line)" strokeDasharray="3 3" />
+          <AreaChart data={buckets} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <defs>
+              {series.map((s) => (
+                <linearGradient key={s.key} id={`fill-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={s.color} stopOpacity={0.18} />
+                  <stop offset="100%" stopColor={s.color} stopOpacity={0} />
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid vertical={false} stroke="var(--line)" />
             <XAxis
               dataKey="label"
               tick={TICK}
               tickLine={false}
-              axisLine={{ stroke: "var(--line)", strokeDasharray: "3 3" }}
-              tickMargin={8}
+              axisLine={{ stroke: "var(--line)" }}
+              tickMargin={10}
             />
             {/* Counts: a tick at 0.75 of a like is a scale nothing can land on. */}
             <YAxis
@@ -83,24 +91,25 @@ export function LineChart({
             />
             <Tooltip
               content={renderTooltip}
-              cursor={{ stroke: "var(--ink)", strokeDasharray: "3 3" }}
+              cursor={{ stroke: "var(--line-strong)", strokeDasharray: "3 3" }}
             />
             {series.map((s) => (
               // Straight segments with a dot per bucket: a smoothed curve through monthly totals
               // draws a slope of activity across weeks where there was none.
-              <Line
+              <Area
                 key={s.key}
                 type="linear"
                 dataKey={s.key}
                 name={s.label}
                 stroke={s.color}
                 strokeWidth={2}
-                dot={{ r: 2, fill: s.color, strokeWidth: 0 }}
-                activeDot={{ r: 4, stroke: "var(--surface)", strokeWidth: 2 }}
+                fill={`url(#fill-${s.key})`}
+                dot={{ r: 2.5, fill: s.color, strokeWidth: 0 }}
+                activeDot={{ r: 5, stroke: "var(--surface)", strokeWidth: 2 }}
                 isAnimationActive={false}
               />
             ))}
-          </RechartsLineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>

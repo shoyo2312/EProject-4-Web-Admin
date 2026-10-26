@@ -1,24 +1,23 @@
-import { CheckCircle2, CircleSlash, Clock } from "lucide-react";
 import type { ReportStatus, ReportTargetType } from "@/lib/api/types";
 import { REPORT_STATUS_LABELS } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
-const STATUS_STYLES: Record<ReportStatus, { className: string; Icon: typeof Clock }> = {
-  PENDING: { className: "border-pending/25 bg-pending-bg text-pending", Icon: Clock },
-  RESOLVED: { className: "border-success/25 bg-success-bg text-success", Icon: CheckCircle2 },
-  DISMISSED: { className: "border-line bg-neutral-bg text-neutral", Icon: CircleSlash },
+const STATUS_STYLES: Record<ReportStatus, string> = {
+  PENDING: "bg-pending-bg text-pending",
+  RESOLVED: "bg-success-bg text-success",
+  DISMISSED: "bg-neutral-bg text-neutral",
 };
 
+/** A status pill: a dot in the status colour, then the word. */
 export function StatusBadge({ status }: { status: ReportStatus }) {
-  const { className, Icon } = STATUS_STYLES[status];
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium",
-        className,
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium whitespace-nowrap",
+        STATUS_STYLES[status],
       )}
     >
-      <Icon className="h-3 w-3" />
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
       {REPORT_STATUS_LABELS[status]}
     </span>
   );
@@ -42,16 +41,16 @@ export function TargetBadge({
   name?: string | null;
 }) {
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
-      <span className="shrink-0 rounded border border-line bg-surface-muted px-1.5 py-0.5 text-[10px] tracking-wider whitespace-nowrap text-ink-soft">
-        {type}
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <span className="shrink-0 rounded-md bg-surface-muted px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-ink-soft capitalize">
+        {type.toLowerCase()}
       </span>
       {name ? (
         <span className="line-clamp-2 max-w-[220px] wrap-anywhere" title={name}>
           {name}
         </span>
       ) : (
-        <span className="text-ink-faint">{id.slice(-6)}</span>
+        <span className="font-mono text-[12px] text-ink-faint">{id.slice(-6)}</span>
       )}
     </span>
   );

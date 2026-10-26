@@ -130,7 +130,7 @@ export function CommentsTable({
         ))}
 
         {view.items.length === 0 ? (
-          <p className="px-5 py-10 text-center text-[12px] text-ink-faint">
+          <p className="px-5 py-10 text-center text-[13px] text-ink-faint">
             {EMPTY_MESSAGE[filter]}
           </p>
         ) : null}
@@ -138,7 +138,7 @@ export function CommentsTable({
 
       {/* The count is what is loaded, never a total: comments_by_video has no count to read, and
           a number that looked like one would be wrong on every long thread. */}
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-5 py-3 text-[11px] text-ink-faint">
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-5 py-3 text-[12px] text-ink-faint">
         <span>
           {view.items.length} loaded
           {view.hasMore ? ", more behind" : ""}
@@ -148,7 +148,7 @@ export function CommentsTable({
             type="button"
             onClick={loadMore}
             disabled={loading}
-            className="rounded-md border border-line px-2.5 py-1.5 text-[11px] text-ink-soft transition-colors hover:bg-surface-muted disabled:opacity-40"
+            className="rounded-md border border-line px-2.5 py-1.5 text-[12px] text-ink-soft transition-colors hover:bg-surface-muted disabled:opacity-40"
           >
             {loading ? "Loading…" : "Load more"}
           </button>
@@ -176,11 +176,11 @@ function LinkedComment({
   return (
     <section className="border-b border-line bg-pending-bg/40">
       <div className="flex items-center justify-between gap-2 px-5 pt-3">
-        <span className="label-caps text-ink-soft">Linked comment</span>
+        <span className="label text-ink-soft">Linked comment</span>
         <Link
           href={dismissHref as never}
           title="Show the thread only"
-          className="inline-flex items-center gap-1 text-[11px] text-ink-soft underline-offset-4 hover:text-ink hover:underline"
+          className="inline-flex items-center gap-1 text-[12px] text-ink-soft underline-offset-4 hover:text-ink hover:underline"
         >
           Dismiss
           <X className="h-3 w-3" />
@@ -194,7 +194,7 @@ function LinkedComment({
           parents={linked.parents}
         />
       ) : (
-        <p className="px-5 pt-1 pb-3 text-[12px] text-ink-faint">
+        <p className="px-5 pt-1 pb-3 text-[13px] text-ink-faint">
           {linked
             ? "This video has no comment with that id. The link may name a comment on another video."
             : "Couldn't load the linked comment. The thread below is still current."}
@@ -223,17 +223,17 @@ function ParentPreview({
     <div className="mt-1 max-w-xl rounded-lg border border-line bg-surface-muted px-2.5 py-1.5">
       {parent ? (
         <>
-          <p className="text-[10px] text-ink-faint">
+          <p className="text-[11px] text-ink-faint">
             {displayName(profile, parent.userId)}
             {profile?.username ? ` · @${profile.username}` : null}
             {parent.deletedAt ? " · removed" : null}
           </p>
           {/* Clamped, not truncated to one line: enough of the parent to judge the reply, without
               the parent taking over the row. */}
-          <p className="line-clamp-2 break-words text-[11px] text-ink-soft">{parent.content}</p>
+          <p className="line-clamp-2 break-words text-[12px] text-ink-soft">{parent.content}</p>
         </>
       ) : (
-        <p className="text-[11px] text-ink-faint">
+        <p className="text-[12px] text-ink-faint">
           Answers <span className="figure">#{shortId(parentId.slice(-8), 8)}</span>, which
           interaction-service no longer has a row for.
         </p>
@@ -336,7 +336,7 @@ function CommentRow({
       >
         {isReply && comment.parentId ? (
           <div className="mb-2 min-w-0">
-            <p className="flex items-center gap-1.5 text-[11px] text-ink-faint">
+            <p className="flex items-center gap-1.5 text-[12px] text-ink-faint">
               <CornerDownRight className="h-3 w-3 shrink-0" />
               <span className="min-w-0 truncate">
                 Reply to {displayName(answered, answeredUserId ?? comment.parentId)}
@@ -359,13 +359,13 @@ function CommentRow({
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="truncate text-[12px] font-semibold">
+              <span className="truncate text-[13px] font-semibold">
                 {displayName(author, comment.userId)}
               </span>
               {author?.username ? (
-                <span className="truncate text-[11px] text-ink-soft">@{author.username}</span>
+                <span className="truncate text-[12px] text-ink-soft">@{author.username}</span>
               ) : null}
-              <span className="ml-auto shrink-0 text-[11px] text-ink-faint">
+              <span className="ml-auto shrink-0 text-[12px] text-ink-faint">
                 {relativeTime(comment.createdAt)}
               </span>
             </div>
@@ -374,7 +374,7 @@ function CommentRow({
                 and the thing being judged is exactly this string. */}
             <p
               className={cn(
-                "mt-1 break-words text-[12px]",
+                "mt-1 break-words text-[13px]",
                 removed && "text-ink-faint line-through",
                 pending && "opacity-50",
               )}
@@ -383,7 +383,7 @@ function CommentRow({
             </p>
             <CommentModeration comment={comment} />
 
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-faint">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-ink-faint">
               {/* Kept, quiet: nobody reads the id, but an audit row or a support ticket names it. */}
               <span className="figure">#{shortId(comment.commentId.slice(-8), 8)}</span>
               {comment.likeCount > 0 ? (
@@ -397,7 +397,7 @@ function CommentRow({
 
           <div className="shrink-0">
             {removed ? (
-              <span className="inline-flex items-center rounded-md border border-line bg-surface px-2 py-1 text-[10px] tracking-wider text-ink-faint">
+              <span className="inline-flex items-center rounded-md border border-line bg-surface px-2 py-1 text-[11px] tracking-wider text-ink-faint">
                 REMOVED
               </span>
             ) : (
@@ -408,7 +408,7 @@ function CommentRow({
                 disabled={pending}
                 onClick={() => setReason(reason === null ? "" : null)}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors",
+                  "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors",
                   pending ? "cursor-not-allowed text-ink-faint" : "text-danger hover:bg-surface",
                 )}
               >
@@ -427,7 +427,7 @@ function CommentRow({
             onClick={toggleReplies}
             disabled={loadingReplies}
             aria-expanded={replies !== null}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] text-ink-soft transition-colors hover:bg-surface-muted disabled:opacity-40"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] text-ink-soft transition-colors hover:bg-surface-muted disabled:opacity-40"
           >
             <MessageSquare className="h-3.5 w-3.5" />
             {comment.replyCount > 0
@@ -451,7 +451,7 @@ function CommentRow({
               placeholder="Reason for removing this comment — pick one above or write your own"
               confirmLabel="Confirm removal"
             />
-            <p className="mt-2 text-[11px] text-ink-faint">
+            <p className="mt-2 text-[12px] text-ink-faint">
               A removal is a strike against its author: enough strikes in a day and they cannot
               comment for a while.
             </p>
@@ -459,7 +459,7 @@ function CommentRow({
         ) : null}
 
         {(stalled ?? result) ? (
-          <p className="mt-2 text-[11px] text-ink-soft">{stalled ?? result}</p>
+          <p className="mt-2 text-[12px] text-ink-soft">{stalled ?? result}</p>
         ) : null}
       </div>
 
@@ -477,7 +477,7 @@ function CommentRow({
           ))}
 
           {replies.items.length === 0 ? (
-            <p className="px-5 py-4 text-[11px] text-ink-faint">
+            <p className="px-5 py-4 text-[12px] text-ink-faint">
               The replies under this comment are gone from interaction-service.
             </p>
           ) : null}
@@ -487,7 +487,7 @@ function CommentRow({
               type="button"
               onClick={loadMoreReplies}
               disabled={loadingReplies}
-              className="w-full border-t border-line px-5 py-2 text-left text-[11px] text-ink-soft transition-colors hover:bg-surface-muted disabled:opacity-40"
+              className="w-full border-t border-line px-5 py-2 text-left text-[12px] text-ink-soft transition-colors hover:bg-surface-muted disabled:opacity-40"
             >
               {loadingReplies ? "Loading…" : "More replies"}
             </button>

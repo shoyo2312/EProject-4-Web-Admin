@@ -99,18 +99,18 @@ export function ReportQueueTable({
       />
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[12px] xl:min-w-[880px]">
+        <table className="w-full border-collapse text-[13px] xl:min-w-[880px]">
           <thead>
             <tr className="border-b border-line text-left">
               <SelectAllCell ids={groups.map(keyOf)} selection={selection} />
-              <th className="label-caps px-3 py-3 text-ink-soft">Target</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Reports</th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Severity</th>
-              <th className="label-caps hidden px-3 py-3 text-ink-soft xl:table-cell">
+              <th className="label px-3 py-3 text-ink-soft">Target</th>
+              <th className="label px-3 py-3 text-ink-soft">Reports</th>
+              <th className="label px-3 py-3 text-ink-soft">Severity</th>
+              <th className="label hidden px-3 py-3 text-ink-soft xl:table-cell">
                 Latest reason
               </th>
-              <th className="label-caps px-3 py-3 text-ink-soft">Waiting</th>
-              <th className="label-caps px-5 py-3 text-right text-ink-soft">Actions</th>
+              <th className="label px-3 py-3 text-ink-soft">Waiting</th>
+              <th className="label px-5 py-3 text-right text-ink-soft">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -207,14 +207,14 @@ function QueueRow({
         </td>
         <td className="figure px-3 py-3 whitespace-nowrap">
           {group.reportCount}
-          <span className="ml-1 text-[11px] text-ink-faint">
+          <span className="ml-1 text-[12px] text-ink-faint">
             {group.reportCount === 1 ? "report" : "reports"}
           </span>
         </td>
         <td className="px-3 py-3">
           <span
             className={cn(
-              "inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-medium",
+              "inline-flex items-center rounded-md border px-2 py-1 text-[12px] font-medium",
               band.className,
             )}
           >
@@ -243,7 +243,7 @@ function QueueRow({
               setResolving((open) => !open);
               setResult(null);
             }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11px] transition-colors hover:bg-surface"
+            className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors hover:bg-surface"
           >
             <Gavel className="h-3.5 w-3.5" />
             Decide
@@ -294,7 +294,7 @@ function QueueRow({
       {resolving ? (
         <tr className="border-b border-line bg-surface-muted">
           <td colSpan={COLUMNS} className="px-5 py-3">
-            <p className="mb-2 text-[11px] text-ink-faint">
+            <p className="mb-2 text-[12px] text-ink-faint">
               {group.reportCount === 1
                 ? "Closes the one report against this target."
                 : `Closes all ${group.reportCount} reports against this target.`}
@@ -312,7 +312,7 @@ function QueueRow({
 
       {result ? (
         <tr className="border-b border-line last:border-b-0">
-          <td colSpan={COLUMNS} className="px-5 pb-3 text-[11px] text-ink-soft">
+          <td colSpan={COLUMNS} className="px-5 pb-3 text-[12px] text-ink-soft">
             {result}
           </td>
         </tr>
