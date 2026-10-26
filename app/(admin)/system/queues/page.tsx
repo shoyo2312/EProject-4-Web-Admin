@@ -1,25 +1,29 @@
 import { ErrorState } from "@/components/layout/error-state";
-import { NotBuiltYet } from "@/components/layout/not-built-yet";
+import { PageHeader } from "@/components/layout/page-header";
 import { DataExportCard } from "@/components/system/data-export-card";
 import { DeadLetterTopicsCard } from "@/components/system/dead-letter-topics-card";
+import { OutboxCard } from "@/components/system/outbox-card";
 import { listDeadLetterTopics } from "@/lib/api/dead-letters";
 import { getDataExportSummary } from "@/lib/api/data-exports";
 import { getHandles } from "@/lib/api/names";
 import { referenceNow } from "@/lib/api/shared";
+import { getOutboxBacklogs } from "@/lib/api/system";
 
 /** Each card fails on its own: Kafka down says nothing about whether user-service's exports move. */
 export default async function SystemQueuesPage() {
   return (
-    <NotBuiltYet
-      title="Queues & DLQ"
-      purpose="Background work across the services: what is waiting, stuck or given up on."
-      missing={["Outbox lag metric: count of rows with published_at IS NULL per service"]}
-    >
+    <>
+      <PageHeader
+        title="Queues & DLQ"
+        subtitle="Background work across the services: what is waiting, stuck or given up on."
+      />
+
       <div className="space-y-4">
         <DeadLetters />
+        <Outboxes />
         <DataExports />
       </div>
-    </NotBuiltYet>
+    </>
   );
 }
 
@@ -31,6 +35,16 @@ async function DeadLetters() {
     return <ErrorState error={error} />;
   }
   return <DeadLetterTopicsCard topics={topics} now={referenceNow()} />;
+}
+
+async function Outboxes() {
+  let services;
+  try {
+    services = await getOutboxBacklogs();
+  } catch (error) {
+    return <ErrorState error={error} />;
+  }
+  return <OutboxCard services={services} />;
 }
 
 async function DataExports() {

@@ -644,6 +644,23 @@ export interface DeadLetterBatchReplayResponse {
   stillPending: number;
 }
 
+/** One outbox as kafka-lib's OutboxBacklog gauges report it. */
+export interface OutboxBacklog {
+  name: string;
+  /** Rows still waiting for a broker ack; null when the service could not count them — its own database did not answer. */
+  pending: number | null;
+  /** How long the oldest of them has been due, 0 when none is; null as above. A count cannot tell busy from stuck — this can. */
+  oldestPendingAgeSeconds: number | null;
+}
+
+/** GET /api/v1/admin/system/outboxes — admin-service OutboxBacklogResponse, one per service with an outbox. */
+export interface OutboxBacklogResponse {
+  service: string;
+  /** False when its actuator did not answer; `outboxes` is then empty. */
+  reachable: boolean;
+  outboxes: OutboxBacklog[];
+}
+
 /** common-lib ApiResponse<T> — every service wraps its payload in this */
 export interface ApiResponse<T> {
   success: boolean;
