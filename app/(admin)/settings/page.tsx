@@ -70,13 +70,16 @@ export default async function SettingsPage() {
         <TextModeration />
 
         <Card>
-          <CardHeader title="Not configurable from here yet" />
+          <CardHeader title="Not configurable from here" />
           <ul className="list-disc space-y-1.5 py-4 pr-5 pl-10 text-[12px] text-ink-soft">
             <li>
-              Admin accounts — there is a single admin role, and no way yet to grant or revoke
-              it from the console.
+              Admin accounts — there is a single admin role, granted at startup from{" "}
+              <code>ADMIN_EMAIL</code>, and no way to grant or revoke it from the console.
             </li>
-            <li>How long the audit log is kept — fixed by a nightly cleanup job.</li>
+            <li>
+              The audit log is kept for good: nothing deletes a moderation action. Only the
+              outbox rows behind them are swept, a week after Kafka has them.
+            </li>
           </ul>
         </Card>
       </div>
