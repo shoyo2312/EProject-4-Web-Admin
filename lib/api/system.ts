@@ -2,8 +2,8 @@ import "server-only";
 
 import { apiGet } from "./client";
 import { USE_MOCK } from "./config";
-import type { OutboxBacklogResponse } from "./types";
-import { mockOutboxBacklogs } from "@/lib/mock/system";
+import type { OutboxBacklogResponse, TextModerationStatusResponse } from "./types";
+import { mockOutboxBacklogs, mockTextModerationStatus } from "@/lib/mock/system";
 
 /*
  * What the services report about themselves on their actuator, gathered by admin-service — the
@@ -14,4 +14,9 @@ import { mockOutboxBacklogs } from "@/lib/mock/system";
 export async function getOutboxBacklogs(): Promise<OutboxBacklogResponse[]> {
   if (USE_MOCK) return mockOutboxBacklogs;
   return apiGet<OutboxBacklogResponse[]>("/api/v1/admin/system/outboxes");
+}
+
+export async function getTextModerationStatus(): Promise<TextModerationStatusResponse[]> {
+  if (USE_MOCK) return mockTextModerationStatus;
+  return apiGet<TextModerationStatusResponse[]>("/api/v1/admin/settings/text-moderation");
 }

@@ -661,6 +661,25 @@ export interface OutboxBacklogResponse {
   outboxes: OutboxBacklog[];
 }
 
+/**
+ * GET /api/v1/admin/settings/text-moderation — admin-service TextModerationStatusResponse, one per
+ * service that screens text, as the service itself reports it. A null is a build that does not
+ * report it yet, not "off".
+ */
+export interface TextModerationStatusResponse {
+  service: string;
+  /** False when its actuator did not answer; every field after it is then null. */
+  reachable: boolean;
+  /** TEXT_MODERATION_ENFORCE: the word list and spam rules hold and refuse. False only records verdicts. */
+  enforce: boolean | null;
+  /** `rules-<shipped>+admin-<revision>` — the list it screens with right now. */
+  version: string | null;
+  /** The hate-speech classifier is asked at all — it has an address. */
+  classifierEnabled: boolean | null;
+  /** TEXT_CLASSIFIER_ENFORCE: its holds are acted on, rather than noted on the comment or video. */
+  classifierEnforce: boolean | null;
+}
+
 /** common-lib ApiResponse<T> — every service wraps its payload in this */
 export interface ApiResponse<T> {
   success: boolean;

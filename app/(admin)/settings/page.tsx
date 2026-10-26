@@ -3,7 +3,9 @@ import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field } from "@/components/ui/row-detail";
+import { TextModerationStatus } from "@/components/system/text-moderation-status";
 import { getModerationSettings } from "@/lib/api/moderation";
+import { getTextModerationStatus } from "@/lib/api/system";
 import type { ModerationSettingsResponse } from "@/lib/api/types";
 
 /**
@@ -31,7 +33,7 @@ export default async function SettingsPage() {
     <>
       <PageHeader
         title="Settings"
-        subtitle="What automatic moderation is deciding with. Read-only — these live in the classifier's own environment."
+        subtitle="What automatic moderation is deciding with, as each service reports it. Read-only — every value lives in a service's own environment."
       />
 
       <div className="space-y-4">
@@ -65,6 +67,8 @@ export default async function SettingsPage() {
           )}
         </Card>
 
+        <TextModeration />
+
         <Card>
           <CardHeader title="Not configurable from here yet" />
           <ul className="list-disc space-y-1.5 py-4 pr-5 pl-10 text-[12px] text-ink-soft">
@@ -73,17 +77,22 @@ export default async function SettingsPage() {
               it from the console.
             </li>
             <li>How long the audit log is kept — fixed by a nightly cleanup job.</li>
-            <li>
-              Whether a service acts on what text moderation finds — <code>TEXT_MODERATION_ENFORCE</code>{" "}
-              and <code>TEXT_CLASSIFIER_ENFORCE</code>, set on interaction-service and video-service
-              and reported nowhere. Switched off, a verdict is still recorded on the comment or
-              the video, and nothing is held or refused.
-            </li>
           </ul>
         </Card>
       </div>
     </>
   );
+}
+
+/** Its own failure: the classifier's thresholds above say nothing about whether the services act on text verdicts. */
+async function TextModeration() {
+  let statuses;
+  try {
+    statuses = await getTextModerationStatus();
+  } catch (error) {
+    return <ErrorState error={error} />;
+  }
+  return <TextModerationStatus statuses={statuses} />;
 }
 
 /**
