@@ -80,6 +80,7 @@ export const ROUTE_TITLES: Record<string, { section: string; page: string }> = {
   "/videos": { section: "Management", page: "Videos" },
   "/comments": { section: "Management", page: "Comments" },
   "/system/queues": { section: "System", page: "Queues & DLQ" },
+  "/system/queues/dead-letters": { section: "System", page: "Dead Letters" },
   "/settings": { section: "System", page: "Settings" },
   "/trash": { section: "System", page: "Trash" },
 };

@@ -567,6 +567,83 @@ export interface DataExportSummaryResponse {
   recentFailures: FailedDataExport[];
 }
 
+/**
+ * GET /api/v1/admin/system/dead-letters — admin-service DeadLetterTopicResponse. One `<topic>.DLT`
+ * kafka-lib's error handler parked records on; a topic only exists once something was parked.
+ */
+export interface DeadLetterTopicResponse {
+  /** The DLT's full name, `video.video-events.DLT`. */
+  topic: string;
+  originTopic: string;
+  /** Records the broker still holds — retention removes them, a replay does not. */
+  retained: number;
+  /** Of those, the ones no replay of every pending record has been past yet. */
+  pending: number;
+  /** When the newest was parked; null when the broker holds none. */
+  latestAt: string | null;
+}
+
+/** kafka-lib ReplayResult.Outcome. NOT_FOUND never reaches the console: it is a 404. */
+export type DeadLetterReplayOutcome =
+  | "REPLAYED"
+  | "HELD_BACK"
+  | "ALREADY_REPLAYED"
+  | "NOT_PARKED"
+  | "NOT_FOUND";
+
+/** DeadLetterRecordResponse.LastReplay — the latest replay of a record from the console. */
+export interface DeadLetterLastReplay {
+  outcome: DeadLetterReplayOutcome;
+  /** Where it went, what held it back, or where the earlier replay is. */
+  detail: string | null;
+  forced: boolean;
+  adminId: string;
+  at: string;
+}
+
+/**
+ * One DLT record — where and why it failed, never the payload: that is an event's content, and
+ * deciding on a replay does not need it.
+ */
+export interface DeadLetterRecordResponse {
+  partition: number;
+  offset: number;
+  parkedAt: string;
+  key: string | null;
+  /** Null for a producer that sends no eventType header. */
+  eventType: string | null;
+  /** `topic-partition@offset` it failed at; null for a record kafka-lib did not park. */
+  origin: string | null;
+  /** The consumer group whose listener failed on it. */
+  consumerGroup: string | null;
+  /** The deepest cause of the failure, one line. */
+  error: string | null;
+  /** A replay of every pending record would still reach it. */
+  pending: boolean;
+  lastReplay: DeadLetterLastReplay | null;
+}
+
+/** GET /api/v1/admin/system/dead-letters/{topic}?limit= — the newest records, newest first. */
+export interface DeadLetterRecordsResponse {
+  topic: DeadLetterTopicResponse;
+  records: DeadLetterRecordResponse[];
+}
+
+/** POST …/{topic}/replay — one record. */
+export interface DeadLetterReplayResponse {
+  partition: number;
+  offset: number;
+  outcome: DeadLetterReplayOutcome;
+  detail: string | null;
+}
+
+/** POST …/{topic}/replay-pending — the next batch of pending records, never forced. */
+export interface DeadLetterBatchReplayResponse {
+  results: DeadLetterReplayResponse[];
+  /** What is left for another call: a batch has a cap, and one that runs out of time stops early. */
+  stillPending: number;
+}
+
 /** common-lib ApiResponse<T> — every service wraps its payload in this */
 export interface ApiResponse<T> {
   success: boolean;
