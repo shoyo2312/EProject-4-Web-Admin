@@ -28,8 +28,8 @@ mock (default, no backend needed, no login) or live through api-gateway on `:808
 | Management | `/users`, `/videos`, `/comments` | The directories, each account's and video's own page, and one video's comment thread at a time |
 | System | `/settings`, `/trash`, `/notifications` | The classifiers' thresholds (frames and text), videos their owners deleted, and the bell's whole feed |
 
-`/system/queues` is marked `SOON` in the sidebar and renders a page listing the backend gap
-that blocks it.
+`/system/queues` shows each service's outbox backlog and the dead-letter topics, with replay
+from `/system/queues/dead-letters`.
 
 ## Running against the real backend
 
@@ -69,6 +69,26 @@ Every moderation action admin-service publishes has a consumer: video-service
 interaction-service (comment removal) and notification-service (warnings, which reach the
 account, the video's owner or the comment's author). `DISMISS_REPORT` is recorded and never
 published, so the Audit Log marks it "Recorded only".
+
+## Deploying
+
+One container from the `Dockerfile` (`docker-compose.yml` wires it for Coolify's Docker Compose
+build pack). Three values, nothing else:
+
+| Variable | When | What |
+|---|---|---|
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | build (`--build-arg`, or a *build variable* in Coolify) | Inlined into the client bundle. The Dockerfile refuses to build without it — without the widget nobody can sign in |
+| `GATEWAY_URL` | runtime | api-gateway over the internal network, `http://api-gateway:8080` with Coolify's "Connect To Predefined Network" on. Through the public domain every admin shares one rate-limit bucket |
+| `ADMIN_TRUST_PROXY` | runtime | `true` behind Coolify's Traefik (the compose default), so the security log sees the admin's address and not the proxy's |
+
+`ADMIN_USE_MOCK` is **not** set. In production (`NODE_ENV=production`, which `next start` and the
+image both set) the default is live; mock there takes an explicit `ADMIN_USE_MOCK=true`, so a
+container started with no env refuses to start (`GATEWAY_URL is not set …`, exit 1 from
+`instrumentation.ts`) rather than serving fake data with no login. A local preview with
+`next build && next start` therefore wants `ADMIN_USE_MOCK=true` in `.env.local`.
+
+No port is published; the proxy in front is the only way in. Backend-side notes (deploy order,
+what the gateway expects) are in the backend repo's `docs/operations.md`.
 
 ## Design notes
 

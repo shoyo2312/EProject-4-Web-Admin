@@ -54,6 +54,9 @@ ENV NODE_ENV=production
 # ADMIN_TRUST_PROXY) is read by the server at runtime and stays out of the image.
 ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY
 ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+# Without it the login form never enables its submit button, so refuse to build rather than
+# ship an image nobody can sign in to.
+RUN test -n "$NEXT_PUBLIC_TURNSTILE_SITE_KEY" || { echo "NEXT_PUBLIC_TURNSTILE_SITE_KEY build arg is required (pass --build-arg, or mark it a build variable in Coolify)"; exit 1; }
 
 ENV NEXT_TELEMETRY_DISABLED=1
 

@@ -5,12 +5,38 @@
  */
 export const GATEWAY_URL = process.env.GATEWAY_URL ?? "http://localhost:8080";
 
+export const PRODUCTION = process.env.NODE_ENV === "production";
+
+type DeployEnv = { NODE_ENV?: string; ADMIN_USE_MOCK?: string; GATEWAY_URL?: string };
+
 /**
- * Mock is the default so `npm run dev` works with nothing else running — the live
- * path needs Postgres, ClickHouse, Kafka, Redis and four services up. Set
- * ADMIN_USE_MOCK=false in .env.local to hit the real gateway.
+ * In development mock is the default so `npm run dev` works with nothing else running — the live
+ * path needs Postgres, ClickHouse, Kafka, Redis and four services up; set ADMIN_USE_MOCK=false in
+ * .env.local to hit the real gateway. In production the default flips: a container started with
+ * no env at all must not serve fake data with no login, so mock there (a `next start` preview)
+ * takes an explicit ADMIN_USE_MOCK=true.
  */
-export const USE_MOCK = process.env.ADMIN_USE_MOCK !== "false";
+export function mockByDefault(env: DeployEnv): boolean {
+  return env.NODE_ENV === "production" ? env.ADMIN_USE_MOCK === "true" : env.ADMIN_USE_MOCK !== "false";
+}
+
+export const USE_MOCK = mockByDefault(process.env);
+
+/**
+ * What stops a live production server from starting — checked once in `instrumentation.ts`.
+ * Without it the server starts fine and fails every request against localhost:8080.
+ */
+export function missingDeployConfig(env: DeployEnv): string | undefined {
+  if (env.NODE_ENV !== "production" || mockByDefault(env)) return undefined;
+  if (!env.GATEWAY_URL) {
+    return "GATEWAY_URL is not set. Point it at api-gateway (http://api-gateway:8080 on the Coolify network), or set ADMIN_USE_MOCK=true for a mock-only preview.";
+  }
+  return undefined;
+}
+
+/** Shared by the sign-in and password-reset handlers. The `make` hint is for a laptop, not a server. */
+export const GATEWAY_UNREACHABLE =
+  `Cannot reach the gateway at ${GATEWAY_URL}.` + (PRODUCTION ? "" : " Start it with 'make run-gateway'.");
 
 /**
  * Set only when this server sits behind a proxy that overwrites `X-Forwarded-For`. Off, the

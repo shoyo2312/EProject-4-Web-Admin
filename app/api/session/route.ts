@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GATEWAY_URL, TRUST_PROXY } from "@/lib/api/config";
+import { GATEWAY_URL, GATEWAY_UNREACHABLE, TRUST_PROXY } from "@/lib/api/config";
 import { forwardedHeaders } from "@/lib/api/forwarded";
 import { parseWithLongIdsAsStrings } from "@/lib/api/json";
 import type { ApiResponse } from "@/lib/api/types";
@@ -46,7 +46,7 @@ function gatewayDown() {
   return NextResponse.json(
     {
       code: "GATEWAY_UNREACHABLE",
-      message: `Cannot reach the gateway at ${GATEWAY_URL}. Start it with 'make run-gateway'.`,
+      message: GATEWAY_UNREACHABLE,
     },
     { status: 502 },
   );

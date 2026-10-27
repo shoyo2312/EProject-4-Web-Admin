@@ -1,0 +1,19 @@
+# Production: one container, built from the Dockerfile. Coolify (Docker Compose build pack) reads
+# this file; every ${VAR:?} must be set in its Environment Variables. No port is published — the
+# proxy in front is the only way in, and it is the one that sets X-Forwarded-For (ADMIN_TRUST_PROXY).
+#
+# GATEWAY_URL should reach api-gateway over Coolify's internal network (http://api-gateway:8080,
+# with "Connect To Predefined Network" on), not the public domain: through the public hop every
+# admin shares one rate-limit bucket at the gateway.
+services:
+  admin:
+    build:
+      context: .
+      args:
+        # Inlined into the client bundle at build time; the Dockerfile refuses to build without it.
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:?}
+    restart: unless-stopped
+    environment:
+      GATEWAY_URL: ${GATEWAY_URL:?}
+      ADMIN_TRUST_PROXY: ${ADMIN_TRUST_PROXY:-true}
+      # ADMIN_USE_MOCK stays unset: in production the default is live (lib/api/config.ts).

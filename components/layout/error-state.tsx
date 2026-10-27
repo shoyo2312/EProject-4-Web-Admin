@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { GATEWAY_URL } from "@/lib/api/config";
+import { GATEWAY_URL, PRODUCTION } from "@/lib/api/config";
 
 /**
  * Shown instead of a blank panel when a live call fails. Names the gateway and the
@@ -46,17 +46,27 @@ export function ErrorState({ error }: { error: unknown }) {
 
       <ul className="mt-4 space-y-2 text-[12px] text-ink-soft">
         <li className="rounded-lg border border-line bg-surface-muted px-3 py-2">
-          Gateway: <code>{GATEWAY_URL}</code> — start it with{" "}
-          <code>make run-gateway</code>
+          Gateway: <code>{GATEWAY_URL}</code>
+          {PRODUCTION ? (
+            <> — check that api-gateway, admin-service and analytics-service are up</>
+          ) : (
+            <>
+              {" "}— start it with <code>make run-gateway</code>
+            </>
+          )}
         </li>
-        <li className="rounded-lg border border-line bg-surface-muted px-3 py-2">
-          This page needs <code>make run-admin</code> and{" "}
-          <code>make run-analytics</code>, plus <code>make infra-up</code>
-        </li>
-        <li className="rounded-lg border border-line bg-surface-muted px-3 py-2">
-          Set <code>ADMIN_USE_MOCK=true</code> in <code>.env.local</code> to work
-          against mock data instead
-        </li>
+        {PRODUCTION ? null : (
+          <>
+            <li className="rounded-lg border border-line bg-surface-muted px-3 py-2">
+              This page needs <code>make run-admin</code> and{" "}
+              <code>make run-analytics</code>, plus <code>make infra-up</code>
+            </li>
+            <li className="rounded-lg border border-line bg-surface-muted px-3 py-2">
+              Set <code>ADMIN_USE_MOCK=true</code> in <code>.env.local</code> to work
+              against mock data instead
+            </li>
+          </>
+        )}
       </ul>
     </Card>
   );
