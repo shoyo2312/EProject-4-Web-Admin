@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { AdminVideoResponse } from "@/lib/api/types";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 
 /**
  * Fills the viewport with the video. Rendered through a portal because a table row is
@@ -17,6 +18,9 @@ export function WatchOverlay({
   video: AdminVideoResponse;
   onClose: () => void;
 }) {
+  const overlay = useRef<HTMLDivElement>(null);
+  useScrollLock(overlay);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -29,6 +33,7 @@ export function WatchOverlay({
 
   return createPortal(
     <div
+      ref={overlay}
       role="dialog"
       aria-modal="true"
       aria-label={`Preview of ${video.title}`}

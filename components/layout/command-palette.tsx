@@ -12,6 +12,7 @@ import {
 import { VideoThumb } from "@/components/videos/video-thumb";
 import { isTypingTarget } from "@/lib/keyboard";
 import { matchPages, moveSelection } from "@/lib/search";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 import { cn } from "@/lib/utils";
 import { NAV_GROUPS } from "./nav-config";
 
@@ -135,6 +136,8 @@ function PaletteDialog({
   const [searching, startSearch] = useTransition();
   const [active, setActive] = useState(0);
   const typed = useRef("");
+  const overlay = useRef<HTMLDivElement>(null);
+  useScrollLock(overlay);
 
   useEffect(() => {
     const term = query.trim();
@@ -210,6 +213,7 @@ function PaletteDialog({
 
   return createPortal(
     <div
+      ref={overlay}
       onMouseDown={onClose}
       className="animate-fade fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 pt-[12vh] backdrop-blur-[2px]"
     >
@@ -249,7 +253,7 @@ function PaletteDialog({
           role="listbox"
           aria-label="Results"
           className={cn(
-            "max-h-[min(60vh,440px)] overflow-y-auto py-1.5 transition-opacity",
+            "max-h-[min(60vh,440px)] overflow-y-auto overscroll-contain py-1.5 transition-opacity",
             stale && "opacity-60",
           )}
         >
