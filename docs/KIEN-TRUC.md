@@ -84,7 +84,7 @@ nằm trong `lib/moderation.ts`, không lặp lại trong từng component.
 
 ## 4. Luồng dữ liệu của một trang (ví dụ: `/users`)
 
-1. **`app/(admin)/users/page.tsx`** là **Server Component** (mặc định trong App Router, không
+1. **`app/(admin)/users/(index)/page.tsx`** là **Server Component** (mặc định trong App Router, không
    có `"use client"`). Nó đọc query string (`?q=...&status=...&page=...`) từ `searchParams`.
 2. Nó gọi `listUsers({ q, status, page })` trong `lib/api/users.ts`.
 3. Hàm đó kiểm tra `USE_MOCK`:

@@ -1,5 +1,9 @@
 import { CircleHelp } from "lucide-react";
+import { Bone } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+
+const HEADER = "flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5";
+const ACTIONS = "flex min-w-0 flex-wrap items-center gap-2";
 
 export function Card({
   className,
@@ -34,12 +38,7 @@ export function CardHeader({
   className?: string;
 }) {
   return (
-    <header
-      className={cn(
-        "flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5",
-        className,
-      )}
-    >
+    <header className={cn(HEADER, className)}>
       <div className="flex items-center gap-1.5">
         <h2 className="text-[14px] font-semibold tracking-tight text-ink">{title}</h2>
         {hint ? (
@@ -52,7 +51,19 @@ export function CardHeader({
           </>
         ) : null}
       </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-2">{actions}</div>
+      <div className={ACTIONS}>{actions}</div>
+    </header>
+  );
+}
+
+/** `CardHeader` while its card loads: the title's bar, and the controls drawn by the caller. */
+export function CardHeaderSkeleton({ title, actions }: { title: string; actions?: React.ReactNode }) {
+  return (
+    <header className={HEADER}>
+      <h2 className="text-[14px]">
+        <Bone className={title} />
+      </h2>
+      {actions ? <div className={ACTIONS}>{actions}</div> : null}
     </header>
   );
 }

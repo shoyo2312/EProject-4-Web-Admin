@@ -1,5 +1,8 @@
+import { Block, Bone } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+const BARS = "flex h-[220px] items-end gap-[3px] border-b border-line pb-px";
 
 /**
  * One bar per bucket, scaled to the tallest, with the first and last bucket's dates under them —
@@ -19,12 +22,7 @@ export function BarTrend({
 
   return (
     <div>
-      <div
-        className={cn(
-          "flex h-[220px] items-end gap-[3px] border-b border-line pb-px",
-          className,
-        )}
-      >
+      <div className={cn(BARS, className)}>
         {bars.map((bar) => (
           <span
             key={bar.day}
@@ -43,6 +41,32 @@ export function BarTrend({
           <span>{formatDate(bars[bars.length - 1].day)}</span>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+const SKELETON_BARS = ["h-[38%]", "h-[55%]", "h-[44%]", "h-[70%]", "h-[50%]", "h-[62%]", "h-[32%]", "h-[78%]"];
+
+/** The chart while its buckets load: bars of no particular height in the same box, and the dates. */
+export function BarTrendSkeleton({ className }: { className?: string }) {
+  return (
+    <div>
+      <div className={cn(BARS, className)}>
+        {Array.from({ length: 24 }, (_, i) => (
+          <Block
+            key={i}
+            className={cn("min-w-0 flex-1 rounded-t-sm", SKELETON_BARS[(i * 5) % SKELETON_BARS.length])}
+          />
+        ))}
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[11px]">
+        <span>
+          <Bone className="w-16" />
+        </span>
+        <span>
+          <Bone className="w-16" />
+        </span>
+      </div>
     </div>
   );
 }

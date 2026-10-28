@@ -1,8 +1,12 @@
 import { ArrowDownRight, ArrowUpRight, type LucideIcon } from "lucide-react";
 import { Sparkline } from "@/components/charts/sparkline";
 import { Card } from "@/components/ui/card";
+import { Block, Bone } from "@/components/ui/skeleton";
 import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+const GRID = "grid grid-cols-2 gap-4 xl:grid-cols-4";
+const CARD = "flex flex-col px-5 py-4";
 
 export interface KpiCard {
   label: string;
@@ -30,7 +34,7 @@ export interface KpiCard {
 
 export function KpiCards({ cards }: { cards: KpiCard[] }) {
   return (
-    <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+    <div className={GRID}>
       {cards.map((card) => {
         const delta = card.delta ?? null;
         const rising = delta !== null && delta >= 0;
@@ -38,7 +42,7 @@ export function KpiCards({ cards }: { cards: KpiCard[] }) {
         const Arrow = rising ? ArrowUpRight : ArrowDownRight;
 
         return (
-          <Card key={card.label} className="flex flex-col px-5 py-4">
+          <Card key={card.label} className={CARD}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-[13px] font-medium text-ink-soft">{card.label}</p>
               {card.icon ? (
@@ -82,6 +86,36 @@ export function KpiCards({ cards }: { cards: KpiCard[] }) {
           </Card>
         );
       })}
+    </div>
+  );
+}
+
+/** The cards before their figures arrive, every one with a trend and a delta drawn. */
+export function KpiCardsSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className={GRID}>
+      {Array.from({ length: count }, (_, i) => (
+        <Card key={i} className={CARD}>
+          <p className="text-[13px] font-medium">
+            <Bone className={i % 2 ? "w-24" : "w-28"} />
+          </p>
+          <div className="mt-3 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[28px] leading-none">
+                <Bone className="w-14" />
+              </p>
+              <p className="mt-1.5 text-[12px]">
+                <Bone className="w-16" />
+              </p>
+            </div>
+            <Block className="h-9 w-24 rounded-md" />
+          </div>
+          <p className="mt-3 flex items-center gap-1.5 text-[12px]">
+            <Block className="h-[22px] w-14 rounded-full" />
+            <Bone className="w-20" />
+          </p>
+        </Card>
+      ))}
     </div>
   );
 }
