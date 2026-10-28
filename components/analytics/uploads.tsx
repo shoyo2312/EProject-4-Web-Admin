@@ -1,5 +1,6 @@
 import { BarTrend } from "@/components/charts/bar-trend";
 import { Card, CardHeader } from "@/components/ui/card";
+import { CountUp } from "@/components/ui/count-up";
 import type { DailyVideoStatsResponse } from "@/lib/api/types";
 import { formatNumber, plural } from "@/lib/format";
 
@@ -39,16 +40,22 @@ export function Uploads({
               Uploaded, last {bars.length}
               {unit}
             </p>
-            <p className="figure mt-1 text-[22px] font-bold">{formatNumber(uploads)}</p>
+            <p className="figure mt-1 text-[22px] font-bold">
+              <CountUp value={formatNumber(uploads)} />
+            </p>
           </div>
           <dl className="grid grid-cols-2 gap-x-5 text-right">
             <div>
               <dt className="text-[13px] text-ink-soft">Awaiting review</dt>
-              <dd className="figure mt-1 text-[22px] font-bold">{formatNumber(awaitingReview)}</dd>
+              <dd className="figure mt-1 text-[22px] font-bold">
+                <CountUp value={formatNumber(awaitingReview)} />
+              </dd>
             </div>
             <div>
               <dt className="text-[13px] text-ink-soft">Can&apos;t play</dt>
-              <dd className="figure mt-1 text-[22px] font-bold">{formatNumber(notPlayable)}</dd>
+              <dd className="figure mt-1 text-[22px] font-bold">
+                <CountUp value={formatNumber(notPlayable)} />
+              </dd>
             </div>
           </dl>
         </div>

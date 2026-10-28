@@ -136,9 +136,9 @@
  * and only its last few pixels drift. `backwards` holds the first frame through a delay and lets
  * go when the animation ends, so nothing stays transformed afterwards.
  *
- * What is drawn over time — a line across its chart — takes a gentler curve: on the emphasized one
- * it is nearly done in its first tenth and spends the rest creeping, which reads as a stall rather
- * than as something being drawn.
+ * What is drawn over time — a line across its chart, a figure counting up — takes a gentler curve:
+ * on the emphasized one it is nearly done in its first tenth and spends the rest creeping, which
+ * reads as a stall rather than as something being drawn.
  */
 @theme static {
   --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
@@ -151,6 +151,15 @@
   --animate-fill: fill 900ms var(--ease-emphasized) backwards;
   --animate-wipe: wipe 1200ms var(--ease-draw) backwards;
   --animate-dot: dot 360ms var(--ease-emphasized) backwards;
+  --animate-count: count 900ms var(--ease-draw) backwards;
+}
+
+/* How far a figure's count has got, 0 to 1; `CountUp` reads it to draw the number. Registered, so it
+ * eases through the values between instead of jumping at the halfway point. */
+@property --count {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
 }
 
 @keyframes enter {
@@ -200,6 +209,12 @@
   from {
     opacity: 0;
     transform: scale(0);
+  }
+}
+@keyframes count {
+  from {
+    opacity: 0;
+    --count: 0;
   }
 }
 
@@ -258,15 +273,20 @@
 }
 
 /*
- * What a block draws starts as the block rises in, not with the page: a chart grown while its card
- * is still invisible has finished before anyone sees it. A mark's own place in its chart, bar after
- * bar, is added on top where the chart sets it inline.
+ * What a block draws — its charts, its figure counting up — starts as the block rises in, not with
+ * the page: a chart grown while its card is still invisible has finished before anyone sees it. A
+ * mark's own place in its chart, bar after bar, is added on top where the chart sets it inline. The
+ * figure waits a moment longer, for the card around it to be readable first.
  */
 :is(.animate-grow, .animate-fill, .animate-wipe, .animate-dot) {
   animation-delay: var(--entrance-delay, 0ms);
 }
+.animate-count {
+  animation-delay: calc(var(--entrance-delay, 0ms) + 120ms);
+}
 /* A page already seen stands still, and so does everything its blocks draw. */
-[data-entrance="still"] :is(.animate-grow, .animate-fill, .animate-wipe, .animate-dot) {
+[data-entrance="still"]
+  :is(.animate-grow, .animate-fill, .animate-wipe, .animate-dot, .animate-count) {
   animation: none;
 }
 

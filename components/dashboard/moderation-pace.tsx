@@ -1,4 +1,5 @@
 import { Card, CardHeader } from "@/components/ui/card";
+import { CountUp } from "@/components/ui/count-up";
 import { formatNumber, formatSpan } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +74,9 @@ function Stat({
     <div>
       <dt className="text-[12px] text-ink-faint">{label}</dt>
       <dd className="mt-1">
-        <span className="figure block text-[22px] leading-none font-semibold tracking-tight">{value}</span>
+        <span className="figure block text-[22px] leading-none font-semibold tracking-tight">
+          <CountUp value={value} />
+        </span>
         {note ? (
           <span className={cn("mt-1.5 block text-[12px]", bad ? "text-pending" : "text-ink-faint")}>{note}</span>
         ) : null}

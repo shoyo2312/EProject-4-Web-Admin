@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CircleHelp } from "lucide-react";
+import { CountUp } from "@/components/ui/count-up";
 import type { WaitingTile } from "@/lib/dashboard";
 import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -45,7 +46,7 @@ export function WaitingTiles({ tiles }: { tiles: WaitingTile[] }) {
                 <ArrowRight className="h-4 w-4 text-ink-faint transition-transform group-hover:translate-x-0.5 group-hover:text-ink" />
               </span>
               <span className="figure text-[32px] leading-none font-semibold tracking-tight">
-                {tile.count === null ? "—" : formatNumber(tile.count)}
+                <CountUp value={tile.count === null ? "—" : formatNumber(tile.count)} />
               </span>
               <span className={cn("text-[12px]", tone.text)}>
                 {tile.detail}

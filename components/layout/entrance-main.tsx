@@ -9,9 +9,9 @@ const BLOCK = ".stagger > :not(.stagger, [role='status'])";
 
 /**
  * The keyframes of an entrance in globals.css: a block rising in, and what it draws — its charts and
- * their points.
+ * their points, its figure counting up.
  */
-const ENTRANCE = new Set(["enter", "grow", "fill", "wipe", "dot"]);
+const ENTRANCE = new Set(["enter", "grow", "fill", "wipe", "dot", "count"]);
 
 /**
  * A block held out of view, with the animations it will play: `reported` once the viewport has

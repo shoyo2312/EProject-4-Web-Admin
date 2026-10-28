@@ -1,5 +1,6 @@
 import { BarTrend } from "@/components/charts/bar-trend";
 import { Card, CardHeader } from "@/components/ui/card";
+import { CountUp } from "@/components/ui/count-up";
 import type { DailySignupResponse } from "@/lib/api/types";
 import { formatNumber, plural } from "@/lib/format";
 
@@ -29,13 +30,13 @@ export function AudienceGrowth({
               {unit}
             </p>
             <p className="figure mt-1 text-[22px] font-bold">
-              {formatNumber(total)}
+              <CountUp value={formatNumber(total)} />
             </p>
           </div>
           <div className="text-right">
             <p className="text-[13px] text-ink-soft">Per bar, on average</p>
             <p className="figure mt-1 text-[22px] font-bold">
-              {formatNumber(average)}
+              <CountUp value={formatNumber(average)} />
             </p>
           </div>
         </div>

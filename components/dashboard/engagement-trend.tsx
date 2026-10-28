@@ -1,5 +1,6 @@
 import { LineChart } from "@/components/charts/line-chart";
 import { Card, CardHeader, CardHeaderSkeleton } from "@/components/ui/card";
+import { CountUp } from "@/components/ui/count-up";
 import { Block, Bone } from "@/components/ui/skeleton";
 import type { MosaicRange, MosaicSeries } from "@/lib/api/rollup";
 import { formatNumber } from "@/lib/format";
@@ -35,7 +36,7 @@ export function EngagementTrend({
           <p className="flex items-baseline gap-2">
             <span className="label text-ink-soft">Total events</span>
             <span className="figure text-[22px] font-bold">
-              {formatNumber(total)}
+              <CountUp value={formatNumber(total)} />
             </span>
           </p>
           <p className="text-[12px] text-ink-faint">

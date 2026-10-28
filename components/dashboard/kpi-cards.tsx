@@ -1,6 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, type LucideIcon } from "lucide-react";
 import { Sparkline } from "@/components/charts/sparkline";
 import { Card } from "@/components/ui/card";
+import { CountUp } from "@/components/ui/count-up";
 import { Block, Bone } from "@/components/ui/skeleton";
 import { formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -55,7 +56,7 @@ export function KpiCards({ cards }: { cards: KpiCard[] }) {
             <div className="mt-3 flex items-end justify-between gap-3">
               <div className="min-w-0">
                 <p className="figure text-[28px] leading-none font-semibold tracking-tight">
-                  {card.value}
+                  <CountUp value={card.value} />
                 </p>
                 {/* The unit wraps under the figure rather than truncating: "Average, last 3…"
                     drops exactly the part that says what the number covers. */}
