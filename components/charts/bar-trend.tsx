@@ -27,7 +27,7 @@ export function BarTrend({
           <span
             key={bar.day}
             title={`${formatDate(bar.day)} · ${describe(bar.value)}`}
-            className="min-w-0 flex-1 rounded-t-sm bg-accent/80 transition-colors hover:bg-accent"
+            className="min-w-0 flex-1 origin-bottom animate-grow rounded-t-sm bg-accent/80 transition-colors hover:bg-accent"
             // A zero bucket still needs a visible baseline tick, otherwise a gap in the series
             // is indistinguishable from a bucket that never loaded.
             style={{ height: `${Math.max((bar.value / peak) * 100, 2)}%` }}

@@ -39,7 +39,7 @@ export function EngagementMix({
               </div>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-muted">
                 <span
-                  className="block h-full rounded-full bg-accent"
+                  className="origin-left animate-fill block h-full rounded-full bg-accent"
                   style={{ width: `${Math.max(row.weight * 100, 1.5)}%` }}
                 />
               </div>

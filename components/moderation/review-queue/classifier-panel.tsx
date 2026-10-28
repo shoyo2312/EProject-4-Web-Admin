@@ -87,7 +87,7 @@ function ScoreScale({
       }
     >
       <div className="relative h-2 rounded-full bg-neutral-bg">
-        <span className={cn("absolute inset-y-0 left-0 rounded-full", fill)} style={{ width: at(score) }} />
+        <span className={cn("origin-left animate-fill absolute inset-y-0 left-0 rounded-full", fill)} style={{ width: at(score) }} />
         {lines ? (
           <>
             <span className="absolute -inset-y-1 w-px bg-ink-soft" style={{ left: at(lines.reviewAt) }} />

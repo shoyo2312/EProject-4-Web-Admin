@@ -22,7 +22,7 @@ export function Sparkline({ values, className }: { values: number[]; className?:
     <svg
       aria-hidden
       viewBox={`0 0 ${width} ${height}`}
-      className={cn("h-9 w-24 shrink-0 text-accent", className)}
+      className={cn("animate-wipe h-9 w-24 shrink-0 text-accent", className)}
       preserveAspectRatio="none"
     >
       <polygon points={area} fill="currentColor" opacity="0.12" />

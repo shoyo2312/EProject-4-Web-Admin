@@ -142,6 +142,9 @@
   --animate-pop: pop 180ms var(--ease-emphasized) backwards;
   --animate-fade: fade 160ms ease-out backwards;
   --animate-reveal: reveal 220ms var(--ease-emphasized) backwards;
+  --animate-grow: grow 700ms var(--ease-emphasized) backwards;
+  --animate-fill: fill 700ms var(--ease-emphasized) backwards;
+  --animate-wipe: wipe 900ms var(--ease-emphasized) backwards;
 }
 
 @keyframes enter {
@@ -165,6 +168,21 @@
   from {
     opacity: 0;
     transform: translateY(-4px);
+  }
+}
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+@keyframes fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
   }
 }
 

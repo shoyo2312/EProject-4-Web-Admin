@@ -39,7 +39,7 @@ export function ModerationPace({
           />
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-muted">
             <span
-              className={cn("block h-full rounded-full", growth > 0 ? "bg-pending" : "bg-success")}
+              className={cn("origin-left animate-fill block h-full rounded-full", growth > 0 ? "bg-pending" : "bg-success")}
               style={{ width: `${Math.max(closedShare * 100, filed > 0 ? 2 : 0)}%` }}
             />
           </div>
