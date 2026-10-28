@@ -152,6 +152,7 @@
   --animate-wipe: wipe 1200ms var(--ease-draw) backwards;
   --animate-dot: dot 360ms var(--ease-emphasized) backwards;
   --animate-count: count 900ms var(--ease-draw) backwards;
+  --animate-beacon: beacon 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
 /* How far a figure's count has got, 0 to 1; `CountUp` reads it to draw the number. Registered, so it
@@ -215,6 +216,19 @@
   from {
     opacity: 0;
     --count: 0;
+  }
+}
+/* A ring leaving a dot, for the one or two things on a screen that are waiting on someone. A badge
+ * wider than a dot sets a shorter `--beacon-reach`, or its ring spills past the control it sits on. */
+@keyframes beacon {
+  0% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  75%,
+  100% {
+    opacity: 0;
+    transform: scale(var(--beacon-reach, 2.5));
   }
 }
 

@@ -72,7 +72,15 @@ export function NotificationBell({
         <Bell className="h-4 w-4" />
         {unread ? (
           <span className="absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-semibold text-on-accent ring-2 ring-canvas">
-            {unread > 9 ? "9+" : unread}
+            {/* Three rings when the count appears or grows, then still: the badge is on every page,
+                and a bell ringing for as long as anything is unread is a bell nobody hears. */}
+            <span
+              key={unread}
+              aria-hidden
+              className="absolute inset-0 animate-beacon rounded-full bg-danger [--beacon-reach:1.8]"
+              style={{ animationIterationCount: 3 }}
+            />
+            <span className="relative">{unread > 9 ? "9+" : unread}</span>
           </span>
         ) : null}
       </button>

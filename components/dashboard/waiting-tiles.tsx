@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CircleHelp } from "lucide-react";
+import { Beacon } from "@/components/ui/beacon";
 import { CountUp } from "@/components/ui/count-up";
 import type { WaitingTile } from "@/lib/dashboard";
 import { formatNumber } from "@/lib/format";
@@ -49,6 +50,8 @@ export function WaitingTiles({ tiles }: { tiles: WaitingTile[] }) {
                 <CountUp value={tile.count === null ? "—" : formatNumber(tile.count)} />
               </span>
               <span className={cn("text-[12px]", tone.text)}>
+                {/* Overdue is the one thing on the dashboard that should keep catching the eye. */}
+                {tile.tone === "bad" ? <Beacon className="mr-2 align-middle" /> : null}
                 {tile.detail}
               </span>
             </Link>
