@@ -103,7 +103,7 @@ export default async function AuditLogPage({
         }}
       />
 
-      <div className="mb-4">
+      <div className="stagger mb-4">
         <KpiCards cards={cards} />
       </div>
 

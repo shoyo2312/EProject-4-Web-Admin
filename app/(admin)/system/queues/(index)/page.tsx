@@ -18,7 +18,7 @@ export default async function SystemQueuesPage() {
         subtitle="Background work across the services: what is waiting, stuck or given up on."
       />
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <DeadLetters />
         <Outboxes />
         <DataExports />

@@ -36,7 +36,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
         />
         {/* Live data only: mock pages have nothing to re-fetch. */}
         {USE_MOCK ? null : <LiveRefresh />}
-        <main className="mx-auto w-full max-w-[1480px] min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
+        <main className="stagger mx-auto w-full max-w-[1480px] min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
           {children}
         </main>
       </div>

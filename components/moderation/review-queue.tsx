@@ -211,7 +211,7 @@ export function ReviewQueue({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="stagger space-y-4">
       <QueueStrip
         videos={videos}
         current={index}
@@ -236,7 +236,7 @@ export function ReviewQueue({
       ) : null}
 
       {listed && video ? (
-        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="stagger grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
           <Card className="overflow-hidden lg:sticky lg:top-4">
             <Player key={listed.id} listed={listed} fresh={fresh} muted={muted} onMuted={setMuted} />
           </Card>

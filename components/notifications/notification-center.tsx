@@ -61,7 +61,7 @@ export function NotificationCenter({
   const days = groupByDay(kind === "all" ? items : items.filter((item) => item.kind === kind));
 
   return (
-    <div className="space-y-3">
+    <div className="stagger space-y-3">
       <p className="text-[13px] text-ink-soft">
         {unread > 0
           ? `${formatNumber(unread)} new since you last looked — marked as seen now.`

@@ -121,7 +121,7 @@ export default async function UsersPage({
         }}
       />
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <KpiCards cards={cards} />
 
         <UsersTable users={users} query={q ?? ""} status={filter ?? "ALL"} />

@@ -36,7 +36,7 @@ export default async function SettingsPage() {
         subtitle="What automatic moderation is deciding with, as each service reports it. Read-only — every value lives in a service's own environment."
       />
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <Card>
           <CardHeader
             title="Automatic moderation"

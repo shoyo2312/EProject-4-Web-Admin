@@ -51,7 +51,7 @@ export default async function DeadLettersPage({
         subtitle="Records a consumer of this topic gave up on, and the replay that sends them back to it."
       />
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <Card>
           <CardHeader
             title={summary.topic}

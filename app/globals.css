@@ -131,6 +131,68 @@
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
 }
 
+/*
+ * Motion: one curve, fast out of the gate and slow to settle, so a block is readable almost at once
+ * and only its last few pixels drift. `backwards` holds the first frame through a delay and lets
+ * go when the animation ends, so nothing stays transformed afterwards.
+ */
+@theme static {
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-enter: enter 500ms var(--ease-emphasized) backwards;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/*
+ * A page arrives top to bottom. Each child of a `stagger` container rises in on its beat, 50ms
+ * after the sibling before it. A child that is itself a `stagger` container does not move: its
+ * children rise in from its beat on, so a row of cards fans out from where the row stands.
+ *
+ * Three levels at most — the page, its sections, a row of cards — each handing its moment down
+ * in a variable of its own, because a custom property cannot add to the value it inherits.
+ * A loading state (role="status") never animates: it stands where the page will be, and is only
+ * worth anything if it is there at once.
+ */
+.stagger > * {
+  --beat: 0ms;
+}
+.stagger > :nth-child(2) {
+  --beat: 50ms;
+}
+.stagger > :nth-child(3) {
+  --beat: 100ms;
+}
+.stagger > :nth-child(4) {
+  --beat: 150ms;
+}
+.stagger > :nth-child(5) {
+  --beat: 200ms;
+}
+.stagger > :nth-child(n + 6) {
+  --beat: 250ms;
+}
+.stagger > :not(.stagger, [role="status"]) {
+  animation: var(--animate-enter);
+  animation-delay: var(--beat);
+}
+:not(.stagger) > .stagger > .stagger {
+  --at: var(--beat);
+}
+.stagger > .stagger > :not(.stagger) {
+  animation-delay: calc(var(--at) + var(--beat));
+}
+.stagger > .stagger > .stagger {
+  --at-inner: calc(var(--at) + var(--beat));
+}
+.stagger > .stagger > .stagger > :not(.stagger) {
+  animation-delay: calc(var(--at-inner) + var(--beat));
+}
+
 @layer base {
   * {
     border-color: var(--line);
@@ -223,11 +285,15 @@ button[aria-disabled="true"],
   border-radius: 9999px;
 }
 
+/* No delay either, or a staggered block sits invisible through its beat; one iteration, or a pulse
+ * or a spinner would flicker at 0.01ms a cycle. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

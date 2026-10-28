@@ -47,7 +47,7 @@ export default async function TrashPage({
         subtitle={`Videos their owners deleted. Each stays watchable here for ${TRASH_RETENTION_DAYS} days, then its media is erased for good — or delete it now.`}
       />
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <TrashTable
           videos={page.content}
           owners={owners}

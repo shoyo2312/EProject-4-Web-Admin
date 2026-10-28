@@ -179,17 +179,17 @@ export default async function AnalyticsPage({
         csv={{ name: `analytics-${window.period}`, rows: csvRows }}
       />
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <KpiCards cards={cards} />
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+        <div className="stagger grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
           <EngagementTrend series={engagement.series} range={window.bucket} />
           <EngagementMix rows={mix} period={periodLabel} />
         </div>
 
         <AudienceGrowth days={signupBuckets} unit={unit} />
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="stagger grid grid-cols-1 gap-4 xl:grid-cols-2">
           <ActiveUsers days={dauDays} bars={dauBars} />
           <Uploads days={uploadDays} bars={uploadBars} unit={unit} />
         </div>

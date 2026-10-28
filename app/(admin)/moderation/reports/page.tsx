@@ -145,7 +145,7 @@ export default async function ReportsQueuePage({
         }}
       />
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <KpiCards cards={cards} />
 
         <ReportQueueTable groups={queue.content} total={queue.totalElements} names={names} />

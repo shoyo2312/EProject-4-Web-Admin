@@ -129,11 +129,11 @@ export default async function CommentsPage({
         filters={{ period: window.period, asOf: window.asOf, latest }}
       />
 
-      <div className="mb-4">
+      <div className="stagger mb-4">
         <KpiCards cards={cards} />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[320px_1fr]">
+      <div className="stagger grid grid-cols-1 items-start gap-4 lg:grid-cols-[320px_1fr]">
         <VideoPicker videos={videos} query={q ?? ""} selectedId={selected?.id ?? null} />
 
         {selected && comments ? (

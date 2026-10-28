@@ -34,7 +34,7 @@ export interface KpiCard {
 
 export function KpiCards({ cards }: { cards: KpiCard[] }) {
   return (
-    <div className={GRID}>
+    <div className={cn(GRID, "stagger")}>
       {cards.map((card) => {
         const delta = card.delta ?? null;
         const rising = delta !== null && delta >= 0;

@@ -53,7 +53,7 @@ export default async function ModerationTermsPage({
         subtitle="Words added to the list every service ships with, or taken out of it. Live within a minute, without a deploy."
       />
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <Card>
           <CardHeader
             title="The list in force"
@@ -78,7 +78,7 @@ export default async function ModerationTermsPage({
           </dl>
         </Card>
 
-        <div className="grid items-start gap-4 xl:grid-cols-2">
+        <div className="stagger grid items-start gap-4 xl:grid-cols-2">
           <TermForm />
           <TextPreview />
         </div>

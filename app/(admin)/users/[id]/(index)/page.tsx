@@ -124,7 +124,7 @@ export default async function UserDetailPage({
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <Card>
           <CardHeader
             title="Account"

@@ -178,7 +178,7 @@ export default async function VideosPage({
         }}
       />
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <KpiCards cards={cards} />
 
         <VideosTable

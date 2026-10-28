@@ -222,12 +222,12 @@ export default async function DashboardPage({
         csv={{ name: "dashboard-reports", rows: tableReports }}
       />
 
-      <div className="space-y-4">
+      <div className="stagger space-y-4">
         <WaitingTiles tiles={tiles} />
 
         <KpiCards cards={cards} />
 
-        <div className="grid gap-4 xl:grid-cols-3">
+        <div className="stagger grid gap-4 xl:grid-cols-3">
           <ModerationPace
             decisions24h={stats.actionsLast24h}
             filed={sumLast(reportsCreatedCounts, periodDays)}
