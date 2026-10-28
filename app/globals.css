@@ -138,13 +138,13 @@
  */
 @theme static {
   --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-enter: enter 500ms var(--ease-emphasized) backwards;
+  --animate-enter: enter 650ms var(--ease-emphasized) backwards;
   --animate-pop: pop 180ms var(--ease-emphasized) backwards;
   --animate-fade: fade 160ms ease-out backwards;
   --animate-reveal: reveal 220ms var(--ease-emphasized) backwards;
-  --animate-grow: grow 700ms var(--ease-emphasized) backwards;
-  --animate-fill: fill 700ms var(--ease-emphasized) backwards;
-  --animate-wipe: wipe 900ms var(--ease-emphasized) backwards;
+  --animate-grow: grow 900ms var(--ease-emphasized) backwards;
+  --animate-fill: fill 900ms var(--ease-emphasized) backwards;
+  --animate-wipe: wipe 1100ms var(--ease-emphasized) backwards;
 }
 
 @keyframes enter {
@@ -187,36 +187,45 @@
 }
 
 /*
- * A page arrives top to bottom. Each child of a `stagger` container rises in on its beat, 50ms
- * after the sibling before it. A child that is itself a `stagger` container does not move: its
- * children rise in from its beat on, so a row of cards fans out from where the row stands.
+ * A page arrives top to bottom. Each child of a `stagger` container rises in on its beat, 70ms
+ * after the sibling before it (`BEAT_MS` in lib/entrance.ts). A child that is itself a `stagger`
+ * container does not move: its children rise in from its beat on, so a row of cards fans out from
+ * where the row stands.
  *
  * Three levels at most — the page, its sections, a row of cards — each handing its moment down
  * in a variable of its own, because a custom property cannot add to the value it inherits.
  * A loading state (role="status") never animates: it stands where the page will be, and is only
  * worth anything if it is there at once.
+ *
+ * Only the first time a page is shown, and only in view: `EntranceMain` marks the blocks of a page
+ * already seen `data-entrance="still"`, and stops a block out of view on its first frame until it
+ * scrolls into the viewport.
  */
 .stagger > * {
   --beat: 0ms;
 }
 .stagger > :nth-child(2) {
-  --beat: 50ms;
+  --beat: 70ms;
 }
 .stagger > :nth-child(3) {
-  --beat: 100ms;
+  --beat: 140ms;
 }
 .stagger > :nth-child(4) {
-  --beat: 150ms;
+  --beat: 210ms;
 }
 .stagger > :nth-child(5) {
-  --beat: 200ms;
+  --beat: 280ms;
 }
 .stagger > :nth-child(n + 6) {
-  --beat: 250ms;
+  --beat: 350ms;
 }
-.stagger > :not(.stagger, [role="status"]) {
+.stagger > :not(.stagger, [role="status"], [data-entrance="still"]) {
   animation: var(--animate-enter);
   animation-delay: var(--beat);
+}
+/* A chart draws as its block rises in, so it stands still with the block. */
+[data-entrance="still"] :is(.animate-grow, .animate-fill, .animate-wipe) {
+  animation: none;
 }
 :not(.stagger) > .stagger > .stagger {
   --at: var(--beat);

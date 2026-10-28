@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { EntranceMain } from "@/components/layout/entrance-main";
 import { LiveRefresh } from "@/components/layout/live-refresh";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
@@ -36,9 +37,9 @@ export default async function AdminLayout({ children }: LayoutProps<"/">) {
         />
         {/* Live data only: mock pages have nothing to re-fetch. */}
         {USE_MOCK ? null : <LiveRefresh />}
-        <main className="stagger mx-auto w-full max-w-[1480px] min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
+        <EntranceMain className="mx-auto w-full max-w-[1480px] min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
           {children}
-        </main>
+        </EntranceMain>
       </div>
     </div>
   );
