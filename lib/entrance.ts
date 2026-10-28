@@ -44,3 +44,25 @@ export const BEAT_MS = 70;
 export function lateDelayMs(order: number): number {
   return Math.min(order, 5) * BEAT_MS;
 }
+
+/**
+ * How long after its chart starts the `index`-th of `count` marks draws — bars, rows — so they go in
+ * one after another, left to right. The whole run fits in about a third of a second, however many
+ * marks there are; a short run keeps a readable step between them instead of spreading it out.
+ */
+export function spreadMs(index: number, count: number): number {
+  const step = Math.min(45, 360 / Math.max(count - 1, 1));
+  return Math.round(index * step);
+}
+
+/** How long `--animate-wipe` in globals.css takes to draw a line across its chart: change both together. */
+export const DRAW_MS = 1200;
+
+/**
+ * When a line being drawn reaches `fraction` of the way across its chart, 0 to 1, so a point on it
+ * can appear as the line gets there rather than waiting on the empty chart ahead of it. The inverse
+ * of `--ease-draw`, which an ease-out cubic matches closely enough for the eye.
+ */
+export function drawnAtMs(fraction: number): number {
+  return Math.round(DRAW_MS * (1 - Math.cbrt(1 - fraction)));
+}

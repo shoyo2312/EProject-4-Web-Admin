@@ -1,5 +1,6 @@
 import { Card, CardHeader } from "@/components/ui/card";
 import type { EngagementMixRow } from "@/lib/api/rollup";
+import { spreadMs } from "@/lib/entrance";
 import { formatNumber } from "@/lib/format";
 
 /**
@@ -29,7 +30,7 @@ export function EngagementMix({
             No engagement events recorded yet.
           </p>
         ) : (
-          rows.map((row) => (
+          rows.map((row, i) => (
             <div key={row.eventType}>
               <div className="flex items-baseline justify-between gap-3">
                 <span className="label text-ink-soft">{row.label}</span>
@@ -40,7 +41,10 @@ export function EngagementMix({
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface-muted">
                 <span
                   className="origin-left animate-fill block h-full rounded-full bg-accent"
-                  style={{ width: `${Math.max(row.weight * 100, 1.5)}%` }}
+                  style={{
+                    width: `${Math.max(row.weight * 100, 1.5)}%`,
+                    animationDelay: `calc(var(--entrance-delay, 0ms) + ${spreadMs(i, rows.length)}ms)`,
+                  }}
                 />
               </div>
             </div>

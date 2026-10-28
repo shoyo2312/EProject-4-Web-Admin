@@ -7,16 +7,19 @@ import { cn } from "@/lib/utils";
 /** What the `stagger` rules in globals.css rise in: a page's sections, cards and rows of cards. */
 const BLOCK = ".stagger > :not(.stagger, [role='status'])";
 
-/** The keyframes of an entrance in globals.css: a block rising in, and the charts in it drawing. */
-const ENTRANCE = new Set(["enter", "grow", "fill", "wipe"]);
+/**
+ * The keyframes of an entrance in globals.css: a block rising in, and what it draws — its charts and
+ * their points.
+ */
+const ENTRANCE = new Set(["enter", "grow", "fill", "wipe", "dot"]);
 
 /**
  * A block held out of view, with the animations it will play: `reported` once the viewport has
  * said it is not there yet. "playing" is a block from the server's HTML, left alone until then.
  */
-type Watch = { animations: CSSAnimation[]; reported: boolean } | "playing";
+type Watch = { animations: Set<CSSAnimation>; reported: boolean } | "playing";
 
-/** A block's own entrance and its charts' — not a nested block's, which is watched on its own. */
+/** A block's own entrance and what it draws — not a nested block's, which is watched on its own. */
 function entranceOf(block: HTMLElement): CSSAnimation[] {
   return block
     .getAnimations({ subtree: true })
@@ -30,12 +33,14 @@ function entranceOf(block: HTMLElement): CSSAnimation[] {
 }
 
 /** Stopped on its first frame — the block invisible, its charts undrawn — until it is played. */
-function hold(animations: CSSAnimation[]) {
+function hold(animations: Iterable<CSSAnimation>) {
   for (const animation of animations) {
     animation.pause();
     animation.currentTime = 0;
   }
 }
+
+const delayOf = (animation: CSSAnimation) => Number(animation.effect?.getTiming().delay ?? 0);
 
 const inDocumentOrder = (a: Node, b: Node) =>
   a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
@@ -47,7 +52,7 @@ const inDocumentOrder = (a: Node, b: Node) =>
  * Inserted blocks are decided from a MutationObserver, whose callback runs before the browser renders
  * the commit that inserted them, so not one frame of an animation that should not play is painted.
  * A page already shown gets `data-entrance="still"`, which globals.css draws with no animation at all.
- * A block out of view keeps its animation stopped on the first frame, through the Web Animations API
+ * A block out of view keeps its animations stopped on the first frame, through the Web Animations API
  * rather than a mark: the server's HTML can be held before React has hydrated it, and an attribute
  * React did not render is a hydration mismatch.
  *
@@ -79,7 +84,7 @@ export function EntranceMain({ className, children }: { className?: string; chil
             continue;
           }
           hold(animations);
-          watching.set(block, { animations, reported: true });
+          watching.set(block, { animations: new Set(animations), reported: true });
         } else if (!isIntersecting) {
           watch.reported = true;
         } else if (watch.reported) {
@@ -92,13 +97,13 @@ export function EntranceMain({ className, children }: { className?: string; chil
       }
       // Blocks that scroll in together fan out from the first of them, not from where they stand
       // in the page's cascade: that is up to a third of a second of empty space at the bottom edge.
+      // What a block draws moves with it, keeping its place after the block — bar after bar.
       late.sort(inDocumentOrder).forEach((block, order) => {
         const watch = watching.get(block);
         if (watch === undefined || watch === "playing") return;
+        const shift = lateDelayMs(order) - Math.min(...Array.from(watch.animations, delayOf));
         for (const animation of watch.animations) {
-          if (animation.effect instanceof KeyframeEffect && animation.effect.target === block) {
-            animation.effect.updateTiming({ delay: lateDelayMs(order) });
-          }
+          animation.effect?.updateTiming({ delay: delayOf(animation) + shift });
           animation.play();
         }
         forget(block);
@@ -122,25 +127,39 @@ export function EntranceMain({ className, children }: { className?: string; chil
       for (const block of watching.keys()) if (!block.isConnected) forget(block);
 
       const arrived = new Set<HTMLElement>();
+      const grown = new Set<HTMLElement>();
       for (const record of records) {
         for (const node of record.addedNodes) {
-          if (!(node instanceof HTMLElement) || !node.isConnected) continue;
-          if (node.matches(BLOCK)) arrived.add(node);
+          if (!(node instanceof Element) || !node.isConnected) continue;
+          if (node instanceof HTMLElement && node.matches(BLOCK)) arrived.add(node);
           for (const block of node.querySelectorAll<HTMLElement>(BLOCK)) arrived.add(block);
+          const around = node.parentElement?.closest<HTMLElement>(BLOCK);
+          if (around) grown.add(around);
         }
       }
-      if (arrived.size === 0) return;
 
-      const plays = log.arrive() && !reduced.matches;
-      for (const block of arrived) {
-        if (!plays) {
-          block.dataset.entrance = "still";
-          continue;
+      if (arrived.size > 0) {
+        const plays = log.arrive() && !reduced.matches;
+        for (const block of arrived) {
+          if (!plays) {
+            block.dataset.entrance = "still";
+            continue;
+          }
+          const animations = entranceOf(block);
+          if (animations.length === 0) continue;
+          hold(animations);
+          watch(block, { animations: new Set(animations), reported: false });
         }
-        const animations = entranceOf(block);
-        if (animations.length === 0) continue;
-        hold(animations);
-        watch(block, { animations, reported: false });
+      }
+
+      // Drawn after its block went in — a chart measures its box before it draws — and so waits
+      // with the block if the block is still waiting.
+      for (const block of grown) {
+        const watch = watching.get(block);
+        if (watch === undefined || watch === "playing") continue;
+        const drawn = entranceOf(block).filter((animation) => !watch.animations.has(animation));
+        hold(drawn);
+        for (const animation of drawn) watch.animations.add(animation);
       }
     });
 

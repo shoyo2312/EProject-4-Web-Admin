@@ -8,12 +8,35 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  type DotItemDotProps,
   type TooltipContentProps,
 } from "recharts";
 import type { MosaicBucket } from "@/lib/api/rollup";
+import { drawnAtMs } from "@/lib/entrance";
 import { formatCompact, formatNumber } from "@/lib/format";
 
 const TICK = { fontSize: 11, fill: "var(--ink-faint)" };
+
+/**
+ * A bucket's point, appearing as the line being drawn across reaches it. Recharts draws the points
+ * in a layer of their own, outside the series the line's `wipe` uncovers, so without this they would
+ * all stand on the empty chart ahead of the line.
+ */
+function point(props: DotItemDotProps, fill: string) {
+  if (props.cx == null || props.cy == null) return null;
+  const across = props.index / Math.max(props.points.length - 1, 1);
+  return (
+    <circle
+      key={props.index}
+      cx={props.cx}
+      cy={props.cy}
+      r={2.5}
+      fill={fill}
+      className="origin-center animate-dot [transform-box:fill-box]"
+      style={{ animationDelay: `calc(var(--entrance-delay, 0ms) + ${drawnAtMs(across)}ms)` }}
+    />
+  );
+}
 
 export function LineChart({
   buckets,
@@ -95,16 +118,19 @@ export function LineChart({
             />
             {series.map((s) => (
               // Straight segments with a dot per bucket: a smoothed curve through monthly totals
-              // draws a slope of activity across weeks where there was none.
+              // draws a slope of activity across weeks where there was none. Drawn in left to right
+              // by globals.css's `wipe` rather than recharts' own animation, which would play on
+              // every mount, on a page already seen and off screen alike.
               <Area
                 key={s.key}
+                className="animate-wipe"
                 type="linear"
                 dataKey={s.key}
                 name={s.label}
                 stroke={s.color}
                 strokeWidth={2}
                 fill={`url(#fill-${s.key})`}
-                dot={{ r: 2.5, fill: s.color, strokeWidth: 0 }}
+                dot={(props: DotItemDotProps) => point(props, s.color)}
                 activeDot={{ r: 5, stroke: "var(--surface)", strokeWidth: 2 }}
                 isAnimationActive={false}
               />

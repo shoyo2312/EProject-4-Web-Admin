@@ -1,4 +1,5 @@
 import { Block, Bone } from "@/components/ui/skeleton";
+import { spreadMs } from "@/lib/entrance";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -23,14 +24,17 @@ export function BarTrend({
   return (
     <div>
       <div className={cn(BARS, className)}>
-        {bars.map((bar) => (
+        {bars.map((bar, i) => (
           <span
             key={bar.day}
             title={`${formatDate(bar.day)} · ${describe(bar.value)}`}
             className="min-w-0 flex-1 origin-bottom animate-grow rounded-t-sm bg-accent/80 transition-colors hover:bg-accent"
-            // A zero bucket still needs a visible baseline tick, otherwise a gap in the series
-            // is indistinguishable from a bucket that never loaded.
-            style={{ height: `${Math.max((bar.value / peak) * 100, 2)}%` }}
+            style={{
+              // A zero bucket still needs a visible baseline tick, otherwise a gap in the series
+              // is indistinguishable from a bucket that never loaded.
+              height: `${Math.max((bar.value / peak) * 100, 2)}%`,
+              animationDelay: `calc(var(--entrance-delay, 0ms) + ${spreadMs(i, bars.length)}ms)`,
+            }}
           />
         ))}
       </div>
