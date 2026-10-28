@@ -82,7 +82,7 @@ export function NotificationBell({
           id="notification-panel"
           role="dialog"
           aria-label="Notifications"
-          className="fixed inset-x-4 top-[72px] z-20 overflow-hidden rounded-2xl border border-line bg-surface shadow-pop sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-[380px]"
+          className="origin-top animate-pop sm:origin-top-right fixed inset-x-4 top-[72px] z-20 overflow-hidden rounded-2xl border border-line bg-surface shadow-pop sm:absolute sm:inset-x-auto sm:top-full sm:right-0 sm:mt-2 sm:w-[380px]"
         >
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <span className="text-[14px] font-semibold">Notifications</span>

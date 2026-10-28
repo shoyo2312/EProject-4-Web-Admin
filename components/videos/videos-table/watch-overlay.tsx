@@ -33,11 +33,11 @@ export function WatchOverlay({
       aria-modal="true"
       aria-label={`Preview of ${video.title}`}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
+      className="animate-fade fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-3xl"
+        className="animate-pop relative w-full max-w-3xl"
       >
         <button
           type="button"

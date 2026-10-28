@@ -38,7 +38,7 @@ export function RowDetail({
         {/* w-0 min-w-full: the expand cell fills the row but contributes zero
             intrinsic width, so the auto table-layout can't redistribute column
             widths (shoving the table sideways) when a row opens. */}
-        <dl className="grid w-0 min-w-full grid-cols-2 gap-x-4 gap-y-2.5 text-[13px]">
+        <dl className="animate-reveal grid w-0 min-w-full grid-cols-2 gap-x-4 gap-y-2.5 text-[13px]">
           {children}
         </dl>
       </td>

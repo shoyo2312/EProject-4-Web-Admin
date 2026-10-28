@@ -204,7 +204,7 @@ function TermRow({
 
       {confirming ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={COLUMNS} className="px-5 py-3">
+          <td colSpan={COLUMNS} className="animate-reveal px-5 py-3">
             <p className="mb-2 text-[12px] text-ink-soft">
               {exempt
                 ? `Remove the exemption? The shipped term “${term.term}” matches again within a minute.`

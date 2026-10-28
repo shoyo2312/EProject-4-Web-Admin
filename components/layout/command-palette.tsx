@@ -211,14 +211,14 @@ function PaletteDialog({
   return createPortal(
     <div
       onMouseDown={onClose}
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 pt-[12vh] backdrop-blur-[2px]"
+      className="animate-fade fixed inset-0 z-50 flex items-start justify-center bg-black/40 px-4 pt-[12vh] backdrop-blur-[2px]"
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Search the console"
         onMouseDown={(event) => event.stopPropagation()}
-        className="w-full max-w-[600px] overflow-hidden rounded-2xl border border-line bg-surface shadow-pop"
+        className="origin-top animate-pop w-full max-w-[600px] overflow-hidden rounded-2xl border border-line bg-surface shadow-pop"
       >
         <div className="flex items-center gap-2.5 border-b border-line px-4 py-3">
           <Search className="h-4 w-4 shrink-0 text-ink-faint" />

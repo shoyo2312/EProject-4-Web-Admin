@@ -372,7 +372,7 @@ function UserRow({
 
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={7} className="px-5 py-3">
+          <td colSpan={7} className="animate-reveal px-5 py-3">
             {/* The same choice the account's own page and a report's resolution offer: a ban
                 from here was always permanent. */}
             {action === "ban" ? (
@@ -399,7 +399,7 @@ function UserRow({
 
       {(stalled ?? result) ? (
         <tr className="border-b border-line">
-          <td colSpan={7} className="px-5 py-2 text-[12px] text-ink-soft">
+          <td colSpan={7} className="animate-reveal px-5 py-2 text-[12px] text-ink-soft">
             {stalled ?? result}
           </td>
         </tr>

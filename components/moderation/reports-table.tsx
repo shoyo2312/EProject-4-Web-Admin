@@ -285,7 +285,7 @@ function ReportRow({
 
       {resolving ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={COLUMNS} className="px-5 py-3">
+          <td colSpan={COLUMNS} className="animate-reveal px-5 py-3">
             <ResolveForm
               targetType={report.targetType}
               reporterReason={report.reason}
@@ -299,7 +299,7 @@ function ReportRow({
 
       {result ? (
         <tr className="border-b border-line last:border-b-0">
-          <td colSpan={COLUMNS} className="px-5 pb-3 text-[12px] text-ink-soft">
+          <td colSpan={COLUMNS} className="animate-reveal px-5 pb-3 text-[12px] text-ink-soft">
             {result}
           </td>
         </tr>

@@ -55,7 +55,7 @@ export function BulkBar<K extends string>({
   }
 
   return (
-    <div className="border-b border-line bg-surface-muted px-5 py-3">
+    <div className="animate-reveal border-b border-line bg-surface-muted px-5 py-3">
       <div className="flex flex-wrap items-center gap-2">
         {count > 0 ? <span className="text-[12px] font-medium">{count} selected</span> : null}
         {offered.map((candidate) => (

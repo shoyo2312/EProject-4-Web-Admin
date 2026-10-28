@@ -139,12 +139,32 @@
 @theme static {
   --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
   --animate-enter: enter 500ms var(--ease-emphasized) backwards;
+  --animate-pop: pop 180ms var(--ease-emphasized) backwards;
+  --animate-fade: fade 160ms ease-out backwards;
+  --animate-reveal: reveal 220ms var(--ease-emphasized) backwards;
 }
 
 @keyframes enter {
   from {
     opacity: 0;
     transform: translateY(8px);
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
   }
 }
 

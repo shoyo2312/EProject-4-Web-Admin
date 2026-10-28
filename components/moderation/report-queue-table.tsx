@@ -293,7 +293,7 @@ function QueueRow({
 
       {resolving ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={COLUMNS} className="px-5 py-3">
+          <td colSpan={COLUMNS} className="animate-reveal px-5 py-3">
             <p className="mb-2 text-[12px] text-ink-faint">
               {group.reportCount === 1
                 ? "Closes the one report against this target."
@@ -312,7 +312,7 @@ function QueueRow({
 
       {result ? (
         <tr className="border-b border-line last:border-b-0">
-          <td colSpan={COLUMNS} className="px-5 pb-3 text-[12px] text-ink-soft">
+          <td colSpan={COLUMNS} className="animate-reveal px-5 pb-3 text-[12px] text-ink-soft">
             {result}
           </td>
         </tr>

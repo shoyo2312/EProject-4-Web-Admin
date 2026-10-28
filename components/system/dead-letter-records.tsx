@@ -157,7 +157,7 @@ function RecordRow({
 
       {heldBack && last.detail ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={COLUMNS} className="px-5 py-2 text-[12px] text-ink-soft">
+          <td colSpan={COLUMNS} className="animate-reveal px-5 py-2 text-[12px] text-ink-soft">
             Held back: {last.detail}. Replaying it lands it after that event, so it can undo what that
             event did — a takedown replayed after its restore takes the video down again.
           </td>
@@ -166,7 +166,7 @@ function RecordRow({
 
       {confirming ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={COLUMNS} className="px-5 py-3">
+          <td colSpan={COLUMNS} className="animate-reveal px-5 py-3">
             <p className="mb-2 text-[12px] text-ink-soft">
               Send this {record.eventType ?? "record"} back to{" "}
               <span className="font-medium">{originTopic}</span>? Every consumer group on it receives it again; those
@@ -209,7 +209,7 @@ function RecordRow({
 
       {outcome ? (
         <tr className="border-b border-line">
-          <td colSpan={COLUMNS} className="px-5 py-2 text-[12px] text-ink-soft">
+          <td colSpan={COLUMNS} className="animate-reveal px-5 py-2 text-[12px] text-ink-soft">
             {outcome}
           </td>
         </tr>

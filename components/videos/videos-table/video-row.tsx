@@ -335,7 +335,7 @@ export function VideoRow({
 
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={10} className="px-5 py-3">
+          <td colSpan={10} className="animate-reveal px-5 py-3">
             <ReasonForm
               presets={presets}
               reason={reason}
@@ -352,7 +352,7 @@ export function VideoRow({
 
       {(stalled ?? result) ? (
         <tr className="border-b border-line">
-          <td colSpan={10} className="px-5 py-2 text-[12px] text-ink-soft">
+          <td colSpan={10} className="animate-reveal px-5 py-2 text-[12px] text-ink-soft">
             {stalled ?? result}
           </td>
         </tr>

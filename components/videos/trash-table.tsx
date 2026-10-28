@@ -159,7 +159,7 @@ function TrashRow({
 
       {reason !== null ? (
         <tr className="border-b border-line bg-surface-muted">
-          <td colSpan={5} className="px-5 py-3">
+          <td colSpan={5} className="animate-reveal px-5 py-3">
             <ReasonForm
               presets={PRESET_REASONS.purge}
               reason={reason}
@@ -176,7 +176,7 @@ function TrashRow({
 
       {(stalled ?? result) ? (
         <tr className="border-b border-line">
-          <td colSpan={5} className="px-5 py-2 text-[12px] text-ink-soft">
+          <td colSpan={5} className="animate-reveal px-5 py-2 text-[12px] text-ink-soft">
             {stalled ?? result}
           </td>
         </tr>

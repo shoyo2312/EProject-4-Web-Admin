@@ -158,7 +158,7 @@ export function EnforcePanel({
           })}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="animate-reveal space-y-3">
           {open === "ban" ? (
             <div className="flex flex-wrap items-center gap-2">
               <span className="label text-ink-soft">Duration</span>
@@ -190,7 +190,7 @@ export function EnforcePanel({
         ) : null,
       )}
 
-      {result ? <p className="text-[12px] text-ink-soft">{result}</p> : null}
+      {result ? <p className="animate-reveal text-[12px] text-ink-soft">{result}</p> : null}
     </div>
   );
 }
