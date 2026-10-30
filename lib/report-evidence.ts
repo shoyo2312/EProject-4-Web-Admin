@@ -13,7 +13,7 @@ export function sourceLabel(report: Pick<ReportResponse, "source" | "evidenceCou
 }
 
 /** What one captured message says, in words — a sticker or a video is an id, never a picture or a link. */
-export function describeEvidence(item: Pick<ReportEvidenceItem, "type" | "text" | "stickerId" | "videoId">): string {
+export function describeEvidence(item: Pick<ReportEvidenceItem, "type" | "text" | "stickerId" | "videoId" | "storyId">): string {
   switch (item.type) {
     case "TEXT":
       return item.text ?? "";
@@ -21,6 +21,8 @@ export function describeEvidence(item: Pick<ReportEvidenceItem, "type" | "text" 
       return `Sticker ${item.stickerId ?? ""}`.trim();
     case "VIDEO":
       return item.text ? `Shared video ${item.videoId ?? ""} — “${item.text}”` : `Shared video ${item.videoId ?? ""}`.trim();
+    case "STORY_REPLY":
+      return `Reply to story ${item.storyId ?? ""}: ${item.text ?? ""}`.trim();
     default:
       return item.text ?? `${item.type} message`;
   }

@@ -339,6 +339,7 @@ export interface ReportEvidenceItem {
   text: string | null;
   stickerId: string | null;
   videoId: string | null;
+  storyId?: string | null;
 }
 
 /** GET /api/v1/admin/reports/{id}/evidence — this report's messages and no other report's. */
