@@ -12,6 +12,7 @@ import { BulkBar, SelectAllCell, SelectCell } from "@/components/moderation/bulk
 import { TargetBadge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
+import { QueueReportList } from "@/components/moderation/queue-reports";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { DISMISS_PRESETS, ResolveForm } from "@/components/moderation/resolve-form";
 import { TargetPreviewLine } from "@/components/moderation/target-preview-line";
@@ -278,6 +279,12 @@ function QueueRow({
               missing="Not available — the target is not readable through the console (removed, private, or no longer there)."
             />
           </Field>
+
+          {group.targetType === "USER" ? (
+            <Field label="Reports this decision closes" wide>
+              <QueueReportList targetType={group.targetType} targetId={group.targetId} />
+            </Field>
+          ) : null}
 
           <Field label="Moderation history" wide>
             <ModerationHistory

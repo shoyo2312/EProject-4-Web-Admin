@@ -7,6 +7,7 @@ import type {
   ModerationActionResponse,
   ModerationActionType,
   Page,
+  ReportEvidenceResponse,
   ReportGroupResponse,
   ReportResponse,
   ReportStatus,
@@ -198,4 +199,25 @@ export async function getReportCount(
   }
   const params = new URLSearchParams({ targetType, targetId });
   return apiGet<number>(`/api/v1/admin/reports/count?${params}`);
+}
+
+/**
+ * The messages one report was filed with. Per report and not per target: the same account reported
+ * by two people has two conversations and two sets, and either set is the other's context, not its
+ * substitute. A profile report has none and comes back with an empty list. Never fetched for a
+ * list — only when someone opens the report.
+ */
+export async function getReportEvidence(reportId: string): Promise<ReportEvidenceResponse> {
+  if (USE_MOCK) {
+    const report = mockReports.find((r) => r.id === reportId);
+    return {
+      reportId,
+      conversationId: report?.conversationId ?? null,
+      reporterId: report?.reporterId ?? "",
+      reportedUserId: report?.targetId ?? "",
+      capturedAt: null,
+      messages: [],
+    };
+  }
+  return apiGet<ReportEvidenceResponse>(`/api/v1/admin/reports/${encodeURIComponent(reportId)}/evidence`);
 }

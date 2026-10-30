@@ -11,6 +11,7 @@ import { SearchBox } from "@/components/ui/search-box";
 import { SortableHeader } from "@/components/ui/sortable-header";
 import { Segmented } from "@/components/ui/segmented";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
+import { ReportEvidence } from "@/components/moderation/report-evidence";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { ResolveForm } from "@/components/moderation/resolve-form";
 import { TargetPreviewLine } from "@/components/moderation/target-preview-line";
@@ -22,6 +23,7 @@ import type {
   ReportTargetType,
 } from "@/lib/api/types";
 import { formatDateTime, relativeTime, shortId } from "@/lib/format";
+import { isDirectMessage, sourceLabel } from "@/lib/report-evidence";
 import { REPORT_STATUS_LABELS, statusTabs } from "@/lib/labels";
 import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { hrefWith } from "@/lib/url";
@@ -205,6 +207,11 @@ function ReportRow({
           />
         </td>
         <td className="hidden max-w-[260px] truncate px-3 py-3 xl:table-cell" title={report.reason}>
+          {isDirectMessage(report) ? (
+            <span className="mr-2 rounded-md border border-line px-1.5 py-0.5 text-[10px] text-ink-soft">
+              DM · {report.evidenceCount ?? 0}
+            </span>
+          ) : null}
           {report.reason}
         </td>
         <td className="px-3 py-3">
@@ -250,6 +257,7 @@ function ReportRow({
             {report.targetType} · {report.targetId}
           </Field>
           <Field label="Created">{formatDateTime(report.createdAt)}</Field>
+          <Field label="Source">{sourceLabel(report)}</Field>
           {report.resolvedBy ? (
             <Field label="Resolved by">
               {names.handles[report.resolvedBy] ?? `#${report.resolvedBy.slice(-8)}`}
@@ -270,6 +278,12 @@ function ReportRow({
               missing="Not available — the target is not readable through the console (removed, private, or no longer there)."
             />
           </Field>
+
+          {isDirectMessage(report) ? (
+            <Field label="Reported messages" wide>
+              <ReportEvidence reportId={report.id} />
+            </Field>
+          ) : null}
 
           <Field label="Moderation history" wide>
             <ModerationHistory

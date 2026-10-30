@@ -319,6 +319,36 @@ export interface ReportResponse {
   resolvedBy: string | null;
   resolvedAt: string | null;
   createdAt: string;
+  /** Absent on reports filed before direct-message reports existed: those are profile reports. */
+  source?: ReportSource;
+  conversationId?: string | null;
+  /** How many messages the reporter attached; the messages themselves are read per report. */
+  evidenceCount?: number;
+}
+
+export type ReportSource = "PROFILE" | "DIRECT_MESSAGE";
+
+/** One message of a direct-message report, as captured when the report was filed. */
+export interface ReportEvidenceItem {
+  messageId: string;
+  senderId: string;
+  /** Which side sent it, from the report's own reporter and reported ids. */
+  role: "REPORTER" | "REPORTED";
+  type: string;
+  sentAt: string;
+  text: string | null;
+  stickerId: string | null;
+  videoId: string | null;
+}
+
+/** GET /api/v1/admin/reports/{id}/evidence — this report's messages and no other report's. */
+export interface ReportEvidenceResponse {
+  reportId: string;
+  conversationId: string | null;
+  reporterId: string;
+  reportedUserId: string;
+  capturedAt: string | null;
+  messages: ReportEvidenceItem[];
 }
 
 /**

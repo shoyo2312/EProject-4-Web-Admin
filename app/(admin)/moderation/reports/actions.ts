@@ -3,8 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { getModerationDetail, type ModerationDetail } from "@/lib/api/moderation";
 import { getTargetPreview, type TargetPreview } from "@/lib/api/previews";
-import { resolveQueueRow, resolveReport } from "@/lib/api/reports";
-import type { ModerationActionType, ReportTargetType } from "@/lib/api/types";
+import { getReportEvidence, listReports, resolveQueueRow, resolveReport } from "@/lib/api/reports";
+import { getRowNames } from "@/lib/api/names";
+import type {
+  ModerationActionType,
+  ReportEvidenceResponse,
+  ReportResponse,
+  ReportTargetType,
+} from "@/lib/api/types";
 import { bulkSummary, cleanReason, queueTargets, runEach, type QueueTarget } from "@/lib/bulk";
 import type { ModerationResult } from "@/lib/moderation";
 
@@ -28,6 +34,30 @@ export async function reportTargetDetailAction(
     getTargetPreview(targetType, targetId).catch(() => null),
   ]);
   return { ...detail, preview };
+}
+
+/** The messages one report was filed with, read when its evidence is opened and not before. */
+export async function reportEvidenceAction(reportId: string): Promise<ReportEvidenceResponse> {
+  return getReportEvidence(reportId);
+}
+
+export interface QueueReports {
+  reports: ReportResponse[];
+  handles: Record<string, string>;
+}
+
+/**
+ * The standing reports behind one queue row, each its own report with its own evidence: a queue row
+ * is one decision about a target, but fifty reports are fifty accounts of what happened. Pending
+ * only, because those are the ones the row's decision closes.
+ */
+export async function queueReportsAction(
+  targetType: ReportTargetType,
+  targetId: string,
+): Promise<QueueReports> {
+  const page = await listReports({ targetType, targetId, status: "PENDING", size: 50 });
+  const names = await getRowNames(page.content.map((report) => report.reporterId), []);
+  return { reports: page.content, handles: names.handles };
 }
 
 /**
