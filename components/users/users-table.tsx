@@ -12,6 +12,7 @@ import {
 import { BulkBar, SelectAllCell, SelectCell, type BulkAction } from "@/components/moderation/bulk-bar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { Segmented } from "@/components/ui/segmented";
 import { UserStatusBadge } from "@/components/ui/status-badge";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
@@ -28,6 +29,8 @@ import {
 } from "@/lib/moderation";
 import type { AdminUserResponse, UserStatus } from "@/lib/api/types";
 import { formatDateTime, relativeTime } from "@/lib/format";
+import type { UserSortField } from "@/lib/list-filters";
+import type { SortState } from "@/lib/sort";
 import { hrefWith } from "@/lib/url";
 import { useBulkPropagation, usePropagation } from "@/lib/use-propagation";
 import { useRowDetail } from "@/lib/use-row-detail";
@@ -45,10 +48,12 @@ export function UsersTable({
   users,
   query,
   status,
+  sort,
 }: {
   users: AdminUserResponse[];
   query: string;
   status: StatusFilter;
+  sort: SortState<UserSortField>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -146,11 +151,11 @@ export function UsersTable({
           <thead>
             <tr className="border-b border-line text-left">
               <SelectAllCell ids={selectable.map((user) => user.id)} selection={selection} />
-              <th className="label px-3 py-3 text-ink-soft">Username</th>
-              <th className="label hidden px-3 py-3 text-ink-soft xl:table-cell">Email</th>
-              <th className="label px-3 py-3 text-ink-soft">Role</th>
-              <th className="label px-3 py-3 text-ink-soft">Status</th>
-              <th className="label hidden px-3 py-3 text-ink-soft xl:table-cell">Joined</th>
+              <SortableHeader label="Username" sortKey="username" sort={sort} />
+              <SortableHeader label="Email" sortKey="email" sort={sort} className="hidden xl:table-cell" />
+              <SortableHeader label="Role" sortKey="role" sort={sort} />
+              <SortableHeader label="Status" sortKey="status" sort={sort} />
+              <SortableHeader label="Joined" sortKey="createdAt" sort={sort} className="hidden xl:table-cell" />
               <th className="label px-5 py-3 text-right text-ink-soft">Actions</th>
             </tr>
           </thead>

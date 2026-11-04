@@ -7,11 +7,14 @@ import { Trash2 } from "lucide-react";
 import { moderateVideoAction } from "@/app/(admin)/videos/actions";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { ReasonForm } from "@/components/moderation/reason-form";
 import { PRESET_REASONS } from "@/lib/moderation";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 import type { AdminVideoResponse, UserProfileResponse } from "@/lib/api/types";
 import { daysUntilPurge, formatDateTime, shortId } from "@/lib/format";
+import type { TrashSortField } from "@/lib/list-filters";
+import type { SortState } from "@/lib/sort";
 import { hrefWith } from "@/lib/url";
 import { usePropagation } from "@/lib/use-propagation";
 import { cn } from "@/lib/utils";
@@ -20,12 +23,14 @@ export function TrashTable({
   videos,
   owners,
   query,
+  sort,
   now,
 }: {
   videos: AdminVideoResponse[];
   /** userId → profile, for showing the owner as @handle. May be missing an id. */
   owners: Record<string, UserProfileResponse>;
   query: string;
+  sort: SortState<TrashSortField>;
   /** The server's clock, so the days left render the same on the server and in the browser. */
   now: number;
 }) {
@@ -53,9 +58,9 @@ export function TrashTable({
         <table className="w-full border-collapse text-[13px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label px-5 py-3 text-ink-soft">Title</th>
+              <SortableHeader label="Title" sortKey="title" sort={sort} className="px-5" />
               <th className="label hidden px-3 py-3 text-ink-soft md:table-cell">Owner</th>
-              <th className="label hidden px-3 py-3 text-ink-soft md:table-cell">Deleted</th>
+              <SortableHeader label="Deleted" sortKey="deletedAt" sort={sort} className="hidden md:table-cell" />
               <th className="label px-3 py-3 text-ink-soft">Time left</th>
               <th className="label px-5 py-3 text-right text-ink-soft">Actions</th>
             </tr>

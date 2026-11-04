@@ -13,6 +13,8 @@ import type {
 } from "./types";
 import { mockSecurityEvents } from "@/lib/mock/security-events";
 import { mockCommentRestriction, mockUsers } from "@/lib/mock/users";
+import type { UserSortField } from "@/lib/list-filters";
+import { sortRows } from "@/lib/sort";
 
 /**
  * The directory is served by auth-service, under /api/v1/auth/** rather than /api/v1/admin/**:
@@ -23,10 +25,12 @@ import { mockCommentRestriction, mockUsers } from "@/lib/mock/users";
 export async function listUsers(options: {
   q?: string;
   status?: UserStatus;
+  sort?: UserSortField;
+  ascending?: boolean;
   page?: number;
   size?: number;
 } = {}): Promise<Page<AdminUserResponse>> {
-  const { q, status, page = 0, size = LIST_PAGE_SIZE } = options;
+  const { q, status, sort = "createdAt", ascending = false, page = 0, size = LIST_PAGE_SIZE } = options;
 
   if (USE_MOCK) {
     const needle = q?.trim().toLowerCase();
@@ -38,10 +42,14 @@ export async function listUsers(options: {
         (user.email?.toLowerCase().includes(needle) ?? false)
       );
     });
-    return mockPage(filtered, page, size);
+    return mockPage(sortRows(filtered, (user) => user[sort], ascending), page, size);
   }
 
-  const params = new URLSearchParams({ page: String(page), size: String(size) });
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+    sort: `${sort},${ascending ? "asc" : "desc"}`,
+  });
   if (q) params.set("q", q);
   if (status) params.set("status", status);
 

@@ -55,6 +55,21 @@ export const ACTION_SORT_FIELDS = ["createdAt", "actionType", "targetType"] as c
 
 export type ActionSortField = (typeof ACTION_SORT_FIELDS)[number];
 
+/** The Video document's own fields, which video-service's admin listing orders by. */
+export const VIDEO_SORT_FIELDS = ["title", "status", "visibility", "viewCount", "likeCount", "createdAt"] as const;
+
+export type VideoSortField = (typeof VIDEO_SORT_FIELDS)[number];
+
+/** The trash: by title, or by when it was deleted — which is also how soon it is purged. */
+export const TRASH_SORT_FIELDS = ["title", "deletedAt"] as const;
+
+export type TrashSortField = (typeof TRASH_SORT_FIELDS)[number];
+
+/** The User entity's own fields, which auth-service's directory orders by. */
+export const USER_SORT_FIELDS = ["username", "email", "role", "status", "createdAt"] as const;
+
+export type UserSortField = (typeof USER_SORT_FIELDS)[number];
+
 /** Every decision admin-service records — the audit log's type filter. */
 export const ACTION_TYPES: readonly ModerationActionType[] = [
   "BAN_USER",
@@ -72,7 +87,12 @@ export const ACTION_TYPES: readonly ModerationActionType[] = [
 export const TERM_ACTIONS: readonly ModerationTermAction[] = ["HOLD", "REJECT", "EXEMPT"];
 
 export function userFilters(params: ListParams) {
-  return { q: params.q, status: oneOf(params.status, USER_STATUSES) };
+  return {
+    q: params.q,
+    status: oneOf(params.status, USER_STATUSES),
+    sort: oneOf(params.sort, USER_SORT_FIELDS) ?? "createdAt",
+    ascending: params.dir === "asc",
+  };
 }
 
 export function videoFilters(params: ListParams) {
@@ -87,6 +107,18 @@ export function videoFilters(params: ListParams) {
     // Not a VideoStatus: a video keeps its pipeline status after its owner deletes it, so
     // "Deleted" filters on deletedAt instead — listVideos({ deleted: true }).
     deletedOnly: params.status === "DELETED",
+    sort: oneOf(params.sort, VIDEO_SORT_FIELDS) ?? "createdAt",
+    ascending: params.dir === "asc",
+  };
+}
+
+/** Soonest to be purged first unless a header says otherwise — what an admin still has to see. */
+export function trashFilters(params: ListParams) {
+  const sort = oneOf(params.sort, TRASH_SORT_FIELDS);
+  return {
+    q: params.q,
+    sort: sort ?? "deletedAt",
+    ascending: params.dir ? params.dir === "asc" : !sort,
   };
 }
 

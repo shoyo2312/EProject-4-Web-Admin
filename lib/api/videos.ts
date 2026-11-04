@@ -5,6 +5,8 @@ import { USE_MOCK } from "./config";
 import { LIST_PAGE_SIZE, mockPage } from "./shared";
 import type { AdminVideoResponse, ModerationActionResponse, Page, VideoStatus } from "./types";
 import { VIDEO_STATUS_LABELS } from "@/lib/labels";
+import type { TrashSortField, VideoSortField } from "@/lib/list-filters";
+import { sortRows } from "@/lib/sort";
 import { mockVideos } from "@/lib/mock/videos";
 
 /**
@@ -34,9 +36,10 @@ export async function listVideos(options: {
   purged?: boolean;
   /**
    * Unset is newest upload first. The trash reads soonest-to-expire first, and the review queue
-   * oldest upload first — the one that has waited longest.
+   * oldest upload first — the one that has waited longest. Only listed fields: an unknown one is
+   * not an error to Mongo, just a silently unordered page.
    */
-  sort?: "deletedAt,asc" | "createdAt,asc";
+  sort?: `${VideoSortField | TrashSortField},${"asc" | "desc"}`;
   page?: number;
   size?: number;
 } = {}): Promise<Page<AdminVideoResponse>> {
@@ -50,12 +53,9 @@ export async function listVideos(options: {
       if (purged != null && Boolean(video.purgeEventPublishedAt) !== purged) return false;
       return matches(video);
     });
-    if (sort === "deletedAt,asc") {
-      filtered.sort((a, b) => (a.deletedAt ?? "").localeCompare(b.deletedAt ?? ""));
-    } else if (sort === "createdAt,asc") {
-      filtered.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    }
-    return mockPage(filtered, page, size);
+    const [field, dir] = (sort ?? "createdAt,desc").split(",") as [keyof AdminVideoResponse, string];
+    const ordered = sortRows(filtered, (video) => video[field] as string | number | null, dir === "asc");
+    return mockPage(ordered, page, size);
   }
 
   const params = new URLSearchParams({ page: String(page), size: String(size) });

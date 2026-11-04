@@ -36,12 +36,12 @@ export async function exportRows(
 
   switch (dataset) {
     case "users": {
-      const { q, status } = userFilters(params);
-      const all = await collect((page) => listUsers({ q, status, page, size: PAGE_SIZE }));
+      const filters = userFilters(params);
+      const all = await collect((page) => listUsers({ ...filters, page, size: PAGE_SIZE }));
       return { ...all, rows: all.rows.filter((u) => u.createdAt.slice(0, 10) <= window.asOf) };
     }
     case "videos": {
-      const { q, ownerId, status, deletedOnly } = videoFilters(params);
+      const { q, ownerId, status, deletedOnly, sort, ascending } = videoFilters(params);
       const ownerIds = ownerId ? [ownerId] : q ? await resolveOwners(q) : [];
       const all = await collect((page) =>
         listVideos({
@@ -49,6 +49,7 @@ export async function exportRows(
           ownerIds,
           status,
           deleted: deletedOnly ? true : undefined,
+          sort: `${sort},${ascending ? "asc" : "desc"}`,
           page,
           size: PAGE_SIZE,
         }),

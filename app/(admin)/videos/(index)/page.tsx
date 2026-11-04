@@ -21,13 +21,15 @@ export default async function VideosPage({
     q?: string;
     owner?: string;
     status?: string;
+    sort?: string;
+    dir?: string;
     p?: string;
     asOf?: string;
     page?: string;
   }>;
 }) {
   const params = await searchParams;
-  const { q, ownerId, status: filter, deletedOnly } = videoFilters(params);
+  const { q, ownerId, status: filter, deletedOnly, sort, ascending } = videoFilters(params);
   const pageParam = params.page;
   const latest = isoDay(referenceNow());
   const window = resolveWindow(params, latest);
@@ -47,7 +49,14 @@ export default async function VideosPage({
     // Filtering and paging server-side rather than over the fetched rows: "show me everything
     // taken down" must not depend on how many rows happened to come back.
     const [listed, uploads, moderation, totals] = await Promise.all([
-      listVideos({ q, ownerIds, status: filter, deleted: deletedOnly ? true : undefined, page: pageIndex }),
+      listVideos({
+        q,
+        ownerIds,
+        status: filter,
+        deleted: deletedOnly ? true : undefined,
+        sort: `${sort},${ascending ? "asc" : "desc"}`,
+        page: pageIndex,
+      }),
       // Uploads per day, plus each day's cohort standing — the series behind the percentages.
       getDailyVideoStats(window.fetchDays),
       // Takedowns are an admin decision, recorded in the audit log rather than on the video:
@@ -187,6 +196,7 @@ export default async function VideosPage({
           query={q ?? ""}
           ownerId={ownerId ?? null}
           status={deletedOnly ? "DELETED" : (filter ?? "ALL")}
+          sort={{ field: sort, ascending }}
           now={referenceNow()}
         />
 

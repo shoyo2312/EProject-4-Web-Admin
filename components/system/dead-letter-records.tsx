@@ -5,13 +5,24 @@ import { useRouter } from "next/navigation";
 import { RotateCcw } from "lucide-react";
 import { replayDeadLetterAction } from "@/app/(admin)/system/queues/dead-letters/actions";
 import { Card, CardHeader } from "@/components/ui/card";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import type { DeadLetterRecordResponse } from "@/lib/api/types";
 import { deadLetterStatus } from "@/lib/dead-letters";
 import { formatDateTime, relativeTime } from "@/lib/format";
+import { sortRows, type SortState } from "@/lib/sort";
 import { cn } from "@/lib/utils";
 import { ToneBadge } from "./tone-badge";
 
 const COLUMNS = 6;
+
+type RecordSortField = "parkedAt" | "consumerGroup" | "eventType" | "state";
+
+const SORT_VALUE: Record<RecordSortField, (record: DeadLetterRecordResponse) => string | null> = {
+  parkedAt: (record) => record.parkedAt,
+  consumerGroup: (record) => record.consumerGroup,
+  eventType: (record) => record.eventType,
+  state: (record) => deadLetterStatus(record).label,
+};
 
 /** The newest records of one DLT, each with a replay of its own. */
 export function DeadLetterRecords({
@@ -29,6 +40,13 @@ export function DeadLetterRecords({
   /** The page's clock — the mock one in mock mode — so "2h ago" agrees with the fixtures. */
   now: number;
 }) {
+  // The fifty the page fetched are the whole list, so ordering them here reorders all of it.
+  const [sort, setSort] = useState<SortState<RecordSortField>>({ field: "parkedAt", ascending: false });
+  const rows = sortRows(records, SORT_VALUE[sort.field], sort.ascending);
+  const header = (label: string, key: RecordSortField, className?: string) => (
+    <SortableHeader label={label} sortKey={key} sort={sort} onSort={setSort} className={className} />
+  );
+
   return (
     <Card>
       <CardHeader
@@ -40,16 +58,16 @@ export function DeadLetterRecords({
         <table className="w-full border-collapse text-[13px] xl:min-w-[980px]">
           <thead>
             <tr className="border-b border-line text-left">
-              <th className="label px-5 py-3 text-ink-soft">Parked</th>
-              <th className="label px-3 py-3 text-ink-soft">Failed in</th>
-              <th className="label px-3 py-3 text-ink-soft">Event</th>
+              {header("Parked", "parkedAt", "px-5")}
+              {header("Failed in", "consumerGroup")}
+              {header("Event", "eventType")}
               <th className="label px-3 py-3 text-ink-soft">Why</th>
-              <th className="label px-3 py-3 text-ink-soft">State</th>
+              {header("State", "state")}
               <th className="label px-5 py-3 text-right text-ink-soft">Replay</th>
             </tr>
           </thead>
           <tbody>
-            {records.map((record) => (
+            {rows.map((record) => (
               <RecordRow
                 key={`${record.partition}:${record.offset}`}
                 topic={topic}

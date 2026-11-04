@@ -14,10 +14,18 @@ import { userFilters } from "@/lib/list-filters";
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; p?: string; asOf?: string; page?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    sort?: string;
+    dir?: string;
+    p?: string;
+    asOf?: string;
+    page?: string;
+  }>;
 }) {
   const params = await searchParams;
-  const { q, status: filter } = userFilters(params);
+  const { q, status: filter, sort, ascending } = userFilters(params);
   const pageParam = params.page;
   const latest = isoDay(referenceNow());
   const window = resolveWindow(params, latest);
@@ -35,7 +43,7 @@ export default async function UsersPage({
     // The banned figure is its own count query for the same reason — counting the rows on
     // screen would report 3 out of a page of 25 as the platform's banned total.
     [page, bannedTotal, signups, adminStats] = await Promise.all([
-      listUsers({ q, status: filter, page: pageIndex }),
+      listUsers({ q, status: filter, sort, ascending, page: pageIndex }),
       listUsers({ q, status: "BANNED", size: 1 }).then((p) => p.totalElements),
       // Two periods deep, so each card has the period before this one to compare against.
       getDailySignups(window.fetchDays),
@@ -124,7 +132,12 @@ export default async function UsersPage({
       <div className="stagger space-y-4">
         <KpiCards cards={cards} />
 
-        <UsersTable users={users} query={q ?? ""} status={filter ?? "ALL"} />
+        <UsersTable
+          users={users}
+          query={q ?? ""}
+          status={filter ?? "ALL"}
+          sort={{ field: sort, ascending }}
+        />
 
         <Pager
           page={page.number}

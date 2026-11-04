@@ -7,27 +7,29 @@ import { LIST_PAGE_SIZE, referenceNow } from "@/lib/api/shared";
 import { resolveOwners } from "@/lib/api/users";
 import { listVideos } from "@/lib/api/videos";
 import { parsePage } from "@/lib/api/window";
+import { trashFilters } from "@/lib/list-filters";
 import { TRASH_RETENTION_DAYS } from "@/lib/notifications";
 
 export default async function TrashPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string; dir?: string; page?: string }>;
 }) {
-  const { q, page: pageParam } = await searchParams;
+  const params = await searchParams;
+  const { q, sort, ascending } = trashFilters(params);
 
   let page;
   try {
     const ownerIds = q ? await resolveOwners(q) : [];
     // Deleted but not yet purged: a purged video has nothing left to watch, so it is no longer
-    // in the trash. Soonest to expire first — those are the ones an admin still has to look at.
+    // in the trash. Soonest to expire first unless a header picks another order.
     page = await listVideos({
       q,
       ownerIds,
       deleted: true,
       purged: false,
-      sort: "deletedAt,asc",
-      page: parsePage(pageParam),
+      sort: `${sort},${ascending ? "asc" : "desc"}`,
+      page: parsePage(params.page),
     });
   } catch (error) {
     return (
@@ -52,6 +54,7 @@ export default async function TrashPage({
           videos={page.content}
           owners={owners}
           query={q ?? ""}
+          sort={{ field: sort, ascending }}
           now={referenceNow()}
         />
 

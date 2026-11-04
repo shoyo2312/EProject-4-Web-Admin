@@ -8,12 +8,15 @@ import { bulkModerateVideosAction } from "@/app/(admin)/videos/actions";
 import { BulkBar, SelectAllCell, type BulkAction } from "@/components/moderation/bulk-bar";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SearchBox } from "@/components/ui/search-box";
+import { SortableHeader } from "@/components/ui/sortable-header";
 import { Segmented } from "@/components/ui/segmented";
 import { DECISIONS, VideoRow } from "@/components/videos/videos-table/video-row";
 import { PRESET_REASONS, videoDecisions, type VideoDecision } from "@/lib/moderation";
 import type { AdminVideoResponse, UserProfileResponse, VideoStatus } from "@/lib/api/types";
 import { shortId } from "@/lib/format";
 import { VIDEO_STATUS_LABELS, statusTabs } from "@/lib/labels";
+import type { VideoSortField } from "@/lib/list-filters";
+import type { SortState } from "@/lib/sort";
 import { hrefWith } from "@/lib/url";
 import { useBulkPropagation } from "@/lib/use-propagation";
 import { useSelection } from "@/lib/use-selection";
@@ -43,6 +46,7 @@ export function VideosTable({
   query,
   ownerId,
   status,
+  sort,
   now,
 }: {
   videos: AdminVideoResponse[];
@@ -52,6 +56,7 @@ export function VideosTable({
   /** The exact owner filter, when the list was opened from an account's uploads. */
   ownerId: string | null;
   status: StatusFilter;
+  sort: SortState<VideoSortField>;
   /** `referenceNow()`, from the server — the purge countdown is measured against it. */
   now: number;
 }) {
@@ -148,14 +153,14 @@ export function VideosTable({
           <thead>
             <tr className="border-b border-line text-left">
               <SelectAllCell ids={selectable.map((video) => video.id)} selection={selection} />
-              <th className="label px-3 py-3 text-ink-soft">Title</th>
+              <SortableHeader label="Title" sortKey="title" sort={sort} />
               <th className="label hidden px-3 py-3 text-ink-soft @4xl:table-cell">Owner</th>
-              <th className="label px-3 py-3 text-ink-soft">Status</th>
-              <th className="label hidden px-3 py-3 text-ink-soft @6xl:table-cell">Visibility</th>
+              <SortableHeader label="Status" sortKey="status" sort={sort} />
+              <SortableHeader label="Visibility" sortKey="visibility" sort={sort} className="hidden @6xl:table-cell" />
               <th className="label px-3 py-3 text-ink-soft">Reason</th>
-              <th className="label hidden px-3 py-3 text-right text-ink-soft @4xl:table-cell">Views</th>
-              <th className="label hidden px-3 py-3 text-right text-ink-soft @6xl:table-cell">Likes</th>
-              <th className="label hidden px-3 py-3 text-ink-soft @5xl:table-cell">Uploaded</th>
+              <SortableHeader label="Views" sortKey="viewCount" sort={sort} className="hidden text-right @4xl:table-cell" />
+              <SortableHeader label="Likes" sortKey="likeCount" sort={sort} className="hidden text-right @6xl:table-cell" />
+              <SortableHeader label="Uploaded" sortKey="createdAt" sort={sort} className="hidden @5xl:table-cell" />
               <th className="label px-5 py-3 text-right text-ink-soft">Actions</th>
             </tr>
           </thead>
