@@ -1,4 +1,5 @@
 import type { AdminCommentResponse, UserProfileResponse } from "@/lib/api/types";
+import type { VideoSummary } from "@/lib/names";
 
 /**
  * A page of comments with everything needed to read it: interaction-service stores ids only, so
@@ -16,6 +17,36 @@ export interface CommentPageView {
   parents: Record<string, AdminCommentResponse>;
   nextCursor: string | null;
   hasMore: boolean;
+}
+
+/**
+ * The reported comments a worklist shows, read back from their threads, keyed by comment id. A
+ * comment with no entry could not be read: the report is still there to decide.
+ */
+export interface ReportedCommentDetails {
+  comments: Record<string, AdminCommentResponse>;
+  authors: Record<string, UserProfileResponse>;
+  videos: Record<string, VideoSummary>;
+}
+
+/**
+ * Keeps asking until a page has something in it, or there is nothing left to ask for.
+ *
+ * interaction-service filters the Replies, Removed and Held views after Cassandra has cut the page,
+ * and gives up on one request after a bounded scan with an empty page and a cursor. So an empty page
+ * with more behind it says nothing about the video: read as "none", it told an admin nothing had
+ * been removed from a video where something had. Bounded here too, because a very long thread with
+ * no match would otherwise be every row of it read in one render. What comes back after `maxPages`
+ * can still be empty with more behind it, and the screen has to say so.
+ */
+export async function firstPageWithItems<
+  P extends { items: readonly unknown[]; nextCursor: string | null; hasMore: boolean },
+>(fetchPage: (cursor: string | null) => Promise<P>, cursor: string | null, maxPages: number): Promise<P> {
+  let page = await fetchPage(cursor);
+  for (let asked = 1; asked < maxPages && page.items.length === 0 && page.nextCursor; asked += 1) {
+    page = await fetchPage(page.nextCursor);
+  }
+  return page;
 }
 
 /** Appends a freshly-loaded page to what is already on screen. */

@@ -84,7 +84,8 @@ export async function getAdminUser(userId: string): Promise<AdminUserResponse | 
  * Non-fatal: if the directory cannot be reached the video search still runs on titles.
  */
 export async function resolveOwners(q: string, limit = 25): Promise<string[]> {
-  const term = q.trim();
+  // Handles are shown with their @, so that is how one gets pasted back in; the directory stores none.
+  const term = q.trim().replace(/^@/, "");
   if (!term) return [];
   const page = await listUsers({ q: term, size: limit }).catch(() => null);
   return page?.content.map((user) => user.id) ?? [];

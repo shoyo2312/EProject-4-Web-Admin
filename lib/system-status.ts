@@ -88,3 +88,32 @@ export function textModerationHealth(statuses: TextModerationStatusResponse[]): 
 export function listsDiffer(statuses: Pick<TextModerationStatusResponse, "version">[]): boolean {
   return new Set(statuses.map((status) => status.version).filter((version) => version !== null)).size > 1;
 }
+
+/**
+ * The services that reported a list without admin-service's current revision in it. Compared with
+ * that revision, not with each other: when admin-service refuses every poll (an INTERNAL_API_TOKEN
+ * changed there alone), the services all keep the same old list and agree with each other.
+ */
+export function servicesBehind(
+  statuses: Pick<TextModerationStatusResponse, "service" | "version">[],
+  revision: number,
+): string[] {
+  return statuses
+    .filter((status) => status.version !== null && adminRevisionOf(status.version) !== revision)
+    .map((status) => status.service);
+}
+
+/** How many services screen with `revision` already, of how many were asked. */
+export function revisionReach(
+  statuses: Pick<TextModerationStatusResponse, "service" | "version">[],
+  revision: number,
+): { reached: number; asked: number } {
+  const answered = statuses.filter((status) => status.version !== null).length;
+  return { reached: answered - servicesBehind(statuses, revision).length, asked: statuses.length };
+}
+
+/** `rules-2026.10.22+admin-6` → 6; null before the service's first answer from admin-service. */
+function adminRevisionOf(version: string): number | null {
+  const match = /\+admin-(\d+)$/.exec(version);
+  return match ? Number(match[1]) : null;
+}

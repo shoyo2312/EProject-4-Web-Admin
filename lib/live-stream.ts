@@ -29,10 +29,13 @@ const CLOSED = 2;
 export function createLiveStream({
   open,
   scheduler,
+  accept = () => true,
   retryMs = 3000,
 }: {
   open: () => EventSource;
   scheduler: { request(): void; cancel(): void };
+  /** Whether a pushed frame's body is worth a refresh of the page as it is now. */
+  accept?: (data: string) => boolean;
   retryMs?: number;
 }) {
   let source: EventSource | null = null;
@@ -49,7 +52,9 @@ export function createLiveStream({
     clearRetry();
     const s = open();
     source = s;
-    s.onmessage = () => scheduler.request();
+    s.onmessage = (event) => {
+      if (accept(event?.data ?? "")) scheduler.request();
+    };
     s.onopen = () => {
       retried = false;
     };

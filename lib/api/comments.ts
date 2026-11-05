@@ -2,15 +2,17 @@ import "server-only";
 
 import { apiGet, apiPost } from "./client";
 import { USE_MOCK } from "./config";
-import { getUserProfiles } from "./names";
+import { getUserProfiles, getVideoSummaries } from "./names";
 import type {
   AdminCommentFilter,
   AdminCommentPage,
   AdminCommentResponse,
   ModerationActionResponse,
 } from "./types";
-import type { CommentPageView } from "@/lib/comments";
+import { getVideo } from "./videos";
+import { firstPageWithItems, type CommentPageView, type ReportedCommentDetails } from "@/lib/comments";
 import { mockCommentPage, mockCommentsByIds, mockReplyPage } from "@/lib/mock/comments";
+import type { ReportedComment } from "@/lib/moderation";
 
 /**
  * How many comments one page holds, and how many replies one "View replies" click pulls down.
@@ -19,6 +21,22 @@ import { mockCommentPage, mockCommentsByIds, mockReplyPage } from "@/lib/mock/co
  */
 export const COMMENT_PAGE_SIZE = 20;
 export const REPLY_PAGE_SIZE = 3;
+
+/**
+ * Removed and Held match a handful of rows in a whole thread, and the size asked for is also how
+ * much of the thread one request scans (five of it). The service's ceiling reads a video of a few
+ * hundred comments in one request, where twenty answered with an empty page and "more behind".
+ */
+const SPARSE_PAGE_SIZE = 100;
+const PAGE_SIZE: Record<AdminCommentFilter, number> = {
+  THREAD: COMMENT_PAGE_SIZE,
+  REPLIES: COMMENT_PAGE_SIZE,
+  REMOVED: SPARSE_PAGE_SIZE,
+  HELD: SPARSE_PAGE_SIZE,
+};
+
+/** Requests one filtered read may spend looking for its first match, against the gateway's limit. */
+const MAX_SCANS = 4;
 
 /**
  * One page of a video's comments, removed ones included. Per video because that is the only shape
@@ -33,14 +51,18 @@ export async function listComments(
   videoId: string,
   options: { filter?: AdminCommentFilter; cursor?: string | null; size?: number } = {},
 ): Promise<AdminCommentPage> {
-  const { filter = "THREAD", cursor, size = COMMENT_PAGE_SIZE } = options;
-  if (USE_MOCK) return mockCommentPage(videoId, filter, cursor ?? null, size);
+  const { filter = "THREAD", cursor = null, size = PAGE_SIZE[filter] } = options;
+  if (USE_MOCK) return mockCommentPage(videoId, filter, cursor, size);
 
-  const params = new URLSearchParams({ filter, size: String(size) });
-  if (cursor) params.set("cursor", cursor);
-  return apiGet<AdminCommentPage>(
-    `/api/v1/interactions/admin/videos/${videoId}/comments?${params}`,
-  );
+  const fetchPage = (after: string | null) => {
+    const params = new URLSearchParams({ filter, size: String(size) });
+    if (after) params.set("cursor", after);
+    return apiGet<AdminCommentPage>(
+      `/api/v1/interactions/admin/videos/${videoId}/comments?${params}`,
+    );
+  };
+  // The thread reads an index and never comes back empty with more behind it; the others scan.
+  return filter === "THREAD" ? fetchPage(cursor) : firstPageWithItems(fetchPage, cursor, MAX_SCANS);
 }
 
 /**
@@ -134,4 +156,48 @@ export async function decorateCommentPage(
   ]).catch(() => ({}));
 
   return { items: page.items, authors, parents, nextCursor: page.nextCursor, hasMore: page.hasMore };
+}
+
+/**
+ * Reads reported comments back from their threads, for a worklist that shows what is being judged
+ * rather than the tail of an id. One request per video, since that is what a comment is partitioned
+ * by, so the caller keeps the list short. Best-effort for the same reason as the page above: a
+ * report whose comment cannot be read is still there to decide.
+ */
+export async function getReportedCommentDetails(
+  reported: readonly ReportedComment[],
+): Promise<ReportedCommentDetails> {
+  const byVideo = new Map<string, string[]>();
+  for (const { videoId, commentId } of reported) {
+    byVideo.set(videoId, [...(byVideo.get(videoId) ?? []), commentId]);
+  }
+
+  const found = (
+    await Promise.all(
+      [...byVideo].map(([videoId, ids]) =>
+        getComments(videoId, ids).catch((): AdminCommentResponse[] => []),
+      ),
+    )
+  ).flat();
+
+  const [authors, summaries] = await Promise.all([
+    getUserProfiles(found.map((c) => c.userId)).catch(() => ({})),
+    getVideoSummaries([...byVideo.keys()]),
+  ]);
+
+  // The batch applies the viewer rule, and a video viewers cannot see still has reported comments.
+  // The admin route is one call each, so only for those, on a list the caller keeps short.
+  const hidden = await Promise.all(
+    [...byVideo.keys()]
+      .filter((id) => !summaries[id])
+      .map((id) => getVideo(id).catch(() => null)),
+  );
+  const videos = { ...summaries };
+  for (const video of hidden) {
+    if (video) {
+      videos[video.id] = { title: video.title, thumbnailUrl: video.thumbnailUrl, userId: video.userId };
+    }
+  }
+
+  return { comments: Object.fromEntries(found.map((c) => [c.commentId, c])), authors, videos };
 }

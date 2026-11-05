@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createRefreshScheduler } from "@/lib/live-refresh";
+import { createRefreshScheduler, refreshesPage } from "@/lib/live-refresh";
 import { createLiveStream } from "@/lib/live-stream";
 
 /** Re-renders the current page when the backend says something changed; see lib/live-stream.ts. */
@@ -13,6 +13,7 @@ export function LiveRefresh() {
     const stream = createLiveStream({
       open: () => new EventSource("/api/live"),
       scheduler: createRefreshScheduler({ refresh: () => router.refresh() }),
+      accept: (data) => refreshesPage(data, window.location.pathname),
     });
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") stream.show(true);

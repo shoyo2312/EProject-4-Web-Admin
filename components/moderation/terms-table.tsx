@@ -19,6 +19,13 @@ type ActionFilter = ModerationTermAction | "ALL";
 
 const ACTION_FILTERS = statusTabs(TERM_ACTIONS, TERM_ACTION_LABELS);
 
+type View = "live" | "removed";
+
+const VIEWS: readonly { value: View; label: string }[] = [
+  { value: "live", label: "Live" },
+  { value: "removed", label: "Removed" },
+];
+
 /** Status colours, read as what a match does: waits for a person, is refused, or is let through. */
 const ACTION_STYLES: Record<ModerationTermAction, string> = {
   HOLD: "border-pending/25 bg-pending-bg text-pending",
@@ -33,13 +40,16 @@ export function TermsTable({
   handles,
   query,
   action,
+  removed,
   now,
 }: {
   terms: ModerationTermResponse[];
-  /** adminId → @handle, for "Added by". */
+  /** adminId → @handle, for who added and who removed each term. */
   handles: Record<string, string>;
   query: string;
   action: ActionFilter;
+  /** The removed terms instead of the live ones. */
+  removed: boolean;
   /** The page's clock — the mock one in mock mode — so "2h ago" agrees with the fixtures. */
   now: number;
 }) {
@@ -50,10 +60,13 @@ export function TermsTable({
   // Here rather than on the row: a removed term leaves the list, and its row with it.
   const [notice, setNotice] = useState<string | null>(null);
 
-  function go(term: string, next: ActionFilter) {
+  const view: View = removed ? "removed" : "live";
+
+  function go(term: string, next: ActionFilter, nextView: View) {
     const href = hrefWith(pathname, params, {
       q: term || null,
       action: next === "ALL" ? null : next,
+      removed: nextView === "removed" ? "1" : null,
       page: null,
     });
     // Kept in place: the list sits under the form and the preview, and a filter that jumped to the
@@ -67,11 +80,16 @@ export function TermsTable({
     <Card>
       <CardHeader
         title="Admin terms"
-        hint="Live terms, newest first. A removal reaches every service within a minute. Changes are not in the Audit Log — this list, with who added each term, is the record."
+        hint={
+          removed
+            ? "Taken out of the list, most recently first, with who added and who removed each. None has any effect any more."
+            : "Live terms, newest first. A removal reaches every service within a minute. Changes are not in the Audit Log — this list and its removed terms, with who added and who removed each, are the record."
+        }
         actions={
           <>
-            <SearchBox query={query} onCommit={(term) => go(term, action)} placeholder="Search terms..." />
-            <Segmented options={ACTION_FILTERS} value={action} onChange={(next) => go(query, next)} />
+            <SearchBox query={query} onCommit={(term) => go(term, action, view)} placeholder="Search terms..." />
+            <Segmented options={ACTION_FILTERS} value={action} onChange={(next) => go(query, next, view)} />
+            <Segmented options={VIEWS} value={view} onChange={(next) => go(query, action, next)} />
           </>
         }
       />
@@ -88,7 +106,7 @@ export function TermsTable({
               <th className="label px-3 py-3 text-ink-soft">Action</th>
               <th className="label px-3 py-3 text-ink-soft">Category</th>
               <th className="label px-3 py-3 text-ink-soft">Added</th>
-              <th className="label px-5 py-3 text-right text-ink-soft">Remove</th>
+              <th className="label px-5 py-3 text-right text-ink-soft">{removed ? "Removed" : "Remove"}</th>
             </tr>
           </thead>
           <tbody>
@@ -97,6 +115,7 @@ export function TermsTable({
                 key={term.id}
                 term={term}
                 addedBy={handles[term.createdBy]}
+                removedBy={term.deletedBy ? handles[term.deletedBy] : undefined}
                 now={now}
                 onRemoved={setNotice}
               />
@@ -107,7 +126,9 @@ export function TermsTable({
                 <td colSpan={COLUMNS} className="px-5 py-10 text-center text-ink-faint">
                   {filtered
                     ? "No terms match this filter."
-                    : "No admin terms yet — every service screens with the shipped list as it is."}
+                    : removed
+                      ? "No term has been removed yet."
+                      : "No admin terms yet — every service screens with the shipped list as it is."}
                 </td>
               </tr>
             ) : null}
@@ -121,11 +142,13 @@ export function TermsTable({
 function TermRow({
   term,
   addedBy,
+  removedBy,
   now,
   onRemoved,
 }: {
   term: ModerationTermResponse;
   addedBy: string | undefined;
+  removedBy: string | undefined;
   now: number;
   onRemoved: (message: string) => void;
 }) {
@@ -183,22 +206,30 @@ function TermRow({
           <span className="text-ink-faint"> · {relativeTime(term.createdAt, now)}</span>
         </td>
         <td className="px-5 py-3 text-right">
-          <button
-            type="button"
-            disabled={confirming}
-            onClick={() => {
-              setConfirming(true);
-              setFailure(null);
-            }}
-            aria-label={`Remove ${term.term}`}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors",
-              confirming ? "cursor-not-allowed text-ink-faint" : "text-danger hover:bg-surface",
-            )}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Remove
-          </button>
+          {/* Truthy, not !== null: an admin-service from before removed terms sends no deletedAt at all. */}
+          {term.deletedAt ? (
+            <span className="whitespace-nowrap text-ink-soft" title={formatDateTime(term.deletedAt)}>
+              {removedBy ?? <span className="figure">#{term.deletedBy?.slice(-6)}</span>}
+              <span className="text-ink-faint"> · {relativeTime(term.deletedAt, now)}</span>
+            </span>
+          ) : (
+            <button
+              type="button"
+              disabled={confirming}
+              onClick={() => {
+                setConfirming(true);
+                setFailure(null);
+              }}
+              aria-label={`Remove ${term.term}`}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[12px] transition-colors",
+                confirming ? "cursor-not-allowed text-ink-faint" : "text-danger hover:bg-surface",
+              )}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Remove
+            </button>
+          )}
         </td>
       </tr>
 

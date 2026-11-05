@@ -6,6 +6,7 @@ import { Field } from "@/components/ui/row-detail";
 import { TextModerationStatus } from "@/components/system/text-moderation-status";
 import { getModerationSettings } from "@/lib/api/moderation";
 import { getTextModerationStatus } from "@/lib/api/system";
+import { getModerationTermSummary } from "@/lib/api/terms";
 import type { ModerationSettingsResponse } from "@/lib/api/types";
 
 /**
@@ -23,7 +24,7 @@ export default async function SettingsPage() {
   } catch (error) {
     return (
       <>
-        <PageHeader title="Settings" />
+        <PageHeader title="Configuration" />
         <ErrorState error={error} />
       </>
     );
@@ -32,7 +33,7 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader
-        title="Settings"
+        title="Configuration"
         subtitle="What automatic moderation is deciding with, as each service reports it. Read-only — every value lives in a service's own environment."
       />
 
@@ -90,12 +91,17 @@ export default async function SettingsPage() {
 /** Its own failure: the classifier's thresholds above say nothing about whether the services act on text verdicts. */
 async function TextModeration() {
   let statuses;
+  let revision;
   try {
-    statuses = await getTextModerationStatus();
+    [statuses, revision] = await Promise.all([
+      getTextModerationStatus(),
+      // Non-fatal: without it the services are still compared with each other.
+      getModerationTermSummary().then((summary) => summary.revision, () => null),
+    ]);
   } catch (error) {
     return <ErrorState error={error} />;
   }
-  return <TextModerationStatus statuses={statuses} />;
+  return <TextModerationStatus statuses={statuses} revision={revision} />;
 }
 
 /**

@@ -100,6 +100,7 @@ export const TEXT_SURFACE_LABELS: Record<TextSurface, string> = {
   VIDEO_TITLE: "Title",
   VIDEO_DESCRIPTION: "Description",
   VIDEO_TAGS: "Tags",
+  STORY_CAPTION: "Story",
 };
 
 /** What screening makes of a text, as a comment's author would meet it. */

@@ -14,6 +14,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { Field, RowDetail, expandableRowProps } from "@/components/ui/row-detail";
 import { ModerationHistory } from "@/components/moderation/moderation-history";
 import { DISMISS_PRESETS, ResolveForm } from "@/components/moderation/resolve-form";
+import { SeverityBadge } from "@/components/moderation/severity-badge";
 import { TargetPreviewLine } from "@/components/moderation/target-preview-line";
 import { VideoThumb } from "@/components/videos/video-thumb";
 import type { ModerationActionType, ReportGroupResponse } from "@/lib/api/types";
@@ -22,21 +23,10 @@ import { NO_NAMES, targetName, type RowNames } from "@/lib/names";
 import { useBelowXl } from "@/lib/use-below-xl";
 import { useRowDetail } from "@/lib/use-row-detail";
 import { useSelection, type Selection } from "@/lib/use-selection";
-import { cn } from "@/lib/utils";
 
 const COLUMNS = 7;
 
 const keyOf = (group: ReportGroupResponse) => `${group.targetType}:${group.targetId}`;
-
-/**
- * Severity is 1–10 and means nothing to read as a number mid-scan. Three bands, so a row is
- * either something to open now, something to get to, or something that can wait.
- */
-function severityBand(severity: number) {
-  if (severity >= 8) return { label: "Critical", className: "border-danger/25 bg-danger-bg text-danger" };
-  if (severity >= 5) return { label: "High", className: "border-pending/25 bg-pending-bg text-pending" };
-  return { label: "Routine", className: "border-line bg-neutral-bg text-neutral" };
-}
 
 /**
  * The moderation worklist: one row per reported target, not per report.
@@ -156,8 +146,6 @@ function QueueRow({
   const [result, setResult] = useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
 
-  const band = severityBand(group.severity);
-
   function submit(action: ModerationActionType, reason: string, banDays: number | null) {
     startSubmit(async () => {
       const outcome = await resolveQueueAction(
@@ -212,14 +200,7 @@ function QueueRow({
           </span>
         </td>
         <td className="px-3 py-3">
-          <span
-            className={cn(
-              "inline-flex items-center rounded-md border px-2 py-1 text-[12px] font-medium",
-              band.className,
-            )}
-          >
-            {band.label}
-          </span>
+          <SeverityBadge severity={group.severity} />
         </td>
         <td
           className="hidden max-w-[260px] truncate px-3 py-3 xl:table-cell"

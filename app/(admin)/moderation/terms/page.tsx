@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { TermForm } from "@/components/moderation/term-form";
@@ -8,10 +9,12 @@ import { Pager } from "@/components/ui/pager";
 import { Field } from "@/components/ui/row-detail";
 import { getAdminHandles } from "@/lib/api/names";
 import { LIST_PAGE_SIZE, referenceNow } from "@/lib/api/shared";
+import { getTextModerationStatus } from "@/lib/api/system";
 import { getModerationTermSummary, listModerationTerms } from "@/lib/api/terms";
 import { parsePage } from "@/lib/api/window";
 import { formatNumber } from "@/lib/format";
 import { termFilters } from "@/lib/list-filters";
+import { revisionReach } from "@/lib/system-status";
 
 /**
  * The word list text moderation screens with, as far as admins change it: terms added on top of
@@ -21,18 +24,21 @@ import { termFilters } from "@/lib/list-filters";
 export default async function ModerationTermsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; action?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; action?: string; removed?: string; page?: string }>;
 }) {
   const params = await searchParams;
-  const { q, action } = termFilters(params);
+  const { q, action, removed } = termFilters(params);
   const pageIndex = parsePage(params.page);
 
   let page;
   let summary;
+  let statuses;
   try {
-    [page, summary] = await Promise.all([
-      listModerationTerms({ q, action, page: pageIndex }),
+    [page, summary, statuses] = await Promise.all([
+      listModerationTerms({ q, action, removed, page: pageIndex }),
       getModerationTermSummary(),
+      // Non-fatal: the list is managed the same without knowing which services it has reached.
+      getTextModerationStatus().catch(() => null),
     ]);
   } catch (error) {
     return (
@@ -43,8 +49,10 @@ export default async function ModerationTermsPage({
     );
   }
 
-  // Who added each term, by @handle. Non-fatal: the rows fall back to id tails.
-  const handles = await getAdminHandles(page.content.map((term) => term.createdBy));
+  // Who added and who removed each term, by @handle. Non-fatal: the rows fall back to id tails.
+  const handles = await getAdminHandles(page.content.flatMap((term) => [term.createdBy, term.deletedBy]));
+  // The preview uses a change at once, so it cannot say whether the services have it.
+  const reach = statuses ? revisionReach(statuses, summary.revision) : null;
 
   return (
     <>
@@ -75,6 +83,19 @@ export default async function ModerationTermsPage({
             <Field label="Verdicts record">
               <span className="figure break-all">{summary.version}</span>
             </Field>
+            {reach ? (
+              <Field label="In use by" wide>
+                <span className="figure">{reach.reached}</span> of {reach.asked} services
+                {reach.reached < reach.asked ? (
+                  <span className="text-ink-faint">
+                    {" "}— a change takes up to a minute; longer, see{" "}
+                    <Link href="/settings" className="text-ink-soft underline-offset-4 hover:underline">
+                      Configuration
+                    </Link>
+                  </span>
+                ) : null}
+              </Field>
+            ) : null}
           </dl>
         </Card>
 
@@ -88,6 +109,7 @@ export default async function ModerationTermsPage({
           handles={handles}
           query={q ?? ""}
           action={action ?? "ALL"}
+          removed={removed}
           now={referenceNow()}
         />
 

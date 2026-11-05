@@ -468,6 +468,9 @@ export interface ModerationTermResponse {
   note: string | null;
   createdBy: string;
   createdAt: string;
+  /** Who took it out, and when; null while it is live. */
+  deletedBy: string | null;
+  deletedAt: string | null;
 }
 
 /** POST /api/v1/admin/moderation/terms — AddModerationTermRequest. */
@@ -493,7 +496,7 @@ export interface ModerationTermSummaryResponse {
 }
 
 /** moderation-lib — Surface: where a text would be shown, which changes what a link means. */
-export type TextSurface = "COMMENT" | "VIDEO_TITLE" | "VIDEO_DESCRIPTION" | "VIDEO_TAGS";
+export type TextSurface = "COMMENT" | "VIDEO_TITLE" | "VIDEO_DESCRIPTION" | "VIDEO_TAGS" | "STORY_CAPTION";
 
 /** moderation-lib — Decision, least severe first. */
 export type TextDecision = "ALLOW" | "HOLD" | "REJECT";

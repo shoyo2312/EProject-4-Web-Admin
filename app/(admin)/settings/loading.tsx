@@ -14,7 +14,7 @@ export default function Loading() {
   return (
     <Skeleton>
       <PageHeaderSkeleton
-        title="Settings"
+        title="Configuration"
         subtitle="What automatic moderation is deciding with, as each service reports it. Read-only — every value lives in a service's own environment."
       />
       <div className="space-y-4">

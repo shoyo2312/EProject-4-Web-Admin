@@ -1,22 +1,37 @@
-import { MessageSquare } from "lucide-react";
 import { CommentsTable } from "@/components/comments/comments-table";
+import { ReportedComments } from "@/components/comments/reported-comments";
 import { VideoPicker } from "@/components/comments/video-picker";
-import { KpiCards, type KpiCard } from "@/components/dashboard/kpi-cards";
 import { ErrorState } from "@/components/layout/error-state";
 import { PageHeader } from "@/components/layout/page-header";
-import { Card } from "@/components/ui/card";
-import { getDailyAdminStats } from "@/lib/api/analytics";
-import { decorateCommentPage, getComments, listComments } from "@/lib/api/comments";
-import { referenceNow } from "@/lib/api/shared";
-import { getVideo, listVideos } from "@/lib/api/videos";
-import { historyUpTo, isoDay, resolveWindow } from "@/lib/api/window";
-import { deltaPercent, spark, sumLast } from "@/lib/series";
-import { formatNumber } from "@/lib/format";
+import {
+  decorateCommentPage,
+  getComments,
+  getReportedCommentDetails,
+  listComments,
+} from "@/lib/api/comments";
+import { getHandles } from "@/lib/api/names";
+import { listReportQueue } from "@/lib/api/reports";
 import type { AdminCommentFilter } from "@/lib/api/types";
-import type { CommentPageView } from "@/lib/comments";
+import { resolveOwners } from "@/lib/api/users";
+import { getVideo, listVideos } from "@/lib/api/videos";
+import type { CommentPageView, ReportedCommentDetails } from "@/lib/comments";
+import { plural } from "@/lib/format";
+import { reportedComments, reportedPerVideo, type ReportedComment } from "@/lib/moderation";
 
 const FILTERS: AdminCommentFilter[] = ["THREAD", "REPLIES", "REMOVED", "HELD"];
 
+/** video-service and admin-service both cap a page at fifty. */
+const RAIL_SIZE = 50;
+const QUEUE_WINDOW = 50;
+
+/** Each one's comment is read back from its video's partition, against the gateway's rate limit. */
+const WORKLIST_SIZE = 12;
+
+/**
+ * A place to work rather than a place to read figures, so nothing on it is dated and it has no
+ * period to pick: threads and the queue are as they stand now, and the record of what was removed
+ * and when is the Audit Log, which has the period picker and the same count.
+ */
 export default async function CommentsPage({
   searchParams,
 }: {
@@ -26,58 +41,71 @@ export default async function CommentsPage({
     /** A comment to pin above the thread — where a report or a notification on one lands. */
     comment?: string;
     filter?: string;
-    p?: string;
-    asOf?: string;
   }>;
 }) {
   const params = await searchParams;
-  const { q, videoId, filter } = params;
-  const latest = isoDay(referenceNow());
-  const window = resolveWindow(params, latest);
-  const { periodDays, periodLabel, compareLabel } = window;
+  const { q, videoId, filter, comment: linkedId } = params;
   // A filter left in the URL by hand has to resolve to something real: it is passed straight to
   // interaction-service, which rejects anything the enum does not name.
   const selectedFilter = FILTERS.find((f) => f === filter) ?? "THREAD";
 
   let videos;
-  let adminStats;
+  let total;
+  let queue;
+  let handles;
+  let reported: ReportedComment[] = [];
   let comments: CommentPageView | null = null;
-  let linked: CommentPageView | null | undefined;
+  let pinned: CommentPageView | null | undefined;
+  let details: ReportedCommentDetails | null = null;
   try {
-    const [stats, matches] = await Promise.all([
-      // Platform-wide, unlike everything else on this page: interaction-service stores comments
-      // partitioned by video, so there is no comment series to trend — the one dated record of
-      // comment moderation is the audit log.
-      getDailyAdminStats(window.fetchDays),
-      // The picker is a search box, not a directory: the matches that fit the rail, and the
-      // admin narrows with q rather than paging to find a video.
-      listVideos({ q, size: 50 }),
+    const ownerIds = q ? await resolveOwners(q) : [];
+    const [matches, queuePage] = await Promise.all([
+      // Biggest threads first: a list of the newest uploads opened on videos nobody has commented
+      // on, and a thread that long is where moderation is likeliest to be needed. The picker is a
+      // search box, not a directory: the matches that fit the rail, narrowed with q rather than
+      // paged through.
+      listVideos({ q, ownerIds, deleted: false, sort: "commentCount,desc", size: RAIL_SIZE }),
+      // Reading a thread does not need the queue, so the queue being down must not fail the page.
+      listReportQueue({ size: QUEUE_WINDOW }).catch(() => null),
     ]);
-    adminStats = stats;
+    queue = queuePage;
     videos = matches.content;
-    // A video linked to directly — from its own page, or a report on one of its comments — is
-    // older than the fifty the rail holds once the platform has more, so it is looked up by id and
-    // joins the top of the rail.
+    total = matches.totalElements;
+    reported = reportedComments(queue?.content ?? []);
+
+    // A video linked to directly — from its own page, or a report on one of its comments — may be
+    // past what the rail holds, or deleted, so it is looked up by id and joins the top of the rail.
     if (videoId && !q && !videos.some((v) => v.id === videoId)) {
       const linked = await getVideo(videoId);
       if (linked) videos = [linked, ...videos];
     }
+    handles = await getHandles(videos.map((v) => v.userId));
+
     // Only a video that is actually in the list may be opened: a videoId beside a search it does
     // not match would otherwise render a thread with nothing selected beside it.
     const selected = videoId && videos.some((v) => v.id === videoId) ? videoId : null;
-    // Only the first page. The rest is pulled in by the table as the admin asks for it — a thread
-    // can run to thousands, and before this it was read as one slab and silently cut off at 50.
-    comments = selected
-      ? await decorateCommentPage(selected, await listComments(selected, { filter: selectedFilter }))
-      : null;
-    // The comment a link named, by id: a thread is paged newest first, so a reported comment from
-    // last month would otherwise be any number of Load more clicks down. A failed lookup is null
-    // rather than a failed page — the thread is still worth showing.
-    if (selected && params.comment) {
-      const found = await getComments(selected, [params.comment]).catch(() => null);
-      linked = found
-        ? await decorateCommentPage(selected, { items: found, nextCursor: null, hasMore: false })
-        : null;
+    if (selected) {
+      const pinIds = [
+        ...reported.filter((r) => r.videoId === selected).map((r) => r.commentId),
+        ...(linkedId ? [linkedId] : []),
+      ];
+      // Only the first page. The rest is pulled in by the table as the admin asks for it — a thread
+      // can run to thousands, and before this it was read as one slab and silently cut off at 50.
+      comments = await decorateCommentPage(
+        selected,
+        await listComments(selected, { filter: selectedFilter }),
+      );
+      // By id, because a thread is paged newest first and a comment reported last month would
+      // otherwise be any number of Load more clicks down. A failed lookup is null rather than a
+      // failed page — the thread is still worth showing.
+      if (pinIds.length > 0) {
+        const found = await getComments(selected, pinIds).catch(() => null);
+        pinned = found
+          ? await decorateCommentPage(selected, { items: found, nextCursor: null, hasMore: false })
+          : null;
+      }
+    } else if (reported.length > 0) {
+      details = await getReportedCommentDetails(reported.slice(0, WORKLIST_SIZE));
     }
   } catch (error) {
     return (
@@ -89,71 +117,52 @@ export default async function CommentsPage({
   }
 
   const selected = videos.find((v) => v.id === videoId && comments !== null) ?? null;
-
-  // Daily and uncut, so the delta compares the period against the period before it.
-  const removalCounts = historyUpTo(adminStats, window, (d) => d.commentsRemoved);
-
-  const cards: KpiCard[] = [
-    {
-      label: "Comments Removed",
-      value: formatNumber(sumLast(removalCounts, periodDays)),
-      unit: periodLabel,
-      // Not inverted: more removals is moderation happening, not the comment section
-      // getting worse. Nothing here counts how many comments were written, so there is no
-      // rate to put it over — interaction-service has no platform-wide comment feed.
-      delta: deltaPercent(removalCounts, periodDays),
-      deltaLabel: compareLabel,
-      spark: spark(removalCounts, window.chartDays),
-    },
-    {
-      label: "Thread",
-      // The selected video's own running total, which video-service keeps on the document —
-      // the comment page itself is cursor-paged and cannot say how long the thread is. Null
-      // means the owner turned comments off, which is not the same as zero.
-      value:
-        selected == null
-          ? "—"
-          : selected.commentCount === null
-            ? "Off"
-            : formatNumber(selected.commentCount),
-      // No percentage: a thread is not dated history, it is one video's comments right now.
-      unit: selected ? "Comments on this video" : "No video selected",
-    },
-  ];
+  // The queue holds more targets than were read, so more comments may be waiting than were found.
+  const partial = queue !== null && queue.totalElements > queue.content.length;
 
   return (
     <>
       <PageHeader
         title="Comments"
-        subtitle="Read a video's thread and remove a comment on a user's behalf. Removals are recorded in the audit log; there is no undo."
-        filters={{ period: window.period, asOf: window.asOf, latest }}
+        subtitle="Reported comments come first; any other thread opens from its video. Every removal is recorded in the audit log, and there is no undo."
       />
 
-      <div className="stagger mb-4">
-        <KpiCards cards={cards} />
-      </div>
-
       <div className="stagger grid grid-cols-1 items-start gap-4 lg:grid-cols-[320px_1fr]">
-        <VideoPicker videos={videos} query={q ?? ""} selectedId={selected?.id ?? null} />
+        <VideoPicker
+          videos={videos}
+          total={total}
+          query={q ?? ""}
+          selectedId={selected?.id ?? null}
+          handles={handles}
+          reportedPerVideo={reportedPerVideo(reported)}
+          waiting={
+            queue === null
+              ? null
+              : reported.length === 0
+                ? "Nothing waiting"
+                : `${reported.length}${partial ? "+" : ""} ${plural(reported.length, "comment")} waiting for a decision`
+          }
+        />
 
         {selected && comments ? (
           <CommentsTable
             key={`${selected.id}:${selectedFilter}`}
             page={comments}
-            videoId={selected.id}
+            video={selected}
+            creator={handles[selected.userId]}
             filter={selectedFilter}
-            videoTitle={selected.title}
-            linked={linked}
+            pinned={pinned}
+            reports={reported.filter((r) => r.videoId === selected.id)}
+            linkedId={linkedId ?? null}
           />
         ) : (
-          <Card className="flex flex-col items-center justify-center gap-2 px-6 py-20 text-center">
-            <MessageSquare className="h-5 w-5 text-ink-faint" />
-            <p className="text-[13px] text-ink-soft">Pick a video to read its thread.</p>
-            <p className="max-w-sm text-[12px] text-ink-faint">
-              Comments are read one video at a time — there is no feed of every comment on the
-              platform. Reported comments open straight from the Reports Queue.
-            </p>
-          </Card>
+          <ReportedComments
+            reported={reported}
+            shown={WORKLIST_SIZE}
+            details={details}
+            partial={partial}
+            failed={queue === null}
+          />
         )}
       </div>
     </>

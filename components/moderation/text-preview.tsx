@@ -14,7 +14,7 @@ import {
 import { flagWeight } from "@/lib/moderation-terms";
 import { cn } from "@/lib/utils";
 
-const SURFACES: readonly TextSurface[] = ["COMMENT", "VIDEO_TITLE", "VIDEO_DESCRIPTION", "VIDEO_TAGS"];
+const SURFACES: readonly TextSurface[] = ["COMMENT", "VIDEO_TITLE", "VIDEO_DESCRIPTION", "VIDEO_TAGS", "STORY_CAPTION"];
 
 const SURFACE_OPTIONS = SURFACES.map((value) => ({ value, label: TEXT_SURFACE_LABELS[value] }));
 
@@ -24,6 +24,7 @@ const PLACEHOLDERS: Record<TextSurface, string> = {
   VIDEO_DESCRIPTION: "A video's description…",
   // video-service screens a video's tags as one text, joined by spaces.
   VIDEO_TAGS: "A video's tags, separated by spaces…",
+  STORY_CAPTION: "A story's caption…",
 };
 
 const DECISION_STYLES: Record<TextDecision, string> = {

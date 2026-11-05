@@ -151,8 +151,17 @@ const MIX_LABELS: Record<string, string> = {
   UNLIKED: "Unlikes",
   COMMENTED: "Comments",
   SHARED: "Shares",
+  UNCOMMENTED: "Deleted comments",
+  SAVED: "Saves",
+  UNSAVED: "Unsaves",
   PUBLISHED: "Videos published",
 };
+
+// An event type added on the backend before it gets a label here still reads as words.
+function humanize(eventType: string): string {
+  const words = eventType.toLowerCase().replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 /**
  * Same rows as the mosaic, counted per event type instead of per day. This is the
@@ -168,7 +177,7 @@ export function toEngagementMix(rows: DailyCountResponse[]): EngagementMixRow[] 
   const peak = Math.max(...totals.values(), 1);
   return Array.from(totals, ([eventType, total]) => ({
     eventType,
-    label: MIX_LABELS[eventType] ?? eventType,
+    label: MIX_LABELS[eventType] ?? humanize(eventType),
     total,
     weight: total / peak,
   })).sort((a, b) => b.total - a.total);

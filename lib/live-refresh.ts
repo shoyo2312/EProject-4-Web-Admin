@@ -22,3 +22,20 @@ export function createRefreshScheduler({
     },
   };
 }
+
+/** The pages that show likes, comments and shares: the only ones an engagement frame refreshes. */
+const ENGAGEMENT_PAGES = /^\/(analytics|dashboard|videos\/[^/]+)\/?$/;
+
+/**
+ * Engagement frames come at the pace people like and comment, so a page that shows none of it
+ * ignores them rather than re-reading its own data every second. Every other frame refreshes.
+ */
+export function refreshesPage(data: string, pathname: string): boolean {
+  let type = "";
+  try {
+    type = String(JSON.parse(data)?.type ?? "");
+  } catch {
+    // Not a frame we know: refresh, as before the filter.
+  }
+  return !type.startsWith("interaction.") || ENGAGEMENT_PAGES.test(pathname);
+}

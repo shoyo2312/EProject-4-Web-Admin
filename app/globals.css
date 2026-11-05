@@ -369,6 +369,19 @@ button[aria-disabled="true"],
   }
 }
 
+/*
+ * Chrome tints an autofilled input from its own stylesheet with `!important`, so no rule here can
+ * replace the colour. A bare input inside a box its wrapper draws — every search box — shows that
+ * tint as a second box, so it is clipped to the text, which covers it. The fill is there because
+ * Chrome forces `color` to its own `FieldText` as well.
+ */
+@layer base {
+  input.bg-transparent:autofill {
+    background-clip: text;
+    -webkit-text-fill-color: var(--ink);
+  }
+}
+
 /* Column headers, field names, card eyebrows: small, medium, muted — sentence case. In the
  * components layer so a utility beside it (a size, an active colour) still wins. */
 @layer components {

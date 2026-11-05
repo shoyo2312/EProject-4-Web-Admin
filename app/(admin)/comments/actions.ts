@@ -8,6 +8,7 @@ import {
   listComments,
   removeComment,
 } from "@/lib/api/comments";
+import { getModerationDetail, type ModerationDetail } from "@/lib/api/moderation";
 import type { AdminCommentFilter } from "@/lib/api/types";
 import type { CommentPageView } from "@/lib/comments";
 import type { ModerationResult } from "@/lib/moderation";
@@ -43,6 +44,17 @@ export async function commentRemovedAction(videoId: string, commentId: string): 
 }
 
 /**
+ * The reports and audit rows against one comment. Fetched when a row asks: a comment's own row says
+ * when it was removed and not who by, and a page of twenty would be forty calls on first paint.
+ */
+export async function commentHistoryAction(
+  videoId: string,
+  commentId: string,
+): Promise<ModerationDetail> {
+  return getModerationDetail("COMMENT", `${videoId}:${commentId}`);
+}
+
+/**
  * The comment does not disappear the moment this returns. admin-service writes an outbox row, the
  * dispatcher publishes it, and interaction-service applies the soft delete when it consumes
  * admin.moderation-events — so the revalidated page can still list the comment for a beat. Saying
@@ -68,8 +80,9 @@ export async function removeCommentAction(
   revalidatePath("/comments");
   return {
     ok: true,
+    // admin-service closes every report standing against the comment in the same transaction.
     message: held
-      ? "Removal recorded. The comment was never public, so no count changes; it leaves the creator's queue once interaction-service consumes the event."
-      : "Removal recorded. The comment leaves the thread once interaction-service consumes the event, and the video's comment count drops with it.",
+      ? "Removal recorded, and any reports against it are closed. The comment was never public, so no count changes; it leaves the creator's queue once interaction-service consumes the event."
+      : "Removal recorded, and any reports against it are closed. The comment is taken down once interaction-service consumes the event, and the video's comment count drops with it.",
   };
 }

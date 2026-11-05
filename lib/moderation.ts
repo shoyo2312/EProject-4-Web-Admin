@@ -1,6 +1,7 @@
 import type {
   CommentRestrictionResponse,
   ModerationActionType,
+  ReportGroupResponse,
   ReportTargetType,
   UserStatus,
   VideoStatus,
@@ -36,6 +37,34 @@ export function targetHref(targetType: ReportTargetType, targetId: string): stri
   if (!comment) return null;
   const params = new URLSearchParams({ videoId: comment.videoId, comment: comment.commentId });
   return `/comments?${params}`;
+}
+
+/** One row of the report queue that is a comment, with the target taken apart. */
+export interface ReportedComment {
+  /** "videoId:commentId", which is what a decision on it is addressed to. */
+  targetId: string;
+  videoId: string;
+  commentId: string;
+  report: ReportGroupResponse;
+}
+
+/**
+ * The comments among the queue's rows, heaviest first as the queue ranked them. A target naming no
+ * video is left out: nothing here could open it, and it still stands in the Reports Queue.
+ */
+export function reportedComments(groups: readonly ReportGroupResponse[]): ReportedComment[] {
+  return groups.flatMap((report) => {
+    if (report.targetType !== "COMMENT") return [];
+    const target = parseCommentTarget(report.targetId);
+    return target ? [{ targetId: report.targetId, ...target, report }] : [];
+  });
+}
+
+/** How many comments wait for a decision on each video: comments, not the reports against them. */
+export function reportedPerVideo(reported: readonly ReportedComment[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const { videoId } of reported) counts[videoId] = (counts[videoId] ?? 0) + 1;
+  return counts;
 }
 
 /**

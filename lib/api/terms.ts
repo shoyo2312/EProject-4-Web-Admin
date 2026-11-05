@@ -12,7 +12,7 @@ import type {
   TextPreviewResponse,
   TextSurface,
 } from "./types";
-import { mockModerationTermSummary, mockModerationTerms } from "@/lib/mock/terms";
+import { mockModerationTermSummary, mockModerationTerms, mockRemovedModerationTerms } from "@/lib/mock/terms";
 
 /*
  * The console's word list, kept by admin-service: terms added on top of the list every service
@@ -21,19 +21,23 @@ import { mockModerationTermSummary, mockModerationTerms } from "@/lib/mock/terms
  * the audit log; the list itself, with who added each term, is the record.
  */
 
-/** Live terms, newest first — admin-service orders them so whatever is asked. */
+/**
+ * Live terms, newest first — or the removed ones, most recently removed first. admin-service orders
+ * them so whatever is asked.
+ */
 export async function listModerationTerms(options: {
   /** Anywhere in the term, case-insensitively. */
   q?: string;
   action?: ModerationTermAction;
+  removed?: boolean;
   page?: number;
   size?: number;
 } = {}): Promise<Page<ModerationTermResponse>> {
-  const { q, action, page = 0, size = LIST_PAGE_SIZE } = options;
+  const { q, action, removed = false, page = 0, size = LIST_PAGE_SIZE } = options;
 
   if (USE_MOCK) {
     const needle = q?.toLowerCase();
-    const matches = mockModerationTerms.filter(
+    const matches = (removed ? mockRemovedModerationTerms : mockModerationTerms).filter(
       (term) =>
         (!action || term.action === action) && (!needle || term.term.toLowerCase().includes(needle)),
     );
@@ -43,7 +47,9 @@ export async function listModerationTerms(options: {
   const params = new URLSearchParams({ page: String(page), size: String(size) });
   if (q) params.set("q", q);
   if (action) params.set("action", action);
-  return apiGet<Page<ModerationTermResponse>>(`/api/v1/admin/moderation/terms?${params}`);
+  return apiGet<Page<ModerationTermResponse>>(
+    `/api/v1/admin/moderation/terms${removed ? "/removed" : ""}?${params}`,
+  );
 }
 
 /** What the list is made of: the shipped file's version and size, and the admin revision on top. */

@@ -56,7 +56,7 @@ export const ACTION_SORT_FIELDS = ["createdAt", "actionType", "targetType"] as c
 export type ActionSortField = (typeof ACTION_SORT_FIELDS)[number];
 
 /** The Video document's own fields, which video-service's admin listing orders by. */
-export const VIDEO_SORT_FIELDS = ["title", "status", "visibility", "viewCount", "likeCount", "createdAt"] as const;
+export const VIDEO_SORT_FIELDS = ["title", "status", "visibility", "viewCount", "likeCount", "commentCount", "createdAt"] as const;
 
 export type VideoSortField = (typeof VIDEO_SORT_FIELDS)[number];
 
@@ -144,5 +144,9 @@ export function auditFilters(params: ListParams) {
 }
 
 export function termFilters(params: ListParams) {
-  return { q: params.q?.trim() || undefined, action: oneOf(params.action, TERM_ACTIONS) };
+  return {
+    q: params.q?.trim() || undefined,
+    action: oneOf(params.action, TERM_ACTIONS),
+    removed: params.removed === "1",
+  };
 }

@@ -25,7 +25,7 @@ mock (default, no backend needed, no login) or live through api-gateway on `:808
 |---|---|---|
 | Overview | `/dashboard`, `/analytics` | Platform figures and trends from admin-service and analytics-service |
 | Moderation | `/moderation/reports`, `/moderation/review`, `/moderation/actions`, `/moderation/terms` | The report queue and ledger, the videos automatic moderation held for a person, the audit log, and the terms admins add to text moderation's word list or exempt from it |
-| Management | `/users`, `/videos`, `/comments` | The directories, each account's and video's own page, and one video's comment thread at a time |
+| Management | `/users`, `/videos`, `/comments` | The directories, each account's and video's own page, and the comment console: reported comments first, any other thread by its video |
 | System | `/settings`, `/trash`, `/notifications` | The classifiers' thresholds (frames and text), videos their owners deleted, and the bell's whole feed |
 
 `/system/queues` shows each service's outbox backlog and the dead-letter topics, with replay

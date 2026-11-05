@@ -4,6 +4,7 @@ import {
   classifierEnforcement,
   listsDiffer,
   rulesEnforcement,
+  servicesBehind,
   textModerationHealth,
 } from "@/lib/system-status";
 import { ToneBadge } from "./tone-badge";
@@ -13,8 +14,16 @@ import { ToneBadge } from "./tone-badge";
  * with them. Switched off, a verdict is still recorded on the comment or the video, and nothing is
  * held or refused — which from anywhere else looks exactly like nothing being found.
  */
-export function TextModerationStatus({ statuses }: { statuses: TextModerationStatusResponse[] }) {
+export function TextModerationStatus({
+  statuses,
+  revision,
+}: {
+  statuses: TextModerationStatusResponse[];
+  /** admin-service's term list revision; null when it could not be read. */
+  revision: number | null;
+}) {
   const health = textModerationHealth(statuses);
+  const behind = revision === null ? [] : servicesBehind(statuses, revision);
 
   return (
     <Card>
@@ -61,9 +70,11 @@ export function TextModerationStatus({ statuses }: { statuses: TextModerationSta
         Recording only: every verdict is still computed, logged and kept on the comment or video, and
         nothing is held or refused — for measuring false positives before switching it on. Not reported:
         a build from before services reported it.
-        {listsDiffer(statuses)
-          ? " The services are on different lists: admin terms reach each within a minute, so a gap that lasts longer is a service that stopped polling admin-service."
-          : null}
+        {behind.length > 0
+          ? ` ${behind.join(", ")} ${behind.length === 1 ? "is" : "are"} not on admin terms revision ${revision} yet. A change reaches each service within a minute, so a gap that lasts longer is a service that cannot read the list from admin-service — its log says why.`
+          : listsDiffer(statuses)
+            ? " The services are on different lists: admin terms reach each within a minute, so a gap that lasts longer is a service that stopped polling admin-service."
+            : null}
       </p>
     </Card>
   );

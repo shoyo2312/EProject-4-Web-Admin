@@ -16,8 +16,14 @@ function term(
     id: String(7_385_000_000_000_000_000n + BigInt(i)),
     createdBy: ADMIN,
     createdAt: new Date(MOCK_NOW - ago).toISOString(),
+    deletedBy: null,
+    deletedAt: null,
     ...fields,
   };
+}
+
+function removed(entry: ModerationTermResponse, ago: number): ModerationTermResponse {
+  return { ...entry, deletedBy: ADMIN, deletedAt: new Date(MOCK_NOW - ago).toISOString() };
 }
 
 /**
@@ -51,6 +57,12 @@ export const mockModerationTerms: ModerationTermResponse[] = [
     note: "Stricter than the shipped hold: only ever used to sell links.",
   }),
   term(1, 12 * DAY_MS, { term: "kèo thơm", action: "HOLD", category: "SCAM", note: null }),
+];
+
+/** The two terms the summary's revision counts as added and taken out again, most recently removed first. */
+export const mockRemovedModerationTerms: ModerationTermResponse[] = [
+  removed(term(7, 4 * DAY_MS, { term: "bán acc", action: "HOLD", category: "SCAM", note: "Now on the shipped list." }), DAY_MS),
+  removed(term(6, 9 * DAY_MS, { term: "vay nhanh", action: "REJECT", category: "SCAM", note: null }), 5 * DAY_MS),
 ];
 
 /** Revision past the count: removals move it too, and two terms were added and taken out again. */

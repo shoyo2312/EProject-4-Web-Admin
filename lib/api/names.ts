@@ -9,6 +9,9 @@ import { MOCK_REPORTER_HANDLES } from "@/lib/mock/moderation";
 import { mockUsers } from "@/lib/mock/users";
 import { mockVideos } from "@/lib/mock/videos";
 
+/** user-service's MAX_BATCH_IDS. Past it the whole request is refused, not cut short. */
+const MAX_PROFILE_IDS = 100;
+
 /**
  * Handles (and avatar, follower count) for a batch of user ids, from user-service. Used to show a
  * video's owner as @handle rather than a bare id. Missing and deleted ids are simply absent from
@@ -43,9 +46,18 @@ export async function getUserProfiles(
         ]),
     );
   }
-  const params = new URLSearchParams({ ids: unique.join(",") });
-  const profiles = await apiGet<UserProfileResponse[]>(`/api/v1/users/admin?${params}`);
-  return Object.fromEntries(profiles.map((p) => [p.userId, p]));
+  const batches: string[][] = [];
+  for (let i = 0; i < unique.length; i += MAX_PROFILE_IDS) {
+    batches.push(unique.slice(i, i + MAX_PROFILE_IDS));
+  }
+  const profiles = await Promise.all(
+    batches.map((ids) =>
+      apiGet<UserProfileResponse[]>(
+        `/api/v1/users/admin?${new URLSearchParams({ ids: ids.join(",") })}`,
+      ),
+    ),
+  );
+  return Object.fromEntries(profiles.flat().map((p) => [p.userId, p]));
 }
 
 /**
