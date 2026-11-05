@@ -53,6 +53,9 @@ export function SearchBox({
         value={term}
         onChange={(e) => setTerm(e.target.value)}
         placeholder={placeholder}
+        // Off: the box is a server-side filter, and an accepted history suggestion makes Chrome
+        // repaint the input with its own !important autofill background, breaking the pill.
+        autoComplete="off"
         className="min-w-0 flex-1 bg-transparent text-[11px] outline-none placeholder:text-ink-faint"
       />
     </label>
