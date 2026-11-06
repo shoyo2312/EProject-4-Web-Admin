@@ -204,7 +204,7 @@ function ReportRow({
             name={targetName(names, report.targetType, report.targetId)}
           />
         </td>
-        <td className="hidden max-w-[260px] truncate px-3 py-3 xl:table-cell" title={report.reason}>
+        <td className="hidden w-full max-w-0 truncate px-3 py-3 xl:table-cell" title={report.reason}>
           {report.reason}
         </td>
         <td className="px-3 py-3">

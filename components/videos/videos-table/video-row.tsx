@@ -109,7 +109,7 @@ export function VideoRow({
                 : null
           }
         />
-        <td className="max-w-[260px] px-3 py-3 @4xl:max-w-[320px]">
+        <td className="w-full max-w-0 px-3 py-3">
           <div className="flex items-center gap-3">
             {/* Purged media leaves the thumbnail url pointing at nothing. */}
             <VideoThumb
